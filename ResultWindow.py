@@ -14,6 +14,8 @@ from qgis.utils import iface
 from datetime import date
 
 import os
+
+
 def get_feature_display_name(layer: QgsVectorLayer, feature: QgsFeature) -> str:
     """
     Отримує відображальну назву елемента з заданого шару.
@@ -34,7 +36,11 @@ def get_feature_display_name(layer: QgsVectorLayer, feature: QgsFeature) -> str:
     display_field_name = layer.displayField()
     if not display_field_name:
         raise ValueError("The display field name is not set or is invalid.")
-
+    
+    print(feature.id())
+    
+    #field_index = feature.fieldIndex(display_field_name)
+    #print(feature.attribute(display_field_name))
     return feature[display_field_name]
 
 def get_index(list_v: list, index: int) -> Union[str, None]:
@@ -328,19 +334,19 @@ class ErrorTreeWidget(QTreeWidget):
 
                             for err, val in errors.items():                        
                                 if err == "general" and get_index(val, 0) == True:
-                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"Назва класу «{source_layer_name}» не відповідає структурі", el_criticity = 2, el_type="Помилка")
+                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"Назва атрибуту «{source_layer_name}» не відповідає структурі", el_criticity = 2, el_type="Помилка")
 
                                 if err == "capital_leters" and val == True:
-                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"В назві класу «{source_layer_name}» наявні великі літери", el_criticity = 1, el_type="Помилка")
+                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"В назві атрибуту «{source_layer_name}» наявні великі літери", el_criticity = 1, el_type="Помилка")
 
                                 if err == "used_alias" and val:
-                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"Замість назви класу використано псевдонім «{source_layer_name}», вимагається «{val}»", el_criticity = 2, el_type="Помилка")
+                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"Замість назви атрибуту використано псевдонім «{source_layer_name}», вимагається «{val}»", el_criticity = 2, el_type="Помилка")
 
                                 if err == "spaces_used" and val == True:
-                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"В назві класу «{source_layer_name}» є пробіли", el_criticity = 2, el_type="Помилка")
+                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"В назві атрибуту «{source_layer_name}» є пробіли", el_criticity = 2, el_type="Помилка")
                                 
                                 if err == "used_cyrillic" and val == True:
-                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"В назві класу «{source_layer_name}» є кирилиця", el_criticity = 2, el_type="Помилка")
+                                    error_item = CustomTreeWidgetItem(parent = field_errors_item, el_name = f"В назві атрибуту «{source_layer_name}» є кирилиця", el_criticity = 2, el_type="Помилка")
 
                 if "wrong_field_type" in value:
                     if len(value['wrong_field_type']) > 0:
@@ -367,6 +373,9 @@ class ErrorTreeWidget(QTreeWidget):
                         raise AttributeError(f"Неправильно задане значення параметрів об'єкту ID: {f_id}, шару {layer_name}")
                     
                     current_feature = layer.getFeature(f_id)
+                    if current_feature.id() != f_id:
+                        raise AttributeError(f"Неправильно задано значення ID: {f_id}, шару {layer_name}")
+                    
                     current_feature_name = get_feature_display_name(layer, current_feature)
 
                     feature_item = CustomTreeWidgetItem(parent = errors_in_features, el_name = f"Об'єкт: '{current_feature_name}({f_id})'")
@@ -397,8 +406,11 @@ class ErrorTreeWidget(QTreeWidget):
                         for element in f_v["duplicated_GUID"]:
                             if len(element) != 2:
                                 raise AttributeError(f"Неправильно задане значення параметрів словика об'єктів з дублікатами GUID, для об'єкту ID: {f_id}({current_feature_name}), шару {layer_name}")
-                            temp_layers = QgsProject.instance().mapLayersByName(element[1])
+                            
+                            temp_layers = QgsProject.instance().mapLayer(element[1])
+                            mapLayersByName(element[1])
                             print(temp_layers)
+
 
                             #feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = f"Об'єкт ID: '{element[0]}', шару: '{temp_layer.name()}'", el_criticity = 1, el_type="Помилка")
 
