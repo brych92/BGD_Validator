@@ -1,3 +1,4 @@
+import dis
 from symbol import eval_input
 from typing import Union, cast
 from numpy import isin
@@ -30,18 +31,17 @@ def get_feature_display_name(layer: QgsVectorLayer, feature: QgsFeature) -> str:
     Звикання:
         ValueError: Якщо назва поля відображення не встановлена або недійсна.
     """
-    if layer is None:
-        return ''
+    if not isinstance(layer, QgsVectorLayer):
+        raise TypeError("Помилка отримання назви відображення. Шар має бути обєктом 'QgsVectorLayer'.")
     
     display_field_name = layer.displayField()
-    if not display_field_name:
-        raise ValueError("The display field name is not set or is invalid.")
-    
-    print(feature.id())
-    
-    #field_index = feature.fieldIndex(display_field_name)
-    #print(feature.attribute(display_field_name))
-    return feature[display_field_name]
+
+    if not display_field_name or display_field_name == '':
+        result = "без імені"
+    else:
+        result = feature[display_field_name]
+
+    return result
 
 def get_index(list_v: list, index: int) -> Union[str, None]:
     """
@@ -259,7 +259,7 @@ class ErrorTreeWidget(QTreeWidget):
         
         project_instance = QgsProject.instance()
         
-        for layer_name, value in layers_errors_dict.items():
+        for temp_layer_name, value in layers_errors_dict.items():
             if project_instance.mapLayer(value['layer_id']):#mapLayersByName(layer_name):
                 layer = project_instance.mapLayer(value['layer_id'])#project_instance.mapLayersByName(layer_name)[0]
                 
@@ -268,14 +268,14 @@ class ErrorTreeWidget(QTreeWidget):
                 
             
             if not isinstance(layer, QgsVectorLayer):
-                raise AttributeError(f"Шар не є векторним: {layer_name}")
+                raise AttributeError(f"Шар не є векторним: {temp_layer_name}")
 
             layer = cast(QgsVectorLayer, layer)
 
             #знаходимо спражнє ім'я шару (не тестувалося з gdb базами)
             source_layer_name = get_real_layer_name(layer)
                 
-            layer_tree_item = CustomTreeWidgetItem(parent=self, el_name=f"Шар: {layer_name}({source_layer_name})", el_type="Шар")
+            layer_tree_item = CustomTreeWidgetItem(parent=self, el_name=f"Шар: {temp_layer_name}({source_layer_name})", el_type="Шар")
 
             if "layer_name_errors" in value:
                 if isinstance(value['layer_name_errors'], dict) and len(value['layer_name_errors'])>0:
@@ -359,22 +359,21 @@ class ErrorTreeWidget(QTreeWidget):
                 if value['is_empty'] == True:
                     layer_main_errors_item = CustomTreeWidgetItem(parent = layer_tree_item, el_name = f"В класі відсутні об'єкти", el_criticity = 2, el_type="Помилка")
 
-
             if "features" in value:
                 features = value["features"]
                 
                 if len(features) < 1 or not isinstance(features, dict):
-                    raise AttributeError(f"Неправильно задане значення ключа 'features' {layer_name}")
+                    raise AttributeError(f"Неправильно задане значення ключа 'features' {temp_layer_name}")
                     
                 errors_in_features = CustomTreeWidgetItem(parent = layer_tree_item, el_name = "Помилки в об'єктах:")
                 
                 for f_id, f_v in features.items():
                     if len(f_v) < 1 or not isinstance(f_v, dict):
-                        raise AttributeError(f"Неправильно задане значення параметрів об'єкту ID: {f_id}, шару {layer_name}")
+                        raise AttributeError(f"Неправильно задане значення параметрів об'єкту ID: {f_id}, шару {temp_layer_name}")
                     
                     current_feature = layer.getFeature(f_id)
                     if current_feature.id() != f_id:
-                        raise AttributeError(f"Неправильно задано значення ID: {f_id}, шару {layer_name}")
+                        raise AttributeError(f"Неправильно задано значення ID: {f_id}, шару {temp_layer_name}")
                     
                     current_feature_name = get_feature_display_name(layer, current_feature)
 
@@ -402,16 +401,63 @@ class ErrorTreeWidget(QTreeWidget):
                             feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = "Об'єкт виходить за межі екстента системи координат", el_criticity = 1, el_type="Помилка")
 
                     if "duplicated_GUID" in f_v:
-                        feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = "Об'єкт має не унікальний GUID", el_criticity = 1, el_type="Помилка")
+                        feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = "Об'єкт має не унікальний GUID")
                         for element in f_v["duplicated_GUID"]:
                             if len(element) != 2:
-                                raise AttributeError(f"Неправильно задане значення параметрів словика об'єктів з дублікатами GUID, для об'єкту ID: {f_id}({current_feature_name}), шару {layer_name}")
+                                raise AttributeError(f"Неправильно задане значення параметрів словика об'єктів з дублікатами GUID, для об'єкту ID: {f_id}({current_feature_name}), шару {temp_layer_name}")
                             
-                            temp_layers = QgsProject.instance().mapLayer(element[1])
-                            mapLayersByName(element[1])
-                            print(temp_layers)
+                            temp_layer = QgsProject.instance().mapLayer(element[1])
+                            if isinstance(temp_layer, QgsVectorLayer):
+                                temp_layer = cast(QgsVectorLayer, temp_layer)
+                            else:
+                                raise TypeError(f"Неправильний тип шару {element[1]}")
+                            
+                            temp_feature = temp_layer.getFeature(element[0])
+                            if temp_feature.id() != element[0]:
+                                raise AttributeError(f"Неправильно задано значення ID: {element[0]}, шару {element[1]}")
+                            
+                            temp_feature_name = get_feature_display_name(temp_layer, temp_feature)
 
+                            dupl_guid_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Об'єкт: '{temp_feature_name}(id:{element[0]})', шару: '{temp_layer.name()}'", el_criticity = 1, el_type="Помилка")
 
+                    if "required_attribute_empty" in f_v:
+                        if len(f_v["required_attribute_empty"]) > 0:
+                            feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = "Об'єкт має не заповнені обов'язкові атрибути")
+                            for element in f_v["required_attribute_empty"]:
+                                attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Атрибут: '{element}'", el_criticity = 2, el_type="Помилка")
+                        
+                    if  "attribute_length_exceed" in f_v:
+                        if len(f_v["attribute_length_exceed"]) > 0:
+                            feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = "Об'єкт має атрибути з перевищенням довжини")
+                            for element, value in f_v["attribute_length_exceed"].items():
+                                if len(value) == 2:
+                                    attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Атрибут: '{element}' має довжину {value[0]}, а треба {value[1]}", el_criticity = 2, el_type="Помилка")
+                                else:
+                                    attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Атрибут: '{element}' має довжину більше дозволеної структурою", el_criticity = 2, el_type="Помилка")
+                    
+                    if "attribute_value_unclassifyed" in f_v:
+                        if len(f_v["attribute_value_unclassifyed"]) > 0:
+                            feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = "Об'єкт має атрибути зі значеннями що не відповідають класифікатору")
+                            for element, value in f_v["attribute_value_unclassifyed"]:
+                                if len(value) == 2:
+                                    attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Атрибут: '{element}' має значення {value[0]}", el_criticity = 2, el_type="Помилка")
+                                    #тут має бути передача класифікатора в контекстне меню
+                                else:
+                                    attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Атрибут: '{element}' має значення {value[0]}", el_criticity = 2, el_type="Помилка")
+
+                    if "topology_errors" in f_v:
+                        if len(f_v["topology_errors"]) > 0:
+                            feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = "Об'єкт має помилки топологіі")
+                            
+                            for topology_error, description in f_v["topology_errors"]:
+                                if "layer_out" in topology_error and "object_out" in topology_error:
+                                    temp_layer_id = topology_error["layer_out"]
+                                    temp_layer = QgsProject.instance().mapLayer(temp_layer_id)[0]
+                                    temp_layer_name = temp_layer.name()
+                                    
+
+                                    attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"", el_criticity = 2, el_type="Помилка")
+                            
                             #feature_error_item = CustomTreeWidgetItem(parent = feature_item, el_name = f"Об'єкт ID: '{element[0]}', шару: '{temp_layer.name()}'", el_criticity = 1, el_type="Помилка")
 
         checked_layers_qty = len(layers_errors_dict)
@@ -422,21 +468,16 @@ class ErrorTreeWidget(QTreeWidget):
         self.total_critical_errors = 0
         self.total_light_errors = 0
         for item in self.getTopLevelItems():
-            print(type(item))
+            #print(type(item))
             if isinstance(item, CustomTreeWidgetItem):
                 item = cast(CustomTreeWidgetItem, item)
                 self.total_critical_errors += item.getChildrenCriticalErrors()
                 self.total_critical_errors += item.getChildrenLightErrors()
 
-
         self.setHeaderLabel(f"Перевірено шарів - {layers_qty}, з них з помилками - {layers_with_errors_qty}. Загальна кількість критичних помилок - {self.total_critical_errors+self.total_light_errors}, з них незначних помилок - {self.total_light_errors}")
-        
 
-        
         if self.total_critical_errors+self.total_light_errors == 0:
             no_errors_item = CustomTreeWidgetItem(parent = self, el_name = "Помилок в шарах не знайдено. Для детальної інформації дивіться вкладку Звіт")
-                        
-        
 
 
 class ResultWindow(QDialog):
