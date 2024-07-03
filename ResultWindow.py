@@ -135,6 +135,11 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
 
         self.__tags = []
 
+        self.related_feature = None
+        self.related_layer = None
+        self.related_coordinates = None
+        self.url = None
+
         self.setRelatedLayer(el_related_layer)
         self.setRelatedFeature(el_related_feature)
         self.setRelatedCoordinates(el_related_coordinates)
@@ -188,7 +193,10 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
             return self.el_name
 
     def setRelatedLayer(self, layer:QgsVectorLayer):
-        if layer is not None and isinstance(layer, QgsVectorLayer) and layer.isValid():
+        if layer is None:
+            return False
+
+        if isinstance(layer, QgsVectorLayer) and layer.isValid():
             self.related_layer = layer
             return True
         else:
@@ -201,19 +209,25 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
             return None
 
     def setRelatedFeature(self, feature:QgsFeature):
+        if feature is None:
+            return False
+        
         if feature is not None and isinstance(feature, QgsFeature) and feature.isValid():
             self.related_feature = feature
             return True
         else:
             raise AttributeError(f"Помилка присвоєння об'єкту для елементу дерева помилок {self.name()}: Об'єкт повинен бути QgsFeature, отримно: {type(feature)}")
     
-    def relatedFeature(self):
+    def relatedFeature(self) -> Union[QgsFeature, None]:
         if self.related_feature is not None:
             return self.related_feature
         else:
             return None
     
     def setRelatedCoordinates(self, coordinates:Union[tuple[int], QgsPointXY]):
+        if coordinates is None:
+            return False
+        
         if isinstance(coordinates, QgsPointXY) and coordinates.isValid():
             self.related_coordinates = coordinates
             return True
@@ -241,6 +255,10 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
         
 
     def updateTooltip(self):
+        if self.childCount() == 0:
+            self.setToolTip(0, '')
+            return
+            
         errors = ''
         if self.children_critical_errors > 0:
             errors = f"Критичних помилок: {self.children_critical_errors}"
@@ -265,8 +283,7 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
         if not isinstance(recursive, bool):
             raise ValueError("Recursive must be a boolean")
         
-        if self.el_criticity is not None and criticity <= self.el_criticity:
-            
+        if self.el_criticity is not None and criticity < self.el_criticity:
             return False
         
         self.el_criticity = criticity
@@ -325,7 +342,6 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
         child.addParentCriticalError(child.children_critical_errors)
         child.setCriticity(child.el_criticity)
 
-        
 
 class ErrorTreeWidget(QTreeWidget):
     def __init__(self, parent:QWidget, errors_table:dict):
@@ -366,6 +382,7 @@ class ErrorTreeWidget(QTreeWidget):
         for current_layer_name, layer_inspections in layers_errors_dict.items():
             current_layer_id = layer_inspections['layer_id']
             current_layer = project_instance.mapLayer(current_layer_id)
+            print(f'current_layer: {current_layer}')
             #знаходимо спражнє ім'я шару (не тестувалося з gdb базами)
             current_source_layer_name = get_real_layer_name(current_layer)
             
@@ -375,7 +392,7 @@ class ErrorTreeWidget(QTreeWidget):
                 raise AttributeError(f"Помилка обробки словника шарів: Шар {current_layer_name} не є векторним: {type(current_layer)}")
 
             current_layer = cast(QgsVectorLayer, current_layer)
-
+            print(f'current_layer: {current_layer}')
             current_layer_tree_item = CustomTreeWidgetItem(parent=self, el_name=f"Шар: {current_layer_name}({current_source_layer_name})", el_type="Шар")
             current_layer_tree_item.setRelatedLayer(current_layer)
 
@@ -469,7 +486,7 @@ class ErrorTreeWidget(QTreeWidget):
                     
                     current_feature_name = get_feature_display_name(current_layer, current_feature)
 
-                    feature_item = CustomTreeWidgetItem(parent = errors_in_features, el_name = f"Об'єкт: '{current_feature_name}({current_feature_id})'")
+                    feature_item = CustomTreeWidgetItem(parent = errors_in_features, el_name = f"Об'єкт: '{current_feature_name}({current_feature_id})'", el_related_layer=current_layer, el_related_feature=current_feature)
                     
                     if "geometry_errors" in f_v:
                         feature_geom_error = f_v["geometry_errors"]
@@ -598,8 +615,8 @@ class ErrorTreeWidget(QTreeWidget):
 
 
 class ResultWindow(QDialog):
-    def __init__(self, errors_table:dict):
-        super(ResultWindow, self).__init__()
+    def __init__(self, errors_table:dict, parent=None):
+        super(ResultWindow, self).__init__(parent)
         
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
@@ -690,29 +707,49 @@ class ResultWindow(QDialog):
 
         if selected_item is not None:
             print(selected_item)
-            item_type = selected_item.whatsThis(0)
-            print(item_type)
             menu = QMenu(self)
             if selected_item.relatedLayer() is not None:
+                related_layer = selected_item.relatedLayer()
                 menu.addAction("Виділити шар")
                 menu.addAction("Перейти в налаштування шару")
                 menu.addAction("Переглянуи таблицю атрибутів шару")
-                layer_name = item_type[4:]
-            else:
-                print("empty selection")
+            
+            if selected_item.relatedFeature() is not None:
+                related_feature = selected_item.relatedFeature()
+                if selected_item.relatedLayer() is not None:
+                    menu.addAction("Виділити об'єкт")
+                
+                menu.addAction("Наблизити до об'єкту")
+
+            
+
+            if menu.isEmpty():
                 return
+            
             selected_action = menu.exec_(self.mapToGlobal(position))
             if selected_action:
                 if selected_action.text() == "Виділити шар":
-                    layer_to_select = QgsProject.instance().mapLayersByName(layer_name)[0]
-                    iface.setActiveLayer(layer_to_select)
+                    iface.setActiveLayer(related_layer)
                 elif selected_action.text() == "Перейти в налаштування шару":
-                    layer_to_select = QgsProject.instance().mapLayersByName(layer_name)[0]
-                    iface.showLayerProperties(layer_to_select)
+                    iface.showLayerProperties(related_layer)
                 elif selected_action.text() == "Переглянуи таблицю атрибутів шару":
-                    layer_to_select = QgsProject.instance().mapLayersByName(layer_name)[0]
-                    iface.showAttributeTable(layer_to_select)   
-                
+                    iface.showAttributeTable(related_layer)
+                elif selected_action.text() == "Виділити об'єкт":
+                    related_layer.selectByIds([related_feature.id()])
+
+                elif selected_action.text() == "Наблизити до об'єкту":
+                    
+
+                    # Get the geometry of the feature
+                    geometry = related_feature.geometry()
+
+                    # Get the extent of the geometry
+                    extent = geometry.boundingBox()
+
+                    # Zoom to the extent of the feature
+                    canvas = iface.mapCanvas()
+                    canvas.zoomToFeatureExtent(extent)
+
                 print(f"Вибрано дію: {selected_action.text()}")
 
     def set_tree_element_icon(self, element, criticity, recursive=False):
