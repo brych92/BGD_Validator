@@ -106,10 +106,12 @@ class EDRA_validator:
         for i in range(self.layerDefinition.GetFieldCount()):
             field_name = self.layerDefinition.GetFieldDefn(i).GetName()
             field_type_name = self.layerDefinition.GetFieldDefn(i).GetTypeName()
+            
             if field_name in self.structure_field_names:
                 
                 check_field_name_result = field_name in self.structure_field_names
                 check_field_type_result = field_type_name in self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']]
+                print(self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']])
                 list_check_fields.append({"current_field_name": field_name, "check_field_type_result": check_field_type_result, "current_field_type": field_type_name, "check_field_name_result": check_field_name_result, "required_field_type": self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']]})
             else:
                 list_check_fields.append({"current_field_name": field_name, "check_field_type_result": False, "current_field_type": field_type_name, "check_field_name_result": False, "required_field_type": None})
@@ -218,7 +220,7 @@ with open(domains_bgd_file_path, 'r', encoding='utf-8') as f:
 layer_exchange_group = 'EDRA'
 layer_exchange_name = 'settlement'
 
-if layer.isValid:
+if layer is not None:
     layer_EDRA_valid_class = EDRA_validator(layer, layer_exchange_group, layer_exchange_name, structure_json, domains_json)
 
 class EDRA_exchange_layer_checker:
@@ -229,7 +231,7 @@ class EDRA_exchange_layer_checker:
         self.fields_check_results_list = layer_EDRA_valid_class.check_fields_type_and_names()
         
     def check_is_layer_empty(self):
-        if len(layer_EDRA_valid_class.layer.GetFeatureCount()) > 0:
+        if layer_EDRA_valid_class.layer.GetFeatureCount() < 0:
             return True
         else:
             return False
@@ -254,6 +256,8 @@ class EDRA_exchange_layer_checker:
         
         if not geometry_type_check_result:
             return [ogr.GeometryTypeToName(layer_EDRA_valid_class.layer.GetGeomType()), layer_EDRA_valid_class.required_geometry_type]
+        else:
+            return []
             # self.check_result_dict['missing required fields'] = [QgsWkbTypes().displayString(layer.wkbType(), self.layer_EDRA_valid_class.check_extra_fields())]
 
     def check_wrong_fields_types(self):
@@ -262,7 +266,7 @@ class EDRA_exchange_layer_checker:
         error_field_type_list = []
         for x in self.fields_check_results_list:
             if x['check_field_type_result'] == False and x['check_field_name_result'] == True:
-                error_field_type_list.append({x.current_field_name:[x.current_field_type, x.required_field_type]})
+                error_field_type_list.append({x['current_field_name']:[x['current_field_type'], x['required_field_type']]})
             else: pass
         
         return error_field_type_list    
@@ -279,24 +283,17 @@ class EDRA_exchange_layer_checker:
     # def write_features_check_result(self):
     #     self.check_result_dict['features'] = {}
     def run(self):
-        self.check_result_dict['LAYER_NAME'] = {}
+        self.check_result_dict['settlement'] = {}
         # if (checker_layer_empty):
-        self.check_result_dict['is_empty'] = self.check_is_layer_empty()
-        #
-        self.check_result_dict['missing_required_fields'] = self.check_missing_required_fields()
-        
-        self.check_result_dict['missing_fields'] = self.check_missing_fields()
-        
-        self.check_result_dict['wrong_geometry_type'] = self.check_wrong_layer_geometry_type()
-        
-        self.check_result_dict['wrong_field_type'] = self.check_wrong_fields_types()
-        
+        self.check_result_dict['settlement'] ['is_empty'] = self.check_is_layer_empty()
+        self.check_result_dict['settlement'] ['field_errors'] = {}
+        self.check_result_dict['settlement'] ['field_errors'] ['missing_required_fields'] = self.check_missing_required_fields()
+        self.check_result_dict['settlement'] ['field_errors'] ['missing_fields'] = self.check_missing_fields()
+        self.check_result_dict['settlement'] ['field_errors']['wrong_field_type'] = self.check_wrong_fields_types()
+        #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
+        self.check_result_dict['settlement'] ['wrong_geometry_type'] = self.check_wrong_layer_geometry_type()
+
         return self.check_result_dict
         
 b = EDRA_exchange_layer_checker(layer_EDRA_valid_class)
 print(b.run())
-
-
-
-
-
