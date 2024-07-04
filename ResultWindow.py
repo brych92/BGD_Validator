@@ -342,6 +342,27 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
         child.addParentCriticalError(child.children_critical_errors)
         child.setCriticity(child.el_criticity)
 
+class checkerError():
+    def __init__(self, e:Exception, function_name:str, layers_id:list[str] = None, objects_id:list[str] = None):
+        self.exeption_text = str(e)
+        if not isinstance(e, Exception):
+            raise TypeError(f"Параметр 'e' не є інстансом класу Exception або жодного його нащадка. Тип e - {type(e)}")
+        
+        if isinstance(function_name, str):
+            self.function_name = function_name
+        else:
+            raise TypeError(f"Параметр 'function_name' не є строкою. Тип e - {type(function_name)}")
+        
+        if layers_id is not None and isinstance(layers_id, list):
+            self.layers_id = layers_id
+        
+        else:
+            raise TypeError(f"Параметр 'layers_id' не є списком: Тип e - {type(layers_id)}")
+        
+        if objects_id is not None and isinstance(objects_id, list):
+            self.objects_id = objects_id
+
+        
 
 class ErrorTreeWidget(QTreeWidget):
     def __init__(self, parent:QWidget, errors_table:dict):
@@ -507,11 +528,11 @@ class ErrorTreeWidget(QTreeWidget):
                             else:
                                 feature_error_item = CustomTreeWidgetItem(parent = geom_errors_item, el_name = "Тип геометрії об'єкту не відповідає сруктурі.", el_criticity = 2, el_type="Помилка")
 
-                        if feature_geom_error["validator_error"]:
+                        if "validator_error" in feature_geom_error:
                             for error in feature_geom_error["validator_error"]:
                                 feature_error_item = CustomTreeWidgetItem(parent = geom_errors_item, el_name = error[0], el_criticity = 2, el_type="Помилка")
 
-                        if feature_geom_error["outside_crs_extent"]:
+                        if "outside_crs_extent" in feature_geom_error:
                             feature_error_item = CustomTreeWidgetItem(parent = geom_errors_item, el_name = "Об'єкт виходить за межі екстента системи координат", el_criticity = 1, el_type="Помилка")
 
                         if geom_errors_item.childCount()>0:
@@ -701,7 +722,7 @@ class ResultWindow(QDialog):
 
     def show_context_menu(self, position):
         selected_item = self.tree_widget.selectedItems()[0]
-        
+        canvas = iface.mapCanvas()
         selected_item = cast(CustomTreeWidgetItem, selected_item)
             
 
@@ -718,8 +739,12 @@ class ResultWindow(QDialog):
                 related_feature = selected_item.relatedFeature()
                 if selected_item.relatedLayer() is not None:
                     menu.addAction("Виділити об'єкт")
+                    menu.addAction("Виділити та наблизити до об'єкту")
+                    menu.addAction("Відкрити форму об'єкту")
                 
                 menu.addAction("Наблизити до об'єкту")
+            else:
+                related_feature = None
 
             
 
@@ -727,28 +752,39 @@ class ResultWindow(QDialog):
                 return
             
             selected_action = menu.exec_(self.mapToGlobal(position))
+
+
             if selected_action:
                 if selected_action.text() == "Виділити шар":
                     iface.setActiveLayer(related_layer)
+                
                 elif selected_action.text() == "Перейти в налаштування шару":
                     iface.showLayerProperties(related_layer)
+                
                 elif selected_action.text() == "Переглянуи таблицю атрибутів шару":
-                    iface.showAttributeTable(related_layer)
+                    if related_feature is not None:
+                        print('fdgfd')
+                        atTable = iface.showAttributeTable(related_layer)
+                        atTable.filterSelectedFeatures(True)
+                    else:
+                        iface.showAttributeTable(related_layer)
+                    
                 elif selected_action.text() == "Виділити об'єкт":
+                    print(related_feature.id())
                     related_layer.selectByIds([related_feature.id()])
 
+                elif selected_action.text() == "Виділити та наблизити до об'єкту":
+                    print(related_feature.id())
+                    related_layer.selectByIds([related_feature.id()])
+
+                    canvas.zoomToSelected(related_layer)
+
                 elif selected_action.text() == "Наблизити до об'єкту":
-                    
+                    canvas.zoomToFeatureIds(related_layer, [related_feature.id()])
 
-                    # Get the geometry of the feature
-                    geometry = related_feature.geometry()
-
-                    # Get the extent of the geometry
-                    extent = geometry.boundingBox()
-
-                    # Zoom to the extent of the feature
-                    canvas = iface.mapCanvas()
-                    canvas.zoomToFeatureExtent(extent)
+                elif selected_action.text() == "Відкрити форму об'єкту":
+                    featureForm = iface.getFeatureForm(related_layer, related_feature)
+                    featureForm.show()
 
                 print(f"Вибрано дію: {selected_action.text()}")
 
