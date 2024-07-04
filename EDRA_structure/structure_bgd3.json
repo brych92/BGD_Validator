@@ -1,0 +1,247 @@
+{
+    "EDRA": {
+        "buildings_polygon": {
+            "geometry_type": "Polygon",
+            "layer_name_ua": "\u0411\u0443\u0434\u0456\u0432\u043b\u0456 \u0442\u0430 \u0441\u043f\u043e\u0440\u0443\u0434\u0438 (\u043f\u043e\u043b\u0456\u0433\u043e\u043d\u0438) (\u041e\u0417\u041f\u0410)",
+            "attributes": {
+                "build_code": {
+                    "attribute_name_ua": "ID \u0437\u0430\u043f\u0438\u0441\u0443 \u043f\u0440\u043e \u0431\u0443\u0434\u0456\u0432\u043b\u044e",
+                    "attribute_type": "text",
+                    "attribute_required": "True",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "True",
+                    "domain": ""
+                },
+                "str_id": {
+                    "attribute_name_ua": "\u0406\u0434\u0435\u043d\u0442\u0438\u0444\u0456\u043a\u0430\u0442\u043e\u0440 \u0432\u0443\u043b\u0438\u0446\u0456",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "index": {
+                    "attribute_name_ua": "\u041f\u043e\u0448\u0442\u043e\u0432\u0438\u0439 \u0456\u043d\u0434\u0435\u043a\u0441",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "build_num": {
+                    "attribute_name_ua": "\u041d\u043e\u043c\u0435\u0440 \u0431\u0443\u0434\u0456\u0432\u043b\u0456",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "corp_num": {
+                    "attribute_name_ua": "\u041d\u043e\u043c\u0435\u0440 \u043a\u043e\u0440\u043f\u0443\u0441\u0443",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "floor": {
+                    "attribute_name_ua": "\u041a\u0456\u043b\u044c\u043a\u0456\u0441\u0442\u044c \u043f\u043e\u0432\u0435\u0440\u0445\u0456\u0432",
+                    "attribute_type": "integer",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "entrance": {
+                    "attribute_name_ua": "\u041a\u0456\u043b\u044c\u043a\u0456\u0441\u0442\u044c \u043f\u0456\u0434\u2019\u0457\u0437\u0434\u0456\u0432",
+                    "attribute_type": "integer",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "flat": {
+                    "attribute_name_ua": "\u041a\u0456\u043b\u044c\u043a\u0456\u0441\u0442\u044c \u043a\u0432\u0430\u0440\u0442\u0438\u0440",
+                    "attribute_type": "integer",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "note": {
+                    "attribute_name_ua": "\u041f\u0440\u0438\u043c\u0456\u0442\u043a\u0430",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "build_type": {
+                    "attribute_name_ua": "\u041c\u0430\u0442\u0435\u0440\u0456\u0430\u043b \u0441\u043f\u043e\u0440\u0443\u0434\u0438",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "sub_type": {
+                    "attribute_name_ua": "\u041f\u0456\u0434\u0442\u0438\u043f",
+                    "attribute_type": "integer",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": "sub_type"
+                },
+                "category": {
+                    "attribute_name_ua": "\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0456\u044f \u043e\u0431\u2019\u0454\u043a\u0442\u0443 (\u0437\u0433\u0456\u0434\u043d\u043e \u0434\u0435\u0440\u0436\u0430\u0432\u043d\u043e\u0433\u043e \u043a\u043b\u0430\u0441\u0438\u0444\u0456\u043a\u0430\u0442\u043e\u0440\u0430 \u0431\u0443\u0434\u0456\u0432\u0435\u043b\u044c \u0414\u041a 018-2000)",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": "category"
+                },
+                "obj_type": {
+                    "attribute_name_ua": "\u0422\u0438\u043f \u043e\u0431'\u0454\u043a\u0442\u0430",
+                    "attribute_type": "integer",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": "obj_type"
+                },
+                "condition": {
+                    "attribute_name_ua": "\u0421\u0442\u0430\u043d",
+                    "attribute_type": "integer",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": "condition"
+                },
+                "area": {
+                    "attribute_name_ua": "\u041f\u043b\u043e\u0449\u0430",
+                    "attribute_type": "double precision",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                }
+            }
+        },
+        "streets": {
+            "geometry_type": "LineString",
+            "layer_name_ua": "\u0412\u0456\u0441\u0456 \u0432\u0443\u043b\u0438\u0446\u044c (\u041e\u0417\u041f\u0410)",
+            "attributes": {
+                "str_id": {
+                    "attribute_name_ua": "\u0406\u0434\u0435\u043d\u0442\u0438\u0444\u0456\u043a\u0430\u0442\u043e\u0440 \u0432\u0443\u043b\u0438\u0446\u0456",
+                    "attribute_type": "text",
+                    "attribute_required": "True",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "True",
+                    "domain": ""
+                },
+                "str_type": {
+                    "attribute_name_ua": "\u0422\u0438\u043f \u0434\u043e\u0440\u043e\u0436\u043d\u044c\u043e-\u0432\u0443\u043b\u0438\u0447\u043d\u043e\u0457 \u043c\u0435\u0440\u0435\u0436\u0456",
+                    "attribute_type": "integer",
+                    "attribute_required": "True",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "True",
+                    "domain": "str_type"
+                },
+                "str_name": {
+                    "attribute_name_ua": "\u041d\u0430\u0437\u0432\u0430 \u0432\u0443\u043b\u0438\u0446\u0456",
+                    "attribute_type": "text",
+                    "attribute_required": "True",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "True",
+                    "domain": ""
+                },
+                "codifier": {
+                    "attribute_name_ua": "\u041a\u043e\u0434 \u041a\u0410\u0422\u041e\u0422\u0422\u0413",
+                    "attribute_type": "text",
+                    "attribute_required": "True",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "True",
+                    "domain": ""
+                },
+                "name_old": {
+                    "attribute_name_ua": "\u041d\u0430\u0437\u0432\u0430 \u0432\u0443\u043b\u0438\u0446\u0456 (\u0430\u0440\u0445\u0456\u0432\u043d\u0430) (\u043f\u0440\u0438 \u043d\u0430\u044f\u0432\u043d\u043e\u0441\u0442\u0456 \u0434\u0435\u043a\u0456\u043b\u044c\u043a\u043e\u0445 \u0456\u0441\u0442\u043e\u0440\u0438\u0447\u043d\u0438\u0445 \u043d\u0430\u0437\u0432 \u043f\u0440\u043e\u043f\u043e\u043d\u0443\u0454\u0442\u044c\u0441\u044f \u0432\u043d\u043e\u0441\u0438\u0442\u0438 \u043d\u0430\u0437\u0432\u0438 \u0447\u0435\u0440\u0435\u0437 \u043a\u0440\u0430\u043f\u043a\u0443 \u0437 \u043a\u043e\u043c\u043e\u044e",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "name_eng": {
+                    "attribute_name_ua": "\u041d\u0430\u0437\u0432\u0430 \u0432\u0443\u043b\u0438\u0446\u0456 \u043d\u0430 \u0430\u043d\u0433\u043b\u0456\u0439\u0441\u044c\u043a\u0456\u0439 \u043c\u043e\u0432\u0456",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "additional": {
+                    "attribute_name_ua": "\u0423\u0442\u043e\u0447\u043d\u044e\u044e\u0447\u0430 \u0447\u0430\u0441\u0442\u0438\u043d\u0430 \u043d\u0430\u0437\u0432\u0438 \u0432\u0443\u043b\u0438\u0446\u0456",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                },
+                "note": {
+                    "attribute_name_ua": "\u041f\u0440\u0438\u043c\u0456\u0442\u043a\u0430",
+                    "attribute_type": "text",
+                    "attribute_required": "False",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "False",
+                    "domain": ""
+                }
+            }
+        },
+        "settlement": {
+            "geometry_type": "Polygon",
+            "layer_name_ua": "\u041c\u0435\u0436\u0430 \u043d\u0430\u0441\u0435\u043b\u0435\u043d\u043e\u0433\u043e \u043f\u0443\u043d\u043a\u0442\u0443",
+            "attributes": {
+                "settlement_name": {
+                    "attribute_name_ua": "\u041d\u0430\u0437\u0432\u0430 \u043d\u0430\u0441\u0435\u043b\u0435\u043d\u043e\u0433\u043e \u043f\u0443\u043d\u043a\u0442\u0443",
+                    "attribute_type": "text",
+                    "attribute_required": "True",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "True",
+                    "domain": ""
+                },
+                "katottg": {
+                    "attribute_name_ua": "\u041a\u0410\u0422\u041e\u0422\u0422\u0413",
+                    "attribute_type": "text",
+                    "attribute_required": "True",
+                    "attribute_len": "",
+                    "attribute_default_value": "",
+                    "attribute_unique": "True",
+                    "domain": ""
+                }
+            }
+        }
+    }
+}

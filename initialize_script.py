@@ -1,6 +1,8 @@
-import json
+import json, os
 
 from osgeo import ogr
+
+from qgis.core import QgsProviderRegistry
 
 # Можливі помилки
 # Об'єкт з id "0" має помилку: "segments 142 and 229 of line 0 intersect at 33.5424, 48.2325"
@@ -357,8 +359,8 @@ def run_validator(layers_dict):
         layer_exchange_name = layers_dict[layer_id]['layer_name']
         
         
-        structure_bgd_file_path = '/home/bohdan/Робота/ЄДЕССБ/ПЛАГІН/structure_bgd3.json'
-        domains_bgd_file_path = '/home/bohdan/Робота/ЄДЕССБ/ПЛАГІН/domain.json'
+        structure_bgd_file_path = '/EDRA_structure/structure_bgd3.json'
+        domains_bgd_file_path = '/EDRA_structure/domain.json'
         
         with open(structure_bgd_file_path, 'r', encoding='utf-8') as f: 
             structure_json = json.loads(f.read())
@@ -379,6 +381,6 @@ def run_validator(layers_dict):
     return all_layers_check_result_dict
         
         
-selected_layers = iface.layerTreeView().selectedLayersRecursive()
+#selected_layers = iface.layerTreeView().selectedLayersRecursive()
 
-print(run_validator(get_layer_list_for_validator(selected_layers)))
+#print(run_validator(get_layer_list_for_validator(selected_layers)))
