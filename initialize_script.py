@@ -279,7 +279,7 @@ class EDRA_exchange_layer_checker:
             features_dict[feature.GetFID()] = {'geometry_errors':
                                                 {"empty" : True,
                                                 "null" : False,
-                                                "geometry_type_wrong" : False}}
+                                                "geometry_type_wrong" : [1,1]}}
         #print(features_dict)
         return features_dict
             
@@ -345,8 +345,8 @@ def get_layer_list_for_validator(selected_layers):
         
         path_to_layer = uri_components['path']
         
-        layer_name = get_real_layer_name(layer)
-        
+        layer_name = layer.name()#get_real_layer_name(layer)
+        print(f'Назва {layer_name} {path_to_layer}')
         driver_name = layer.dataProvider().storageType()
         
         layers_dict[layer.id()] = {'layer_name': layer_name, 'path': path_to_layer, 'driver_name': driver_name} 

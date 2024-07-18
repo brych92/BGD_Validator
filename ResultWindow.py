@@ -353,10 +353,9 @@ class checkerError():
         else:
             raise TypeError(f"Параметр 'function_name' не є строкою. Тип e - {type(function_name)}")
         
-        if layers_id is not None and isinstance(layers_id, list):
+        if isinstance(layers_id, list):
             self.layers_id = layers_id
-        
-        else:
+        elif layers_id is not None:
             raise TypeError(f"Параметр 'layers_id' не є списком: Тип e - {type(layers_id)}")
         
         if objects_id is not None and isinstance(objects_id, list):
@@ -401,6 +400,7 @@ class ErrorTreeWidget(QTreeWidget):
         project_instance = QgsProject.instance()
         
         for current_layer_name, layer_inspections in layers_errors_dict.items():
+            
             current_layer_id = layer_inspections['layer_id']
             current_layer = project_instance.mapLayer(current_layer_id)
             print(f'current_layer: {current_layer}')
