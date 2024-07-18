@@ -64,7 +64,7 @@ class EDRA_validator:
                 
     def compare_object_geometry_type(self, checking_object_geometry_type, required_geometry_type):
         try:
-            if required_geometry_type in checking_object_geometry_type:
+            if required_geometry_type.lower() in checking_object_geometry_type.replace(' ', '').lower():
                 return True
             else:
                 return False

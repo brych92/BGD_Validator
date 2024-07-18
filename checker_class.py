@@ -24,7 +24,13 @@ class EDRA_validator:
             self.structure_field_names = structure_json[layer_exchange_group][layer_exchange_name]['attributes'].keys()
             self.fields_structure_json = structure_json[layer_exchange_group][layer_exchange_name]['attributes']
             self.required_geometry_type = structure_json[layer_exchange_group][layer_exchange_name]['geometry_type']
-            self.structure_field_meta_types = {"text":[10], "integer":[2, 4], "double precision":[6]}
+            self.qt_and_ogr_data_types = {'integer': {'ogr_code': 0, 'qt_code': 2}, 
+                                    'double precision': {'ogr_code': 2, 'qt_code': 6}, 'text': {'ogr_code': 4, 'qt_code': 10}, 
+                                    'Date': {'ogr_code': 9, 'qt_code': 14}, 'Time': {'ogr_code': 10, 'qt_code': 15}, 
+                                    'DateTime': {'ogr_code': 11, 'qt_code': 16}, 'Binary': {'ogr_code': 15, 'qt_code': None}, 
+                                    'IntegerList': {'ogr_code': 16, 'qt_code': None}, 'RealList': {'ogr_code': 17, 'qt_code': None}, 
+                                    'StringList': {'ogr_code': 18, 'qt_code': 0}}
+
             self.id_field = self.id_field_layer_dict[self.layer_exchange_name]
             self.nameError = False
         else:
@@ -34,12 +40,6 @@ class EDRA_validator:
             self.structure_field_meta_types = None
             self.id_field = None
             self.nameError = True
-
-        
-        
-        self.qt_and_ogr_data_types = {'Integer': {'ogr_code': 0, 'qt_code': 2}, 'Real': {'ogr_code': 2, 'qt_code': 6}, 'String': {'ogr_code': 4, 'qt_code': 10}, 'Date': {'ogr_code': 9, 'qt_code': 14}, 'Time': {'ogr_code': 10, 'qt_code': 15}, 'DateTime': {'ogr_code': 11, 'qt_code': 16}, 'Binary': {'ogr_code': 15, 'qt_code': None}, 'IntegerList': {'ogr_code': 16, 'qt_code': None}, 'RealList': {'ogr_code': 17, 'qt_code': None}, 'StringList': {'ogr_code': 18, 'qt_code': 0}}
-
-        
 
 
     def get_required_fields_names(self):
@@ -111,21 +111,24 @@ class EDRA_validator:
         return extra_field_names_list
     
 
-    def check_fields_type_and_names(self):
+    def check_fields_type_and_names(self, checker_object):
         list_check_fields: list[dict] = []
         
-        for i in range(self.layerDefinition.GetFieldCount()):
-            field_name = self.layerDefinition.GetFieldDefn(i).GetName()
-            field_type_name = self.layerDefinition.GetFieldDefn(i).GetTypeName()
+        for i in range(checker_object.GetFieldCount()):
+            current_field_name = self.layerDefinition.GetFieldDefn(i).GetName()
+            current_field_type_name = self.layerDefinition.GetFieldDefn(i).GetTypeName()
+            required_field_type_name = self.fields_structure_json[current_field_name]['attribute_type']
+            required_field_type_number = self.qt_and_ogr_data_types[required_field_type_name]['ogr_code']
             
-            if field_name in self.structure_field_names:
+            if current_field_name in self.structure_field_names:
                 
-                check_field_name_result = field_name in self.structure_field_names
-                check_field_type_result = field_type_name in self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']]
+                check_field_name_result = current_field_name in self.structure_field_names
+                check_field_type_result = current_field_type_name in ogr.GetFieldTypeName(required_field_type_number)
                 #print(self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']])
-                list_check_fields.append({"current_field_name": field_name, "check_field_type_result": check_field_type_result, "current_field_type": field_type_name, "check_field_name_result": check_field_name_result, "required_field_type": self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']]})
+                list_check_fields.append({"current_field_name": current_field_name, "check_field_type_result": check_field_type_result,
+                                        "current_field_type": current_field_type_name, "check_field_name_result": check_field_name_result, "required_field_type": required_field_type_name})
             else:
-                list_check_fields.append({"current_field_name": field_name, "check_field_type_result": False, "current_field_type": field_type_name, "check_field_name_result": False, "required_field_type": None})
+                list_check_fields.append({"current_field_name": current_field_name, "check_field_type_result": False, "current_field_type": current_field_type_name, "check_field_name_result": False, "required_field_type": None})
         
         return list_check_fields
 
@@ -293,13 +296,13 @@ class EDRA_exchange_layer_checker:
             self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
         
         else:
-            self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names()
+            self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
 
             self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors'] = {}
             self.check_result_dict[self.layer_props['layer_name']]['field_errors'] = {}
             self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_required_fields'] = self.check_missing_required_fields()
             self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_fields'] = self.check_missing_fields()
-            #self.check_result_dict[self.layer_props['name']] ['field_errors']['wrong_field_type'] = self.check_wrong_fields_types()
+            self.check_result_dict[self.layer_props['name']] ['field_errors']['wrong_field_type'] = self.check_wrong_fields_types()
             #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
             self.check_result_dict[self.layer_props['layer_name']]['wrong_geometry_type'] = self.check_wrong_layer_geometry_type()
             self.check_result_dict[self.layer_props['layer_name']]['features'] = self.write_features_check_result()
