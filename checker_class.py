@@ -149,9 +149,9 @@ class EDRA_validator:
 
             if x['check_field_type_result'] and x['check_field_name_result']:
                 if self.fields_structure_json[x['current_field_name']]['attribute_required'] == 'required':
-                    self.layer.setFieldConstraint(layer.fields().indexOf(x['current_field_name']), ConstraintNotNull, ConstraintStrengthHard)
+                    self.layer.setFieldConstraint(self.layer.fields().indexOf(x['current_field_name']), ConstraintNotNull, ConstraintStrengthHard)
                 if self.fields_structure_json[x['current_field_name']]['attribute_unique'] == 'unique':
-                    self.layer.setFieldConstraint(layer.fields().indexOf(x['current_field_name']), ConstraintUnique, ConstraintStrengthHard)
+                    self.layer.setFieldConstraint(self.layer.fields().indexOf(x['current_field_name']), ConstraintUnique, ConstraintStrengthHard)
 
 
     def check_feature_geometry(self, feature):
@@ -223,7 +223,7 @@ class EDRA_exchange_layer_checker:
         self.layer_id = layer_id
         
     def check_is_layer_empty(self):
-        if self.layer_EDRA_valid_class.layer.GetFeatureCount() < 0:
+        if self.layer_EDRA_valid_class.layer.GetFeatureCount() == 0:
             return True
         else:
             return False
