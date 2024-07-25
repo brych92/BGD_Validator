@@ -13,11 +13,18 @@ class EDRA_validator:
     
         # super().__init__()
         self.id_field_layer_dict = {'settlement': 'katottg', 'buildings_polygon': 'build_code', 'streets': 'str_id'}
-        self.layer = layer
-        self.layerDefinition = self.layer.GetLayerDefn()
+        
+        if layer is not None:
+            self.layer = layer
+            self.layerDefinition = self.layer.GetLayerDefn()
+            self.layer_field_names = [self.layerDefinition.GetFieldDefn(i).GetName() for i in range(self.layerDefinition.GetFieldCount())]
+        else:
+            self.layer = None
+            self.layerDefinition = None
+            self.layer_field_names = None
+
         self.layer_exchange_group = layer_exchange_group
         self.layer_exchange_name = layer_exchange_name
-        self.layer_field_names = [self.layerDefinition.GetFieldDefn(i).GetName() for i in range(self.layerDefinition.GetFieldCount())]
         self.structure_json = structure_json
         self.domains_json = domains_json
         if layer_exchange_name in structure_json[layer_exchange_group]:
@@ -50,6 +57,32 @@ class EDRA_validator:
             else: pass
         return required_field_names_list
     
+    def check_feature_geometry_is_empty(self, feature):
+        if self.check_feature_geometry_is_null(feature) == True:
+            if feature.geometry().IsEmpty():
+                return True
+            else:
+                return False
+        else:
+            return False
+    
+    def check_feature_geometry_is_null(self, feature):
+        if feature.GetGeometryRef() == None:
+            return True
+        else:
+            return False
+    
+    def get_is_layer_empty(self):
+        if self.layer.GetFeatureCount() == 0:
+            return True
+        else:
+            return False
+        
+    def compare_crs(self, required_crs, layer_crs):
+        if required_crs == layer_crs:
+            return True
+        else:
+            return False
     
     def get_unique_fields_names(self):
         unique_field_names_list = []
@@ -215,18 +248,18 @@ class EDRA_validator:
         return feature[field_name] in domain_codes
 
 class EDRA_exchange_layer_checker:
-    def __init__(self, layer_EDRA_valid_class: EDRA_validator, layer_props: dict, layer_id: str):
+    def __init__(self, layer_EDRA_valid_class: EDRA_validator, layer_props: dict, layer_id: str, required_crs: str):
         
         self.layer_EDRA_valid_class = layer_EDRA_valid_class
         self.layer_props = layer_props
         self.check_result_dict = {}
         self.layer_id = layer_id
         
-    def check_is_layer_empty(self):
-        if self.layer_EDRA_valid_class.layer.GetFeatureCount() == 0:
-            return True
+    def check_crs_is_equal_required(self):
+        if self.layer_EDRA_valid_class.compare_crs(self.required_crs, self.layer_props['layer_crs']):
+            return []
         else:
-            return False
+            return [self.required_crs, self.layer_props['layer_crs']]
 
     def check_missing_required_fields(self):
         missing_required_fields_list = self.layer_EDRA_valid_class.check_missing_required_fields()
@@ -242,12 +275,12 @@ class EDRA_exchange_layer_checker:
         return extra_fields_list
             # self.check_result_dict['missing required fields'] = extra_fields_list
         
-    def check_wrong_layer_geometry_type(self):
+    def check_wrong_object_geometry_type(self, checker_object):
         # feature_geometry = feature.geometry()
-        geometry_type_check_result = self.layer_EDRA_valid_class.compare_object_geometry_type(ogr.GeometryTypeToName(self.layer_EDRA_valid_class.layer.GetGeomType()), self.layer_EDRA_valid_class.required_geometry_type)
+        geometry_type_check_result = self.layer_EDRA_valid_class.compare_object_geometry_type(ogr.GeometryTypeToName(checker_object.GetGeomType()), self.layer_EDRA_valid_class.required_geometry_type)
         
         if not geometry_type_check_result:
-            return [ogr.GeometryTypeToName(self.layer_EDRA_valid_class.layer.GetGeomType()), self.layer_EDRA_valid_class.required_geometry_type]
+            return [ogr.GeometryTypeToName(checker_object.GetGeomType()), self.layer_EDRA_valid_class.required_geometry_type]
         else:
             return []
             # self.check_result_dict['missing required fields'] = [QgsWkbTypes().displayString(layer.wkbType(), self.layer_EDRA_valid_class.check_extra_fields())]
@@ -277,37 +310,47 @@ class EDRA_exchange_layer_checker:
         features_dict = {}
         
         for feature in self.layer_EDRA_valid_class.layer:
-            features_dict[feature.GetFID()] = {'geometry_errors':
-                                                {"empty" : True,
-                                                "null" : False,
-                                                "geometry_type_wrong" : [1,1]}}
+            features_dict[feature.GetFID()] = {
+                'geometry_errors':
+                    {"empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
+                    "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
+                    "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)}
+                    
+                }
         #print(features_dict)
         return features_dict
             
     def run(self):
         self.check_result_dict[self.layer_props['layer_name']] = {}
-        # if (checker_layer_empty):      
-
-        self.check_result_dict[self.layer_props['layer_name']]['is_empty'] = self.check_is_layer_empty()
         self.check_result_dict[self.layer_props['layer_name']]['layer_id'] = self.layer_id
+        # if (checker_layer_empty):  
         
-        if self.layer_EDRA_valid_class.nameError:
-            self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors'] = {}
-            self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
+            
+        if self.layer_EDRA_valid_class.layer is not None:
+            self.check_result_dict[self.layer_props['layer_name']]['is_empty'] = self.layer_EDRA_valid_class.check_is_layer_empty()
+            
+            
+            if self.layer_EDRA_valid_class.nameError:
+                self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors'] = {}
+                self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
+            
+            else:
+                self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
+                
+                self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors'] = {}
+                self.check_result_dict[self.layer_props['layer_name']]['field_errors'] = {}
+                self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_required_fields'] = self.check_missing_required_fields()
+                self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_fields'] = self.check_missing_fields()
+                self.check_result_dict[self.layer_props['name']] ['field_errors']['wrong_field_type'] = self.check_wrong_fields_types()
+                #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
+                self.check_result_dict[self.layer_props['layer_name']]['wrong_geometry_type'] = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
+                self.check_result_dict[self.layer_props['layer_name']]['features'] = self.write_features_check_result()
+            
+            return self.check_result_dict
         
         else:
-            self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
+            self.check_result_dict[self.layer_props['layer_name']]['layer_invalid'] = True
 
-            self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors'] = {}
-            self.check_result_dict[self.layer_props['layer_name']]['field_errors'] = {}
-            self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_required_fields'] = self.check_missing_required_fields()
-            self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_fields'] = self.check_missing_fields()
-            self.check_result_dict[self.layer_props['name']] ['field_errors']['wrong_field_type'] = self.check_wrong_fields_types()
-            #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
-            self.check_result_dict[self.layer_props['layer_name']]['wrong_geometry_type'] = self.check_wrong_layer_geometry_type()
-            self.check_result_dict[self.layer_props['layer_name']]['features'] = self.write_features_check_result()
-        
-        return self.check_result_dict
         
 
 

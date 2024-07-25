@@ -349,7 +349,9 @@ def get_layer_list_for_validator(selected_layers):
         print(f'Назва {layer_name} {path_to_layer}')
         driver_name = layer.dataProvider().storageType()
         
-        layers_dict[layer.id()] = {'layer_name': layer_name, 'path': path_to_layer, 'driver_name': driver_name} 
+        layer_crs = layer.crs().authid()
+        
+        layers_dict[layer.id()] = {'layer_crs': layer_crs, 'layer_name': layer_name, 'path': path_to_layer, 'driver_name': driver_name} 
         
     return layers_dict
 
