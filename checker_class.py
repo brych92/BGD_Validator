@@ -351,30 +351,31 @@ class EDRA_exchange_layer_checker:
         return features_dict
             
     def run(self):
-        self.check_result_dict[self.layer_props['layer_name']] = {}
-        self.check_result_dict[self.layer_props['layer_name']]['layer_id'] = self.layer_id
+        self.check_result_dict[self.layer_props['layer_id']] = {}
+        self.check_result_dict[self.layer_props['layer_id']]['layer_name'] = self.layer_props['layer_name']
+        self.check_result_dict[self.layer_props['layer_id']]['layer_real_name'] = self.layer_props['layer_real_name']
         # if (checker_layer_empty):  
         
             
         if self.layer_EDRA_valid_class.layer is not None:
-            self.check_result_dict[self.layer_props['layer_name']]['is_empty'] = self.layer_EDRA_valid_class.check_is_layer_empty()
+            self.check_result_dict[self.layer_props['layer_id']]['is_empty'] = self.layer_EDRA_valid_class.check_is_layer_empty()
             
             
             if self.layer_EDRA_valid_class.nameError:
-                self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors'] = {}
-                self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
+                self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
+                self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
             
             else:
                 self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
                 
-                self.check_result_dict[self.layer_props['layer_name']]['layer_name_errors'] = {}
-                self.check_result_dict[self.layer_props['layer_name']]['field_errors'] = {}
-                self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_required_fields'] = self.check_missing_required_fields()
-                self.check_result_dict[self.layer_props['layer_name']]['field_errors'] ['missing_fields'] = self.check_missing_fields()
-                self.check_result_dict[self.layer_props['name']] ['field_errors']['wrong_field_type'] = self.check_wrong_fields_types()
+                self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
+                self.check_result_dict[self.layer_props['layer_id']]['field_errors'] = {}
+                self.check_result_dict[self.layer_props['layer_id']]['field_errors']['missing_required_fields'] = self.check_missing_required_fields()
+                self.check_result_dict[self.layer_props['layer_id']]['field_errors']['missing_fields'] = self.check_missing_fields()
+                self.check_result_dict[self.layer_props['layer_id']]['field_errors']['wrong_field_type'] = self.check_wrong_fields_types()
                 #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
-                self.check_result_dict[self.layer_props['layer_name']]['wrong_geometry_type'] = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
-                self.check_result_dict[self.layer_props['layer_name']]['features'] = self.write_features_check_result()
+                self.check_result_dict[self.layer_props['layer_id']]['wrong_geometry_type'] = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
+                self.check_result_dict[self.layer_props['layer_id']]['features'] = self.write_features_check_result()
             
             return self.check_result_dict
         
