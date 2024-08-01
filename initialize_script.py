@@ -372,8 +372,8 @@ def run_validator(layers_dict):
     all_layers_check_result_dict['missing_layers'] = []
     
     for layer_id in layers_dict:
-        driver = ogr.GetDriverByName(layers_dict[layer_id]['driver_name'])
-        dataSource = driver.Open(layers_dict[layer_id]['path'], 0) # 0 means read-only. 1 means writeable.
+        #driver = ogr.GetDriverByName(layers_dict[layer_id]['driver_name'])
+        dataSource = ogr.Open(layers_dict[layer_id]['path'], 0) # 0 means read-only. 1 means writeable.
 
         layer = dataSource.GetLayer()
         
@@ -382,7 +382,7 @@ def run_validator(layers_dict):
         
         
         structure_bgd_file_path = 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/structure_bgd3.json'
-        domains_bgd_file_path = r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\EDRA_structure\structure_bgd3.json'
+        domains_bgd_file_path = 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/domain.json'
         
         with open(structure_bgd_file_path, 'r', encoding='utf-8') as f: 
             structure_json = json.loads(f.read())

@@ -7,8 +7,11 @@ from qgis.utils import iface
 from qgis.gui import QgsLayerTreeView
 import sys, os, string, random
 from osgeo import ogr
+import json
+sys.path.append(r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator')
 
-
+from initialize_script import run_validator
+from ResultWindow import ResultWindow
 
 
 class customlayerListWidget(QTreeWidget):
@@ -157,24 +160,21 @@ class MainWindow(QDialog):
         self.setLayout(layerslayout)
 
     def run(self):
-        def get_layer_list_for_validator(selected_layers):
-            layers_dict = {}
-            for layer in selected_layers:
-                # print(type(x))
-                uri_components = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())
-                
-                path_to_layer = uri_components['path']
-                
-                layer_name = layer.name()#get_real_layer_name(layer)
-                print(f'Назва {layer_name} {path_to_layer}')
-                driver_name = layer.dataProvider().storageType()
-                
-                layers_dict[layer.id()] = {'layer_name': layer_name, 'path': path_to_layer, 'driver_name': driver_name} 
-                
-            return layers_dict
+        layers_dict = {}
+        for i in range(self.layer_list_widget.topLevelItemCount()):
+            layer = self.layer_list_widget.topLevelItem(i)
+            layers_dict[layer.layerID] = {'layer_name': layer.layerName, 'path': layer.layerPath}
+            #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
         
-        structure_bgd_file_path = 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/structure_bgd3.json'
-        domains_bgd_file_path = r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\EDRA_structure\structure_bgd3.json'
+        
+        #print(json.dumps(layers_dict, indent=4))        
+        result_structure = run_validator(layers_dict)
+
+        print(json.dumps(result_structure, indent=4, ensure_ascii=False)) 
+        window = ResultWindow(result_structure, parent=iface.mainWindow())
+        window.show()
+        #structure_bgd_file_path = 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/structure_bgd3.json'
+        #domains_bgd_file_path = r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\EDRA_structure\structure_bgd3.json'
         
 
     def printSelectedLayerData(self):
