@@ -64,7 +64,7 @@ class EDRA_validator:
                 
     def compare_object_geometry_type(self, checking_object_geometry_type, required_geometry_type):
         try:
-            if required_geometry_type in checking_object_geometry_type:
+            if required_geometry_type.lower() in checking_object_geometry_type.replace(' ', '').lower():
                 return True
             else:
                 return False
@@ -349,7 +349,9 @@ def get_layer_list_for_validator(selected_layers):
         print(f'Назва {layer_name} {path_to_layer}')
         driver_name = layer.dataProvider().storageType()
         
-        layers_dict[layer.id()] = {'layer_name': layer_name, 'path': path_to_layer, 'driver_name': driver_name} 
+        layer_crs = layer.crs().authid()
+        
+        layers_dict[layer.id()] = {'layer_crs': layer_crs, 'layer_name': layer_name, 'path': path_to_layer, 'driver_name': driver_name} 
         
     return layers_dict
 
