@@ -209,13 +209,14 @@ class EDRA_validator:
         
         req_attrs_is_empty_result_list = []
         
-        for field in feature.fields():
-            if field.name() in self.fields_structure_json.keys():
-                if self.fields_structure_json[field.name()]['attribute_required'] == 'True':
-                    if feature[field.name()] == '' or feature[field.name()] == None:
-                        req_attrs_is_empty_result_list.append({field.name(): True})
+        for i in range(feature.GetFieldCount()):
+            field_name = feature.GetFieldDefnRef(i).GetNameRef()
+            if field_name in self.fields_structure_json.keys():
+                if self.fields_structure_json[field_name]['attribute_required'] == 'True':
+                    if feature[field_name] == '' or feature[field_name] == None:
+                        req_attrs_is_empty_result_list[field_name] = True
                     else:
-                        req_attrs_is_empty_result_list.append({field.name(): False})
+                        req_attrs_is_empty_result_list[field_name] = False
                 else: pass
                     
         return req_attrs_is_empty_result_list
@@ -236,16 +237,16 @@ class EDRA_validator:
         
         return check_feature_unique_attrs_is_unique
 
-    def check_attr_value_in_domain(self, feature, field_name):
-
-        if field_name in self.fields_structure_json.keys():
-            if self.fields_structure_json[field_name]['domain'] != '' and self.fields_structure_json[field_name]['domain'] != None:
-                domain_codes = self.domains_json[self.fields_structure_json[field_name]['domain']]['codes']
-            else:
-                domain_codes = []
-        else: domain_codes = []
-        
+    def check_attr_value_in_domain(self, feature, field_name):        
+            
+        domain_codes = self.domains_json[self.fields_structure_json[field_name]['domain']]['codes']
+            
         return feature[field_name] in domain_codes
+            
+        
+        
+    
+
 
 class EDRA_exchange_layer_checker:
     def __init__(self, layer_EDRA_valid_class: EDRA_validator, layer_props: dict, layer_id: str, required_crs: str):
@@ -305,6 +306,32 @@ class EDRA_exchange_layer_checker:
         else:
             print('Жодне поле не пройшло перевірку на назву та тип, тому обмеження не можуть бути встановлені')
             
+    def check_required_fields_is_empty(self, feature):
+        check_required_fields_is_empty_result = self.layer_EDRA_valid_class.check_feature_req_attrs_is_empty(feature)
+        if check_required_fields_is_empty_result:
+            return list(check_required_fields_is_empty_result.keys())
+        
+    def check_attr_value_in_domain(self, feature):
+        
+        result_dict = {}
+        
+        for i in range(feature.GetFieldCount()):
+            field_name = feature.GetFieldDefnRef(i).GetNameRef()
+            if field_name in self.layer_EDRA_valid_class.fields_structure_json.keys():
+                if self.fields_structure_json[field_name]['domain'] != '' and self.layer_EDRA_valid_class.fields_structure_json[field_name]['domain'] != None:
+                    check_is_value_in_domain = self.layer_EDRA_valid_class.check_attr_value_in_domain(feature, field_name) 
+                    
+                    if not check_is_value_in_domain:
+                        result_dict[field_name] =  [feature[field_name], 'Посилання до домену']
+                    else:
+                        result_dict[field_name] = []   
+                
+                else:
+                    continue
+            else:
+                continue
+                
+        return result_dict
     
     def write_features_check_result(self):
         features_dict = {}
@@ -314,9 +341,12 @@ class EDRA_exchange_layer_checker:
                 'geometry_errors':
                     {"empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
                     "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
-                    "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)}
-                    
+                    "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)},
+                "required_attribute_empty": self.check_required_fields_is_empty(feature),
+                "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature)
                 }
+            
+            
         #print(features_dict)
         return features_dict
             
