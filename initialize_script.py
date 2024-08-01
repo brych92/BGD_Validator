@@ -378,7 +378,7 @@ def run_validator(layers_dict):
         layer = dataSource.GetLayer()
         
         layer_exchange_group = 'EDRA'
-        layer_exchange_name = layers_dict[layer_id]['layer_name']
+        layer_exchange_name = layers_dict[layer_id]['layer_realname']
         
         
         structure_bgd_file_path = 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/structure_bgd3.json'

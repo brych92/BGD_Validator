@@ -38,18 +38,19 @@ class customlayerListWidget(QTreeWidget):
 
 
 class layerItem(QTreeWidgetItem):
-    def __init__(self, id:str, name:str = None, path:str = None):
+    def __init__(self, id:str, visible_name:str, path:str, real_name:str):
         super().__init__()
         self.layerID = id
-        self.layerName = name
+        self.layerVisibleName = visible_name
+        self.layerRealName = real_name
         self.layerPath = path
-        if self.layerName is not None and self.layerName != "":
-            self.setText(0, self.layerName)
+        if self.layerVisibleName is not None and self.layerVisibleName != "":
+            self.setText(0, self.layerVisibleName)
         else:
             self.setText(0, self.layerPath)
     
     def get_layer_vlaue(self):
-        return {'id':self.layerID, 'name':self.layerName, 'path':self.layerPath}
+        return {'id':self.layerID, 'name':self.layerVisibleName, 'path':self.layerPath}
     
     def isConnected(self):
         if '⁂' in self.layerID:
@@ -60,7 +61,7 @@ class layerItem(QTreeWidgetItem):
     def __repr__(self) -> str:
         '''Текстове представлення елемента.'''
         
-        return f'{self.layerName}({self.layerPath})'
+        return f'{self.layerVisibleName}({self.layerPath})'
 
 class layerSelectionDialog(QDialog):
     def __init__(self, layer_list: list[layerItem], parent=None ):
@@ -166,10 +167,11 @@ class MainWindow(QDialog):
             layers_dict[layer.layerID] = {'layer_name': layer.layerName, 'path': layer.layerPath}
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
         
-        
-        #print(json.dumps(layers_dict, indent=4))        
+        print('Вхідний список шарів:')
+        print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
         result_structure = run_validator(layers_dict)
 
+        print('\n\n\n\n\nВивід')
         print(json.dumps(result_structure, indent=4, ensure_ascii=False)) 
         window = ResultWindow(result_structure, parent=iface.mainWindow())
         window.show()
