@@ -1,5 +1,7 @@
 import json, os
+from importlib import reload
 
+import checker_class
 from osgeo import ogr
 
 from qgis.core import QgsProviderRegistry
@@ -7,6 +9,8 @@ from qgis.core import QgsProviderRegistry
 # Можливі помилки
 # Об'єкт з id "0" має помилку: "segments 142 and 229 of line 0 intersect at 33.5424, 48.2325"
 # value is not unique'
+import checker_class
+reload(checker_class)
 from checker_class import EDRA_exchange_layer_checker, EDRA_validator
 
 from qgis.core import QgsVectorLayer, QgsVectorFileWriter

@@ -255,7 +255,8 @@ class EDRA_exchange_layer_checker:
         self.layer_props = layer_props
         self.check_result_dict = {}
         self.layer_id = layer_id
-        
+        self.layer_props['layer_id'] = layer_id
+
     def check_crs_is_equal_required(self):
         if self.layer_EDRA_valid_class.compare_crs(self.required_crs, self.layer_props['layer_crs']):
             return []
@@ -358,7 +359,7 @@ class EDRA_exchange_layer_checker:
         
             
         if self.layer_EDRA_valid_class.layer is not None:
-            self.check_result_dict[self.layer_props['layer_id']]['is_empty'] = self.layer_EDRA_valid_class.check_is_layer_empty()
+            self.check_result_dict[self.layer_props['layer_id']]['is_empty'] = self.layer_EDRA_valid_class.get_is_layer_empty()
             
             
             if self.layer_EDRA_valid_class.nameError:
