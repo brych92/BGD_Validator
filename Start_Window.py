@@ -15,13 +15,14 @@ sys.path.append(r'C:\Users\brych\OneDrive\Документы\01 Робота\98 
 
 import initialize_script
 import Result_Window
-from initialize_script import run_validator
-from Result_Window import ResultWindow
 
 reload(initialize_script)
 reload(Result_Window)
-import initialize_script
-import Result_Window
+
+from initialize_script import run_validator
+from Result_Window import ResultWindow
+# import initialize_script
+# import Result_Window
 
 def get_real_layer_name(layer: QgsVectorLayer) -> str:
     """
