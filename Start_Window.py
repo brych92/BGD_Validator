@@ -1,8 +1,11 @@
+
+from importlib import reload
 from typing import Union, cast 
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame
+    QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox
 from PyQt5.QtCore import Qt, QMimeData
-from qgis.core import QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsLayerTree, QgsProviderRegistry
+from numpy import unicode_
+from qgis.core import QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsLayerTree, QgsProviderRegistry, QgsVectorLayer
 from qgis.utils import iface
 from qgis.gui import QgsLayerTreeView
 import sys, os, string, random
@@ -10,9 +13,44 @@ from osgeo import ogr
 import json
 sys.path.append(r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator')
 
+import initialize_script
+import Result_Window
 from initialize_script import run_validator
-from ResultWindow import ResultWindow
+from Result_Window import ResultWindow
 
+reload(initialize_script)
+reload(Result_Window)
+import initialize_script
+import Result_Window
+
+def get_real_layer_name(layer: QgsVectorLayer) -> str:
+    """
+    Отримує назву реального шару, присутнього у QGIS.
+
+    Аргументи:
+        layer (QgsVectorLayer): Шар, з якого отримати назву.
+
+    Повертає:
+        str: Назва реального шару.
+    """
+    if not isinstance(layer, QgsVectorLayer):
+        return None
+    
+    if layer.providerType() == "postgres":
+        uri = layer.dataProvider().uri()
+        source_layer_name = uri.table()
+        source_layer_name = source_layer_name.strip("''")
+    elif layer.providerType() == "ogr":
+        uri_components = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())
+        if uri_components["layerName"]:
+            source_layer_name = uri_components["layerName"]
+        else:
+            directory, filename_with_extension = os.path.split(uri_components["path"])
+            source_layer_name, extension = os.path.splitext(filename_with_extension)
+    else:
+        source_layer_name = ''
+        
+    return source_layer_name
 
 class customlayerListWidget(QTreeWidget):
     def __init__(self, parent=None):
@@ -28,40 +66,59 @@ class customlayerListWidget(QTreeWidget):
 
         self.setDragDropMode(QTreeWidget.DragDrop)
     
-    def addTopLevelItem(self, item:QTreeWidgetItem):
+    def addTopLevelItem(self, newItem:QTreeWidgetItem):
+        newItem = cast(layerItem, newItem)
+
         for i in range(self.topLevelItemCount()):
-            if item.layerID == self.topLevelItem(i).layerID and \
-            item.layerName == self.topLevelItem(i).layerName and \
-            item.layerPath == self.topLevelItem(i).layerPath:
+            item = cast(layerItem, self.topLevelItem(i))
+            if newItem.get_layer_value() == item.get_layer_value():
                 return
-        super().addTopLevelItem(item)
+        
+        super().addTopLevelItem(newItem)
 
 
 class layerItem(QTreeWidgetItem):
     def __init__(self, id:str, visible_name:str, path:str, real_name:str):
         super().__init__()
-        self.layerID = id
-        self.layerVisibleName = visible_name
-        self.layerRealName = real_name
-        self.layerPath = path
-        if self.layerVisibleName is not None and self.layerVisibleName != "":
-            self.setText(0, self.layerVisibleName)
+        
+        if id == '':
+            randomid = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(36))
+            id = f"⁂{real_name}_{randomid}"
+        
+        self.__layerID__ = id
+        self.__layerVisibleName__ = visible_name
+        self.__layerRealName__ = real_name
+        self.__layerPath__ = path
+        
+        if self.__layerVisibleName__ is not None and self.__layerVisibleName__ != "":
+            self.setText(0, self.__layerVisibleName__)
         else:
-            self.setText(0, self.layerPath)
+            self.setText(0, self.__layerPath__)
     
-    def get_layer_vlaue(self):
-        return {'id':self.layerID, 'name':self.layerVisibleName, 'path':self.layerPath}
+    def get_layer_value(self):
+        return {'id':self.__layerID__, 'name':self.__layerVisibleName__, 'path':self.__layerPath__, 'real_name':self.__layerRealName__}
     
     def isConnected(self):
-        if '⁂' in self.layerID:
+        if '⁂' in self.__layerID__:
             return False
         else:
             return True
+    
+    def getID(self):
+        return self.__layerID__
 
+    def getRealName(self):
+        return self.__layerRealName__
+
+    def getVisibleName(self):
+        return self.__layerVisibleName__
+
+    def getPath(self):  
+        return self.__layerPath__
+    
     def __repr__(self) -> str:
         '''Текстове представлення елемента.'''
-        
-        return f'{self.layerVisibleName}({self.layerPath})'
+        return f'{self.__layerVisibleName__}({self.__layerPath__})'
 
 class layerSelectionDialog(QDialog):
     def __init__(self, layer_list: list[layerItem], parent=None ):
@@ -106,9 +163,9 @@ class layerSelectionDialog(QDialog):
     def get_selected_layers(self) -> list[layerItem]:
         result = []
         for i in range(self.layer_list.topLevelItemCount()):
-            item = self.layer_list.topLevelItem(i)
+            item = cast(layerItem, self.layer_list.topLevelItem(i))
             if item.checkState(0) == Qt.Checked:
-                new_item = layerItem(item.layerID, item.layerName, item.layerPath)
+                new_item = layerItem(id = item.getID(), visible_name=item.getVisibleName(), real_name=item.getRealName(), path = item.getPath())
                 result.append(new_item)
         
         return result
@@ -150,7 +207,9 @@ class MainWindow(QDialog):
         # Add the tree view to the layout
         layerslayout.addWidget(self.layer_list_widget)
 
-
+        self.strutures = {'EDRA:':1}
+        epsg_list = ['']
+        self.crs_combo_box = QComboBox()
         self.printLayerDataButton = QPushButton("Вивести дані шару")
         self.printLayerDataButton.clicked.connect(self.printSelectedLayerData)
         layerslayout.addWidget(self.printLayerDataButton)
@@ -164,7 +223,8 @@ class MainWindow(QDialog):
         layers_dict = {}
         for i in range(self.layer_list_widget.topLevelItemCount()):
             layer = self.layer_list_widget.topLevelItem(i)
-            layers_dict[layer.layerID] = {'layer_name': layer.layerName, 'path': layer.layerPath}
+            layer = cast(layerItem, layer)
+            layers_dict[layer.getID()] = {'layer_name': layer.getRealName(), 'path': layer.getPath(), 'layer_real_name': layer.getRealName(), 'layer_crs': ''}
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
         
         print('Вхідний список шарів:')
@@ -205,7 +265,7 @@ class MainWindow(QDialog):
                 layerName = layer.GetName()
                 randomid = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(36))
                 id = f"⁂{layerName}_{randomid}"
-                layersList.append(layerItem(id, layerName, path))
+                layersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path))
 
             elif type=='gpkg':
                 ds = ogr.Open(path)
@@ -215,7 +275,7 @@ class MainWindow(QDialog):
                     layerName = layer.GetName()
                     randomid = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(36))
                     id = f"⁂{layerName}_{randomid}"
-                    tempLayersList.append(layerItem(id, layerName, path))
+                    tempLayersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path))
                 
                 lsDialog = layerSelectionDialog(tempLayersList, parent=self)
                 
@@ -242,17 +302,22 @@ class MainWindow(QDialog):
         for layer in layersList:
             self.layer_list_widget.addTopLevelItem(layer)
             
+    def make_layer_item_from_layer(self, layer):
+        layerID = layer.id()
+        layerVisibleName = layer.name()
+        layerRealName = get_real_layer_name(layer)
+        layerPath = layer.dataProvider().dataSourceUri()
+        layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath)
+        return layer_item
 
     def update_layers(self):
         self.layer_list_widget.clear()
         for layer in iface.layerTreeView().selectedLayersRecursive():
-            layer_item = layerItem(layer.id(), layer.name(), layer.dataProvider().dataSourceUri())
-            self.layer_list_widget.addTopLevelItem(layer_item)
+            self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
     
     def add_selected_layers(self):
         for layer in iface.layerTreeView().selectedLayersRecursive():
-            layer_item = layerItem(layer.id(), layer.name(), layer.dataProvider().dataSourceUri())
-            self.layer_list_widget.addTopLevelItem(layer_item)
+            self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
         
     def show_context_menu(self, position):
         selected_item = self.layer_list_widget.selectedItems()[0]
@@ -262,7 +327,7 @@ class MainWindow(QDialog):
             print(selected_item)
             menu = QMenu(self)
             if selected_item.isConnected():
-                layer = QgsProject.instance().mapLayer(selected_item.layerID)
+                layer = QgsProject.instance().mapLayer(selected_item.__layerID__)
                 if layer:
                     related_layer = layer
                     menu.addAction("Виділити шар")

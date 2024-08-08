@@ -342,6 +342,8 @@ class CustomTreeWidgetItem(QTreeWidgetItem):
         child.addParentCriticalError(child.children_critical_errors)
         child.setCriticity(child.el_criticity)
 
+    
+
 class checkerError():
     def __init__(self, e:Exception, function_name:str, layers_id:list[str] = None, objects_id:list[str] = None):
         self.exeption_text = str(e)
@@ -364,6 +366,19 @@ class checkerError():
         
 
 class ErrorTreeWidget(QTreeWidget):
+    '''
+    Клас ErrorTreeWidget - це спеціфічний клас для QTreeWidget, який призначений для відображення помилок які виникають під час перевірки на МБД.
+
+    Аргументи:
+        parent (QWidget) - батьківський QWidget до якого буде прикріплений цей QTreeWidget.
+        errors_table (dict) - словник помилок, який буде використаний для створення QTreeWidget.
+        Ключ - це ключ словника errors_table, а значення - це список елементів CustomTreeWidgetItem які мають таку помилку.
+
+    Методи:
+        getErrorsTable() - повертає словник errors_table
+        getTopLevelItems() - повертає список елементів CustomTreeWidgetItem які є верхніми елементами QTreeWidget.
+        add_layers_errors_to_tree() - додає елементи CustomTreeWidgetItem до QTreeWidget
+    '''
     def __init__(self, parent:QWidget, errors_table:dict):
         super().__init__(parent)
 
@@ -637,7 +652,7 @@ class ErrorTreeWidget(QTreeWidget):
 
 class ResultWindow(QDialog):
     def __init__(self, errors_table:dict, parent=None):
-        super(ResultWindow, self).__init__(parent)
+        super().__init__(parent)
         
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
