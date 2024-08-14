@@ -207,7 +207,7 @@ class EDRA_validator:
     
     def check_feature_req_attrs_is_empty(self, feature):
         
-        req_attrs_is_empty_result_list = []
+        req_attrs_is_empty_result_list = {}
         
         for i in range(feature.GetFieldCount()):
             field_name = feature.GetFieldDefnRef(i).GetNameRef()
@@ -278,11 +278,16 @@ class EDRA_exchange_layer_checker:
             # self.check_result_dict['missing required fields'] = extra_fields_list
         
     def check_wrong_object_geometry_type(self, checker_object):
-        # feature_geometry = feature.geometry()
-        geometry_type_check_result = self.layer_EDRA_valid_class.compare_object_geometry_type(ogr.GeometryTypeToName(checker_object.GetGeomType()), self.layer_EDRA_valid_class.required_geometry_type)
+
+        if isinstance(checker_object, ogr.Feature):
+            geom_type = checker_object.GetDefnRef().GetGeomType()
+        else:
+            geom_type = checker_object.GetGeomType()
+            
+        geometry_type_check_result = self.layer_EDRA_valid_class.compare_object_geometry_type(ogr.GeometryTypeToName(geom_type), self.layer_EDRA_valid_class.required_geometry_type)
         
         if not geometry_type_check_result:
-            return [ogr.GeometryTypeToName(checker_object.GetGeomType()), self.layer_EDRA_valid_class.required_geometry_type]
+            return [ogr.GeometryTypeToName(geom_type), self.layer_EDRA_valid_class.required_geometry_type]
         else:
             return []
             # self.check_result_dict['missing required fields'] = [QgsWkbTypes().displayString(layer.wkbType(), self.layer_EDRA_valid_class.check_extra_fields())]
@@ -319,7 +324,7 @@ class EDRA_exchange_layer_checker:
         for i in range(feature.GetFieldCount()):
             field_name = feature.GetFieldDefnRef(i).GetNameRef()
             if field_name in self.layer_EDRA_valid_class.fields_structure_json.keys():
-                if self.fields_structure_json[field_name]['domain'] != '' and self.layer_EDRA_valid_class.fields_structure_json[field_name]['domain'] != None:
+                if self.layer_EDRA_valid_class.fields_structure_json[field_name]['domain'] != '' and self.layer_EDRA_valid_class.fields_structure_json[field_name]['domain'] != None:
                     check_is_value_in_domain = self.layer_EDRA_valid_class.check_attr_value_in_domain(feature, field_name) 
                     
                     if not check_is_value_in_domain:

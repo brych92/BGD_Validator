@@ -1,6 +1,6 @@
 
 from logging import critical
-from symbol import eval_input
+
 from typing import Union, cast
 from numpy import isin, union1d
 from qgis.PyQt.QtWidgets import (
@@ -412,11 +412,13 @@ class ErrorTreeWidget(QTreeWidget):
         else:
             layers_errors_dict = {}
         
+        
+        print(layers_errors_dict)
         project_instance = QgsProject.instance()
         
-        for current_layer_name, layer_inspections in layers_errors_dict.items():
+        for current_layer_id, layer_inspections in layers_errors_dict.items():
             
-            current_layer_id = layer_inspections['layer_id']
+            current_layer_name = layer_inspections['layer_name']
             current_layer = project_instance.mapLayer(current_layer_id)
             print(f'current_layer: {current_layer}')
             #знаходимо спражнє ім'я шару (не тестувалося з gdb базами)
