@@ -383,7 +383,7 @@ class ErrorTreeWidget(QTreeWidget):
         super().__init__(parent)
 
         self.errors_table = errors_table
-
+        
         self.setColumnCount(1)
         self.setHeaderHidden(True)
         stylesheet = "QTreeWidget { background-image: \

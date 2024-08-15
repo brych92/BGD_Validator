@@ -284,7 +284,7 @@ class EDRA_exchange_layer_checker:
         else:
             geom_type = checker_object.GetGeomType()
             
-        geometry_type_check_result = self.layer_EDRA_valid_class.compare_object_geometry_type(ogr.GeometryTypeToName(geom_type), self.layer_EDRA_valid_class.required_geometry_type)
+        geometry_type_check_result = self.layer_EDRA_valid_class.compare_object_geometry_type(ogr.GeometryTypeToName(geom_type).replace(' ', ''), self.layer_EDRA_valid_class.required_geometry_type)
         
         if not geometry_type_check_result:
             return [ogr.GeometryTypeToName(geom_type), self.layer_EDRA_valid_class.required_geometry_type]
