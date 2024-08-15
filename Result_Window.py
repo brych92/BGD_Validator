@@ -600,7 +600,7 @@ class ErrorTreeWidget(QTreeWidget):
                                 if len(layer_inspections) == 2:
                                     attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Атрибут: '{element}' має значення {layer_inspections[0]}", el_criticity = 2, el_type="Помилка")
                                     #тут має бути передача класифікатора в контекстне меню
-                                else:
+                                elif len(layer_inspections) == 1:
                                     attribute_error_item = CustomTreeWidgetItem(parent = feature_error_item, el_name = f"Атрибут: '{element}' має значення {layer_inspections[0]}", el_criticity = 2, el_type="Помилка")
 
                     if "topology_errors" in f_v:
