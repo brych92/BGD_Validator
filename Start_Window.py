@@ -208,13 +208,44 @@ class MainWindow(QDialog):
         # Add the tree view to the layout
         layerslayout.addWidget(self.layer_list_widget)
 
-        self.strutures = {'EDRA:':1}
-        epsg_list = ['']
+        self.strutures = {
+            'ЄДРА':
+            {
+                'structure': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/structure_bgd3.json',
+                'domains': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/domain.json',
+                'crs': ['EPSG:4326','EPSG:5560', 'EPSG:5561','EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
+                        'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
+                        'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
+                        'EPSG:9852', 'EPSG:9853', 'EPSG:9854', 'EPSG:9855', 'EPSG:9856',
+                        'EPSG:9857', 'EPSG:9858', 'EPSG:9859', 'EPSG:9860', 'EPSG:9861',
+                        'EPSG:9862', 'EPSG:9863', 'EPSG:9864', 'EPSG:9865']
+            },
+            'МБД':{
+                'structure': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/BGD_structure/structure_bgd3.json',
+                'domains': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/BGD_structure/domain.json',
+                'crs': ['EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
+                        'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
+                        'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
+                        'EPSG:9852', 'EPSG:9853', 'EPSG:9854', 'EPSG:9855', 'EPSG:9856',
+                        'EPSG:9857', 'EPSG:9858', 'EPSG:9859', 'EPSG:9860', 'EPSG:9861',
+                        'EPSG:9862', 'EPSG:9863', 'EPSG:9864', 'EPSG:9865']
+                }
+        }
+        self.BGD_type_combo_box = QComboBox()
+        self.BGD_type_combo_box.addItems(self.strutures.keys())
+        self.BGD_type_combo_box.setCurrentIndex(0)
         self.crs_combo_box = QComboBox()
+        self.crs_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()]['crs'])
+        self.BGD_type_combo_box.currentIndexChanged.connect(lambda: 
+            {
+                self.crs_combo_box.clear(),
+                self.crs_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()]['crs'])
+            })
         self.printLayerDataButton = QPushButton("Вивести дані шару")
         self.printLayerDataButton.clicked.connect(self.printSelectedLayerData)
         layerslayout.addWidget(self.printLayerDataButton)
-        
+        layerslayout.addWidget(self.BGD_type_combo_box)
+        layerslayout.addWidget(self.crs_combo_box)
         self.runButton = QPushButton("Запустити перевірку")
         self.runButton.clicked.connect(self.run)
         layerslayout.addWidget(self.runButton)
