@@ -314,8 +314,15 @@ class EDRA_exchange_layer_checker:
             
     def check_required_fields_is_empty(self, feature):
         check_required_fields_is_empty_result = self.layer_EDRA_valid_class.check_feature_req_attrs_is_empty(feature)
+        empty_required_fields_list = []
         if check_required_fields_is_empty_result:
-            return list(check_required_fields_is_empty_result.keys())
+            for x in check_required_fields_is_empty_result:
+                if check_required_fields_is_empty_result[x]:
+                    empty_required_fields_list.append(x)
+                else:
+                    continue
+        
+        return empty_required_fields_list
         
     def check_attr_value_in_domain(self, feature):
         
