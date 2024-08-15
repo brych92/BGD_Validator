@@ -237,6 +237,13 @@ class EDRA_validator:
         
         return check_feature_unique_attrs_is_unique
 
+    def get_list_duplicated_id(self, feature, layer_id):
+        duplicated_id_list = []
+        for f in self.layer:
+            if f[self.id_field] == feature[self.id_field]:
+                duplicated_id_list.append([feature.GetFID(), layer_id])
+        return duplicated_id_list
+    
     def check_attr_value_in_domain(self, feature, field_name):        
             
         domain_codes = self.domains_json[self.fields_structure_json[field_name]['domain']]['codes']
@@ -356,7 +363,8 @@ class EDRA_exchange_layer_checker:
                     "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
                     "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)},
                 "required_attribute_empty": self.check_required_fields_is_empty(feature),
-                "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature)
+                "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature),
+                "duplicated_GUID": self.layer_EDRA_valid_class.get_list_duplicated_id(feature, self.layer_props['layer_id'])
                 }
             
             
