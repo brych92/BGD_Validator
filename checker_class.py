@@ -1,5 +1,5 @@
 import json
-
+import copy
 from osgeo import ogr
 
 # Можливі помилки
@@ -237,12 +237,13 @@ class EDRA_validator:
         
         return check_feature_unique_attrs_is_unique
 
-    def get_list_duplicated_id(self, feature, layer_id):
-        duplicated_id_list = []
-        for f in self.layer:
-            if f[self.id_field] == feature[self.id_field]:
-                duplicated_id_list.append([feature.GetFID(), layer_id])
-        return duplicated_id_list
+    def get_list_duplicated_fid(self, feature, layer_id, feature_fids):
+            duplicated_id_list = []
+            for id, fid in feature_fids.items():
+                if fid == feature[self.id_field] and id != feature.GetFID():
+                    duplicated_id_list.append([id, layer_id])
+            return duplicated_id_list
+        
     
     def check_attr_value_in_domain(self, feature, field_name):        
             
@@ -356,6 +357,11 @@ class EDRA_exchange_layer_checker:
     def write_features_check_result(self):
         features_dict = {}
         
+        features_fids = {}
+        for feature in self.layer_EDRA_valid_class.layer:
+            features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
+
+        
         for feature in self.layer_EDRA_valid_class.layer:
             features_dict[feature.GetFID()] = {
                 'geometry_errors':
@@ -364,7 +370,7 @@ class EDRA_exchange_layer_checker:
                     "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)},
                 "required_attribute_empty": self.check_required_fields_is_empty(feature),
                 "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature),
-                "duplicated_GUID": self.layer_EDRA_valid_class.get_list_duplicated_id(feature, self.layer_props['layer_id'])
+                "duplicated_GUID": self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['layer_id'], features_fids)
                 }
             
             
