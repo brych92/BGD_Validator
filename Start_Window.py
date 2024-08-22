@@ -304,7 +304,7 @@ class MainWindow(QDialog):
         self.strutures = {
             'ЄДРА':
             {
-                'path': r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\stuctures\EDRA',
+                'path': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/stuctures/EDRA/',
                 'crs': ['EPSG:4326;EPSG:5560','EPSG:5560', 'EPSG:5561','EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
                         'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
                         'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
@@ -313,7 +313,7 @@ class MainWindow(QDialog):
                         'EPSG:9862', 'EPSG:9863', 'EPSG:9864', 'EPSG:9865']
             },
             'МБД':{
-                'path': r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\stuctures\MBD',
+                'path': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/stuctures/MBD/',
                 'crs': ['EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
                         'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
                         'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
@@ -360,7 +360,7 @@ class MainWindow(QDialog):
         print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
         result_structure = run_validator(
             layers = layers_dict,
-            path=self.strutures[self.BGD_type_combo_box.currentText()]['path'])
+            structure_folder = self.strutures[self.BGD_type_combo_box.currentText()]['path'])
 
         print('\n\n\n\n\nВивід')
         print(json.dumps(result_structure, indent=4, ensure_ascii=False))
