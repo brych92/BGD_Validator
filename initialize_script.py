@@ -64,37 +64,61 @@ def get_json_info_files(structure_bgd_file_path, domains_bgd_file_path):
         
     
         
-def run_validator(layers_dict, ):
+def run_validator(layers:dict, structure_path:str, domains_path:str):
+    """
+    Запустити валідатор для шарів.
+
+    Args:
+        layers (dict): Словник шарів. Кожен шар - це словник з ключами:
+            - layer_crs (str): Система координат шару.
+            - layer_name (str): Ім'я шару.
+            - path (str): Шлях до шару.
+            - driver_name (str): Ім'я драйвера, який використовувався для відкриття шару.
+        structure_path (str): Шлях до файлу структури.
+        domains_path (str): Шлях до файлу доменів.
+
+    Returns:
+        dict: Словник з результатами валідатору.
+            - layers (dict): Словник результатів валідатору для кожного шару.
+            - exchange_format_error (list): Список шарів з помилками формату обміну.
+            - missing_layers (list): Список відсутніх шарів.
+    """
+
+
     all_layers_check_result_dict = {}
     all_layers_check_result_dict['layers'] = {}
     all_layers_check_result_dict['exchange_format_error'] = []
     all_layers_check_result_dict['missing_layers'] = []
     
-    for layer_id in layers_dict:
-        #driver = ogr.GetDriverByName(layers_dict[layer_id]['driver_name'])
-        dataSource = ogr.Open(layers_dict[layer_id]['path'], 0) # 0 means read-only. 1 means writeable.
+    for id in layers:
+        dataSource = ogr.Open(layers[id]['path'], 0) # 0 means read-only. 1 means writeable.
 
         layer = dataSource.GetLayer()
         
-        layer_exchange_group = 'EDRA'
-        layer_exchange_name = layers_dict[layer_id]['layer_real_name']
+        group = 'EDRA'
+        layer_real_name = layers[id]['layer_real_name']
         
+        with open(structure_path, 'r', encoding='utf-8') as f: 
+            structure = json.loads(f.read())
         
-        structure_bgd_file_path = 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/structure_bgd3.json'
-        domains_bgd_file_path = 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/domain.json'
-        
-        with open(structure_bgd_file_path, 'r', encoding='utf-8') as f: 
-            structure_json = json.loads(f.read())
-        
-        with open(domains_bgd_file_path, 'r', encoding='utf-8') as f: 
-            domains_json = json.loads(f.read())
+        with open(domains_path, 'r', encoding='utf-8') as f: 
+            domains = json.loads(f.read())
             
-        if layer is not None:
-            layer_EDRA_valid_class = EDRA_validator(layer, layer_exchange_group, layer_exchange_name, structure_json, domains_json)
+        if layer is None:
+            raise AttributeError(f'Не вдалося відкрити шар {layers[id]["path"]}')
         
+        layer_EDRA_valid_class = EDRA_validator(
+            layer = layer,
+            layer_exchange_group=group,
+            layer_exchange_name=layer_real_name,
+            structure_json=structure,
+            domains_json=domains)
         
-
-        validate_checker = EDRA_exchange_layer_checker(layer_EDRA_valid_class, layers_dict[layer_id], layer_id, required_crs='')
+        validate_checker = EDRA_exchange_layer_checker(
+            layer_EDRA_valid_class = layer_EDRA_valid_class,
+            layer_props = layers[id],
+            layer_id = id)
+        
         validate_result = validate_checker.run()
         
         all_layers_check_result_dict['layers'][list(validate_result.keys())[0]] = validate_result[list(validate_result.keys())[0]]
