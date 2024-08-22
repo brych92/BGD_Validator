@@ -257,7 +257,7 @@ class EDRA_validator:
 
 
 class EDRA_exchange_layer_checker:
-    def __init__(self, layer_EDRA_valid_class: EDRA_validator, layer_props: dict, layer_id: str, required_crs: str):
+    def __init__(self, layer_EDRA_valid_class: EDRA_validator, layer_props: dict, layer_id: str):
         
         self.layer_EDRA_valid_class = layer_EDRA_valid_class
         self.layer_props = layer_props
