@@ -1,9 +1,10 @@
 
 from importlib import reload
+from tkinter import S
 from typing import Union, cast 
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox
-from PyQt5.QtCore import Qt, QMimeData
+from PyQt5.QtCore import Qt, QMimeData, QSize
 from numpy import unicode_
 from qgis.core import QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsLayerTree, QgsProviderRegistry, QgsVectorLayer
 from qgis.utils import iface
@@ -174,7 +175,7 @@ class layerSelectionDialog(QDialog):
 class MainWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)        
-
+        self.setWindowTitle("Налаштуйте параметри перевірки")
         self.folder_path=os.path.expanduser('~')
 
         # Create a QVBoxLayout
@@ -182,6 +183,9 @@ class MainWindow(QDialog):
         
         self.from_layer_tree_frame = QFrame()
 
+        max_height = QApplication.desktop().screenGeometry().height()
+        max_width = QApplication.desktop().screenGeometry().width()
+        self.setMaximumSize(QSize(max_width-40, max_height-40))
 
         layersTopButtonsLayout = QHBoxLayout(self)
         layertreeWidgetbuttonslayout = QVBoxLayout(self)
@@ -256,12 +260,13 @@ class MainWindow(QDialog):
         for i in range(self.layer_list_widget.topLevelItemCount()):
             layer = self.layer_list_widget.topLevelItem(i)
             layer = cast(layerItem, layer)
-            layers_dict[layer.getID()] = {'layer_name': layer.getRealName(), 'path': layer.getPath(), 'layer_real_name': layer.getRealName(), 'layer_crs': ''}
+            layers_dict[layer.getID()] = {'layer_name': layer.getRealName(), 'path': layer.getPath(), 'layer_real_name': layer.getRealName(), 'layer_crs': self.crs_combo_box.currentText()}
+
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
         
         print('Вхідний список шарів:')
         print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
-        result_structure = run_validator(layers_dict)
+        result_structure = run_validator(layer = layers_dict,structure_path=self.strutures[self.BGD_type_combo_box.currentText()]['structure'],domains_path=self.strutures[self.BGD_type_combo_box.currentText()]['domains'])
 
         print('\n\n\n\n\nВивід')
         print(json.dumps(result_structure, indent=4, ensure_ascii=False)) 
