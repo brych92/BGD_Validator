@@ -9,8 +9,22 @@ from osgeo import ogr
 
 class EDRA_validator:
     
-    def __init__(self, layer, layer_exchange_group, layer_exchange_name, structure_json, domains_json):
-    
+    def __init__(self, layer, layer_exchange_name, structure_json, domains_json):
+
+        """
+        Конструктор класу EDRA_validator.
+        
+        :param layer: ogr.Layer об'єкт, який представляє шар геоданих
+        :type layer: ogr.Layer
+        :param layer_exchange_name: назву шару за якою будемо збирати дані з структури json
+        :type layer_exchange_name: str
+        :param structure_json: структуру geojson файлу в якому записані дані про шарі
+        :type structure_json: dict
+        :param domains_json: дані про домені значень полів шарів
+        :type domains_json: dict
+        """
+
+
         # super().__init__()
         self.id_field_layer_dict = {'settlement': 'katottg', 'buildings_polygon': 'build_code', 'streets': 'str_id'}
         
@@ -23,22 +37,26 @@ class EDRA_validator:
             self.layerDefinition = None
             self.layer_field_names = None
 
-        self.layer_exchange_group = layer_exchange_group
+
         self.layer_exchange_name = layer_exchange_name
         self.structure_json = structure_json
         self.domains_json = domains_json
-        if layer_exchange_name in structure_json[layer_exchange_group]:
-            self.structure_field_names = structure_json[layer_exchange_group][layer_exchange_name]['attributes'].keys()
-            self.fields_structure_json = structure_json[layer_exchange_group][layer_exchange_name]['attributes']
-            self.required_geometry_type = structure_json[layer_exchange_group][layer_exchange_name]['geometry_type']
+        if layer_exchange_name in structure_json:
+            self.structure_field_names = structure_json[layer_exchange_name]['attributes'].keys()
+            self.fields_structure_json = structure_json[layer_exchange_name]['attributes']
+            self.required_geometry_type = structure_json[layer_exchange_name]['geometry_type']
             self.qt_and_ogr_data_types = {'integer': {'ogr_code': 0, 'qt_code': 2}, 
                                     'double precision': {'ogr_code': 2, 'qt_code': 6}, 'text': {'ogr_code': 4, 'qt_code': 10}, 
                                     'Date': {'ogr_code': 9, 'qt_code': 14}, 'Time': {'ogr_code': 10, 'qt_code': 15}, 
                                     'DateTime': {'ogr_code': 11, 'qt_code': 16}, 'Binary': {'ogr_code': 15, 'qt_code': None}, 
                                     'IntegerList': {'ogr_code': 16, 'qt_code': None}, 'RealList': {'ogr_code': 17, 'qt_code': None}, 
                                     'StringList': {'ogr_code': 18, 'qt_code': 0}}
-
-            self.id_field = self.id_field_layer_dict[self.layer_exchange_name]
+            for x in structure_json[layer_exchange_name]['attributes']:
+                
+                if structure_json[layer_exchange_name]['attributes'][x]['attribute_is_id'] == 'True':
+                    self.id_field = x
+                else: pass
+                
             self.nameError = False
         else:
             self.structure_field_names = None
@@ -78,8 +96,8 @@ class EDRA_validator:
         else:
             return False
         
-    def compare_crs(self, required_crs, layer_crs):
-        if required_crs == layer_crs:
+    def compare_crs(self, required_crs_list, layer_crs):
+        if layer_crs in required_crs_list:
             return True
         else:
             return False
@@ -250,7 +268,13 @@ class EDRA_validator:
         domain_codes = self.domains_json[self.fields_structure_json[field_name]['domain']]['codes']
             
         return feature[field_name] in domain_codes
-            
+    
+    def get_layer_crs(self):
+        srs = self.layer.GetSpatialRef()
+        auth_name = str(srs.GetAuthorityName('GEOGCS'))
+        auth_code = str(srs.GetAuthorityCode('GEOGCS'))
+        return f'{auth_name}:{auth_code}'
+                    
         
         
     
@@ -266,10 +290,11 @@ class EDRA_exchange_layer_checker:
         self.layer_props['layer_id'] = layer_id
 
     def check_crs_is_equal_required(self):
-        if self.layer_EDRA_valid_class.compare_crs(self.required_crs, self.layer_props['layer_crs']):
+        layer_crs = self.layer_EDRA_valid_class.get_layer_crs()
+        if self.layer_EDRA_valid_class.compare_crs(self.layer_props['required_crs_list'], layer_crs):
             return []
         else:
-            return [self.required_crs, self.layer_props['layer_crs']]
+            return [layer_crs, ', '.join(self.layer_props['required_crs_list'])]
 
     def check_missing_required_fields(self):
         missing_required_fields_list = self.layer_EDRA_valid_class.check_missing_required_fields()
@@ -391,10 +416,12 @@ class EDRA_exchange_layer_checker:
             if self.layer_EDRA_valid_class.nameError:
                 self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
                 self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
-            
+                
             else:
                 self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
                 
+                
+                self.check_result_dict[self.layer_props['layer_id']]['wrong_layer_CRS'] = self.check_crs_is_equal_required()
                 self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
                 self.check_result_dict[self.layer_props['layer_id']]['field_errors'] = {}
                 self.check_result_dict[self.layer_props['layer_id']]['field_errors']['missing_required_fields'] = self.check_missing_required_fields()
