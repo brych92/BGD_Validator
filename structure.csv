@@ -1,26 +1,26 @@
-class,layer_name_en,layer_name_ua,geometry_type,attribute_name_en,attribute_name_ua,attribute_type,attribute_len,attribute_default_value,attribute_required,attribute_unique,domain
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,build_code,ID запису про будівлю,text,,,True,True,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,str_id,Ідентифікатор вулиці,text,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,index,Поштовий індекс,text,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,build_num,Номер будівлі,text,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,corp_num,Номер корпусу,text,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,floor,Кількість поверхів,integer,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,entrance,Кількість під’їздів,integer,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,flat,Кількість квартир,integer,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,note,Примітка,text,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,build_type,Матеріал споруди,text,,,False,False,
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,sub_type,Підтип,integer,,,False,False,sub_type
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,category,Категорія об’єкту (згідно державного класифікатора будівель ДК 018-2000),text,,,False,False,category
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,obj_type,Тип об'єкта,integer,,,False,False,obj_type
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,condition,Стан,integer,,,False,False,condition
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,area,Площа,double precision,,,False,False,
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_id,Ідентифікатор вулиці,text,,,True,True,
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_type,Тип дорожньо-вуличної мережі,integer,,,True,True,str_type
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_name,Назва вулиці,text,,,True,True,
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,codifier,Код КАТОТТГ,text,,,True,True,
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,name_old,Назва вулиці (архівна) (при наявності декількох історичних назв пропонується вносити назви через крапку з комою,text,,,False,False,
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,name_eng,Назва вулиці на англійській мові,text,,,False,False,
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,additional,Уточнююча частина назви вулиці,text,,,False,False,
-EDRA,streets,Вісі вулиць (ОЗПА),LineString,note,Примітка,text,,,False,False,
-EDRA,settlement,Межа населеного пункту,Polygon,settlement_name,Назва населеного пункту,text,,,True,True,
-EDRA,settlement,Межа населеного пункту,Polygon,katottg,КАТОТТГ,text,,,True,True,
+class,layer_name_en,layer_name_ua,geometry_type,attribute_name_en,attribute_name_ua,attribute_type,attribute_len,attribute_default_value,attribute_required,attribute_unique,domain,attribute_is_id
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,build_code,ID запису про будівлю,text,,,True,True,,True
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,str_id,Ідентифікатор вулиці,text,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,index,Поштовий індекс,text,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,build_num,Номер будівлі,text,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,corp_num,Номер корпусу,text,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,floor,Кількість поверхів,integer,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,entrance,Кількість під’їздів,integer,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,flat,Кількість квартир,integer,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,note,Примітка,text,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,build_type,Матеріал споруди,text,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,sub_type,Підтип,integer,,,False,False,sub_type,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,category,Категорія об’єкту (згідно державного класифікатора будівель ДК 018-2000),text,,,False,False,category,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,obj_type,Тип об'єкта,integer,,,False,False,obj_type,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,condition,Стан,integer,,,False,False,condition,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,area,Площа,double precision,,,False,False,,False
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_id,Ідентифікатор вулиці,text,,,True,True,,True
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_type,Тип дорожньо-вуличної мережі,integer,,,True,True,str_type,False
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_name,Назва вулиці,text,,,True,True,,False
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,codifier,Код КАТОТТГ,text,,,True,True,,False
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,name_old,Назва вулиці (архівна) (при наявності декількох історичних назв пропонується вносити назви через крапку з комою,text,,,False,False,,False
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,name_eng,Назва вулиці на англійській мові,text,,,False,False,,False
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,additional,Уточнююча частина назви вулиці,text,,,False,False,,False
+EDRA,streets,Вісі вулиць (ОЗПА),LineString,note,Примітка,text,,,False,False,,False
+EDRA,settlement,Межа населеного пункту,Polygon,settlement_name,Назва населеного пункту,text,,,True,True,,True
+EDRA,settlement,Межа населеного пункту,Polygon,katottg,КАТОТТГ,text,,,True,True,,False
