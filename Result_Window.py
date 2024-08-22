@@ -86,34 +86,6 @@ def get_index(list_v: list, index: int) -> Union[str, None]:
     else:
         return None    
 
-def get_real_layer_name(layer: QgsVectorLayer) -> str:
-    
-    """
-    Отримує назву реального шару, присутнього у QGIS.
-
-    Аргументи:
-        layer (QgsVectorLayer): Шар, з якого отримати назву.
-
-    Повертає:
-        str: Назва реального шару.
-    """
-
-    if layer.providerType() == "postgres":
-        uri = layer.dataProvider().uri()
-        source_layer_name = uri.table()
-        source_layer_name = source_layer_name.strip("''")
-    elif layer.providerType() == "ogr":
-        uri_components = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())
-        if uri_components["layerName"]:
-            source_layer_name = uri_components["layerName"]
-        else:
-            directory, filename_with_extension = os.path.split(uri_components["path"])
-            source_layer_name, extension = os.path.splitext(filename_with_extension)
-    else:
-        source_layer_name = ''
-        
-    return source_layer_name
-
 class CustomTreeWidgetItem(QTreeWidgetItem):
     def __init__(
         self,
@@ -419,20 +391,24 @@ class ErrorTreeWidget(QTreeWidget):
         for current_layer_id, layer_inspections in layers_errors_dict.items():
             
             current_layer_name = layer_inspections['layer_name']
+            
+
             current_layer = project_instance.mapLayer(current_layer_id)
             print(f'current_layer: {current_layer}')
-            #знаходимо спражнє ім'я шару (не тестувалося з gdb базами)
-            current_source_layer_name = get_real_layer_name(current_layer)
+            current_source_layer_name = layer_inspections['layer_real_name']
             
-            if current_layer is None:
-                raise AttributeError(f"Помилка обробки словника шарів: Шар {current_layer_name} не знайдено за його ID: {current_layer_id}")
-            if not isinstance(current_layer, QgsVectorLayer):
-                raise AttributeError(f"Помилка обробки словника шарів: Шар {current_layer_name} не є векторним: {type(current_layer)}")
+            #якщо шар не є завантаженим з файлу перевірити чи він дійсний 
+            if not "⁂" in current_layer_id:
+                if current_layer is None:
+                    raise AttributeError(f"Помилка обробки словника шарів: Шар {current_layer_name} не знайдено за його ID: {current_layer_id}")
+                if not isinstance(current_layer, QgsVectorLayer):
+                    raise AttributeError(f"Помилка обробки словника шарів: Шар {current_layer_name} не є векторним: {type(current_layer)}")
 
             current_layer = cast(QgsVectorLayer, current_layer)
             print(f'current_layer: {current_layer}')
             current_layer_tree_item = CustomTreeWidgetItem(parent=self, el_name=f"Шар: {current_layer_name}({current_source_layer_name})", el_type="Шар")
-            current_layer_tree_item.setRelatedLayer(current_layer)
+            if not current_layer_id.startswith("⁂"):
+                current_layer_tree_item.setRelatedLayer(current_layer)
 
             if "layer_name_errors" in layer_inspections:
                 if not isinstance(layer_inspections['layer_name_errors'], dict):
