@@ -1,14 +1,10 @@
 import json, os
 from importlib import reload
 
-import checker_class
 from osgeo import ogr
 
 from qgis.core import QgsProviderRegistry
 
-# Можливі помилки
-# Об'єкт з id "0" має помилку: "segments 142 and 229 of line 0 intersect at 33.5424, 48.2325"
-# value is not unique'
 import checker_class
 reload(checker_class)
 from checker_class import EDRA_exchange_layer_checker, EDRA_validator
@@ -126,6 +122,3 @@ def run_validator(layers:dict, structure_path:str, domains_path:str):
     return all_layers_check_result_dict
         
         
-#selected_layers = iface.layerTreeView().selectedLayersRecursive()
-
-#print(run_validator(get_layer_list_for_validator(selected_layers)))
