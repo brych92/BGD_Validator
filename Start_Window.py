@@ -67,7 +67,7 @@ def get_real_layer_name(layer: QgsVectorLayer) -> str:
         
     return source_layer_name
 
-def run_validator(layers:dict, structure_path:str, domains_path:str):
+def run_validator(layers:dict, structure_folder:str):
     def get_guid_dict(layers):
         return "Ich bin schoen!"
     """
@@ -89,13 +89,10 @@ def run_validator(layers:dict, structure_path:str, domains_path:str):
             - missing_layers (list): Список відсутніх шарів.
     """
 
-
     all_layers_check_result_dict = {}
     all_layers_check_result_dict['layers'] = {}
     all_layers_check_result_dict['exchange_format_error'] = []
     all_layers_check_result_dict['missing_layers'] = []
-    
-    
 
     for id in layers:
         dataSource = ogr.Open(layers[id]['path'], 0) # 0 means read-only. 1 means writeable.
@@ -105,10 +102,9 @@ def run_validator(layers:dict, structure_path:str, domains_path:str):
         else:
             layer = dataSource.GetLayer()
         
-        group = 'EDRA'
         layer_real_name = layers[id]['layer_real_name']
         
-        converter = Csv_to_json_structure_converter(os.path.dirname(structure_path))
+        converter = Csv_to_json_structure_converter(os.path.dirname(structure_folder))
 
         structure = converter.create_structure_json() 
         domains = converter.create_domain_json()
@@ -123,7 +119,6 @@ def run_validator(layers:dict, structure_path:str, domains_path:str):
         
         layer_EDRA_valid_class = EDRA_validator(
             layer = layer,
-            layer_exchange_group=group,
             layer_exchange_name=layer_real_name,
             structure_json=structure,
             domains_json=domains)
@@ -309,8 +304,7 @@ class MainWindow(QDialog):
         self.strutures = {
             'ЄДРА':
             {
-                'structure': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/structure_bgd3.json',
-                'domains': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/EDRA_structure/domain.json',
+                'path': r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\stuctures\EDRA',
                 'crs': ['EPSG:4326;EPSG:5560','EPSG:5560', 'EPSG:5561','EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
                         'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
                         'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
@@ -319,8 +313,7 @@ class MainWindow(QDialog):
                         'EPSG:9862', 'EPSG:9863', 'EPSG:9864', 'EPSG:9865']
             },
             'МБД':{
-                'structure': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/BGD_structure/structure_bgd3.json',
-                'domains': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/BGD_structure/domain.json',
+                'path': r'C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\stuctures\MBD',
                 'crs': ['EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
                         'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
                         'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
@@ -358,7 +351,7 @@ class MainWindow(QDialog):
                 'layer_name': layer.getRealName(),
                 'path': layer.getPath(),
                 'layer_real_name': layer.getRealName(),
-                'required_crs': self.crs_combo_box.currentText().split(';')
+                'required_crs_list': self.crs_combo_box.currentText().split(';')
                 }
 
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
@@ -367,8 +360,7 @@ class MainWindow(QDialog):
         print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
         result_structure = run_validator(
             layers = layers_dict,
-            structure_path=self.strutures[self.BGD_type_combo_box.currentText()]['structure'],
-            domains_path=self.strutures[self.BGD_type_combo_box.currentText()]['domains'])
+            path=self.strutures[self.BGD_type_combo_box.currentText()]['path'])
 
         print('\n\n\n\n\nВивід')
         print(json.dumps(result_structure, indent=4, ensure_ascii=False))

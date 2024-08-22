@@ -17,6 +17,7 @@ class Csv_to_json_structure_converter:
         """
         self.structure_csv_filename = 'structure.csv'
         self.domains_csv_filename = 'domain.csv'
+        print(path_to_folder)
         self.path_to_folder = path_to_folder
         
     def csv_to_json_data(self, inputCsvFilePath):
@@ -78,7 +79,7 @@ class Csv_to_json_structure_converter:
                 
                 if 'attributes' not in layers_structure_dict[x['layer_name_en']]:
                     layers_structure_dict[x['layer_name_en']]['attributes'] = {}
-                layers_structure_dict[x['layer_name_en']]['attributes']['attributes'][x['attribute_name_en']] = {
+                layers_structure_dict[x['layer_name_en']]['attributes'][x['attribute_name_en']] = {
                                         'attribute_name_ua': x['attribute_name_ua'],
                                         "attribute_type": x['attribute_type'],
                                         "attribute_required": x['attribute_required'],

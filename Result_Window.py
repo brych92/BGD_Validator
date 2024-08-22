@@ -438,7 +438,7 @@ class ErrorTreeWidget(QTreeWidget):
                     
             if "wrong_layer_CRS" in layer_inspections:
                 if layer_inspections['wrong_layer_CRS']:
-                    layer_main_errors_item = CustomTreeWidgetItem(parent = current_layer_tree_item, el_name = f"Невідповідна СК шару: «{layer_inspections['wrong_layer_CRS'][0]}», очікується: «{layer_inspections['wrong_layer_CRS'][0]}»", el_criticity = 2, el_type="Помилка")
+                    layer_main_errors_item = CustomTreeWidgetItem(parent = current_layer_tree_item, el_name = f"Невідповідна СК шару: «{layer_inspections['wrong_layer_CRS'][0]}», очікується: «{layer_inspections['wrong_layer_CRS'][1]}»", el_criticity = 2, el_type="Помилка")
 
             if "field_errors" in layer_inspections:
                 field_errors_main_item = CustomTreeWidgetItem(parent = current_layer_tree_item, el_name = f"Помилки атрибутів:")
