@@ -1,4 +1,4 @@
-"class","layer_name_en","layer_name_ua","geometry_type","attribute_name_en","attribute_name_ua","attribute_type","attribute_len","attribute_default_value","attribute_True","domain","num_tot","num_class","num_attb","row_code","attribute_is_id","attribute_unique"
+"class","layer_name_en","layer_name_ua","geometry_type","attribute_name_en","attribute_name_ua","attribute_type","attribute_len","attribute_default_value","attribute_required","domain","num_tot","num_class","num_attb","row_code","attribute_is_id","attribute_unique"
 "Planning_elements","address","Адреси","Point","guid","GUID","text"," "," ","True",,108,6,1,"6.1","True","True"
 "Planning_elements","address","Адреси","Point","class","класифікаційний код","text",10," ","True",,109,6,2,"6.2","False","False"
 "Planning_elements","address","Адреси","Point","katotth","КАТОТТГ","text",20," ","True",,110,6,3,"6.3","False","False"
