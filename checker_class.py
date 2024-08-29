@@ -45,8 +45,8 @@ class EDRA_validator:
             self.structure_field_names = structure_json[layer_exchange_name]['attributes'].keys()
             self.fields_structure_json = structure_json[layer_exchange_name]['attributes']
             self.required_geometry_type = structure_json[layer_exchange_name]['geometry_type']
-            self.qt_and_ogr_data_types = {'integer': {'ogr_code': 0, 'qt_code': 2}, 
-                                    'double precision': {'ogr_code': 2, 'qt_code': 6}, 'text': {'ogr_code': 4, 'qt_code': 10}, 
+            self.qt_and_ogr_data_types = {'integer': {'ogr_code': 0, 'qt_code': 2}, 'boolean': {'ogr_code': 0, 'qt_code': 1},
+                                    'double': {'ogr_code': 2, 'qt_code': 6}, 'text': {'ogr_code': 4, 'qt_code': 10}, 
                                     'Date': {'ogr_code': 9, 'qt_code': 14}, 'Time': {'ogr_code': 10, 'qt_code': 15}, 
                                     'DateTime': {'ogr_code': 11, 'qt_code': 16}, 'Binary': {'ogr_code': 15, 'qt_code': None}, 
                                     'IntegerList': {'ogr_code': 16, 'qt_code': None}, 'RealList': {'ogr_code': 17, 'qt_code': None}, 
