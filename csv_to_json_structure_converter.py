@@ -75,7 +75,8 @@ class Csv_to_json_structure_converter:
                 if x['layer_name_en'] not in layers_structure_dict:
                     layers_structure_dict[x['layer_name_en']] = {}
                 layers_structure_dict[x['layer_name_en']]['layer_name_ua'] = x['layer_name_ua']
-                layers_structure_dict[x['layer_name_en']]['geometry_type'] = x['geometry_type']
+                layers_structure_dict[x['layer_name_en']]['geometry_type'].replace(', ', ',')
+                layers_structure_dict[x['layer_name_en']]['geometry_type'] = ','.join(x['geometry_type'])
                 layers_structure_dict[x['layer_name_en']]['class'] = x['class']
                 
                 if 'attributes' not in layers_structure_dict[x['layer_name_en']]:
@@ -105,6 +106,7 @@ class Csv_to_json_structure_converter:
         that contains domain names in English as keys, and for each domain name, it contains a
         dictionary with the corresponding name in Ukrainian and a dictionary of codes and their values.
         """
+        
         domains_structure = self.csv_to_json_data(os.path.join(self.path_to_folder, self.domains_csv_filename))
         
         if domains_structure:
@@ -122,6 +124,14 @@ class Csv_to_json_structure_converter:
             return domain_with_codes_dict
         
     def create_metadata_json(self):
+        """
+        The function `create_metadata_json` converts CSV data to a JSON format with specific key-value
+        pairs.
+        :return: a JSON object containing metadata information extracted from a CSV file. The metadata
+        includes fields such as short_structure_name, structure_name, structure_date, structure_version,
+        author, description, and format. The function processes the data from the CSV file and organizes
+        it into a JSON structure before returning it.
+        """
         
         metadata_structure = self.csv_to_json_data(os.path.join(self.path_to_folder, self.metadata_csv_filename))
         
@@ -134,13 +144,19 @@ class Csv_to_json_structure_converter:
                 metadata_json[x['structure_date']] = x['structure_date']
                 metadata_json[x['structure_version']] = x['structure_version']
                 metadata_json[x['author']] = x['author']
-                metadata_json[x['author']] = x['description']
-                metadata_json[x['format']].replace(' ', '')
+                metadata_json[x['description']] = x['description']
+                metadata_json[x['format']].replace(', ', ',')
                 metadata_json[x['format']] = ','.join(x['format'])
                 
             return metadata_json
         
     def create_crs_json(self):
+        """
+        The function `create_crs_json` converts data from a CSV file to a JSON format with specific
+        key-value pairs.
+        :return: A JSON object is being returned, where the keys are the 'crs' values from the input
+        data and the values are the corresponding 'alias' values.
+        """
         
         crs_structure = self.csv_to_json_data(os.path.join(self.path_to_folder, self.crs_csv_filename))
         
