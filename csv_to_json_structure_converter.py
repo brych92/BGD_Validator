@@ -17,7 +17,8 @@ class Csv_to_json_structure_converter:
         """
         self.structure_csv_filename = 'structure.csv'
         self.domains_csv_filename = 'domain.csv'
-        print(path_to_folder)
+        self.metadata_csv_filename = 'metadata.csv'
+        self.crs_csv_filename = 'crs.csv'
         self.path_to_folder = path_to_folder
         
     def csv_to_json_data(self, inputCsvFilePath):
@@ -119,3 +120,34 @@ class Csv_to_json_structure_converter:
                 
 
             return domain_with_codes_dict
+        
+    def create_metadata_json(self):
+        
+        metadata_structure = self.csv_to_json_data(os.path.join(self.path_to_folder, self.metadata_csv_filename))
+        
+        if metadata_structure:
+            metadata_json = {}
+            
+            for x in metadata_structure:
+                metadata_json[x['short_structure_name']] = x['short_structure_name']
+                metadata_json[x['structure_name']] = x['structure_name']
+                metadata_json[x['structure_date']] = x['structure_date']
+                metadata_json[x['structure_version']] = x['structure_version']
+                metadata_json[x['author']] = x['author']
+                metadata_json[x['author']] = x['description']
+                metadata_json[x['format']].replace(' ', '')
+                metadata_json[x['format']] = ','.join(x['format'])
+                
+            return metadata_json
+        
+    def create_crs_json(self):
+        
+        crs_structure = self.csv_to_json_data(os.path.join(self.path_to_folder, self.crs_csv_filename))
+        
+        if crs_structure:
+            crs_json = {}
+            
+            for x in crs_structure:
+                crs_json[x['crs']] = x['alias']
+                
+            return crs_json
