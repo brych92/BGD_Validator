@@ -75,8 +75,8 @@ class Csv_to_json_structure_converter:
                 if x['layer_name_en'] not in layers_structure_dict:
                     layers_structure_dict[x['layer_name_en']] = {}
                 layers_structure_dict[x['layer_name_en']]['layer_name_ua'] = x['layer_name_ua']
-                layers_structure_dict[x['layer_name_en']]['geometry_type'].replace(', ', ',')
-                layers_structure_dict[x['layer_name_en']]['geometry_type'] = ','.join(x['geometry_type'])
+                x['geometry_type'] = x['geometry_type'].replace(', ', ',')
+                layers_structure_dict[x['layer_name_en']]['geometry_type'] = x['geometry_type'].split(',')
                 layers_structure_dict[x['layer_name_en']]['class'] = x['class']
                 
                 if 'attributes' not in layers_structure_dict[x['layer_name_en']]:
@@ -139,14 +139,14 @@ class Csv_to_json_structure_converter:
             metadata_json = {}
             
             for x in metadata_structure:
-                metadata_json[x['short_structure_name']] = x['short_structure_name']
-                metadata_json[x['structure_name']] = x['structure_name']
-                metadata_json[x['structure_date']] = x['structure_date']
-                metadata_json[x['structure_version']] = x['structure_version']
-                metadata_json[x['author']] = x['author']
-                metadata_json[x['description']] = x['description']
-                metadata_json[x['format']].replace(', ', ',')
-                metadata_json[x['format']] = ','.join(x['format'])
+                metadata_json['short_structure_name'] = x['short_structure_name']
+                metadata_json['structure_name'] = x['structure_name']
+                metadata_json['structure_date'] = x['structure_date']
+                metadata_json['structure_version'] = x['structure_version']
+                metadata_json['author'] = x['author']
+                metadata_json['description'] = x['description']
+                x['format'] = x['format'].replace(', ', ',')
+                metadata_json['format'] = x['format'].split(',')
                 
             return metadata_json
         
