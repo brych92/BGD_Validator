@@ -1,6 +1,7 @@
 
 from importlib import reload
 
+from re import split
 from typing import Union, cast 
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox
@@ -36,6 +37,7 @@ logging = True
 def log(text: str) -> None:
     if logging:
         print(text)
+
 
 
 def get_real_layer_name(layer: QgsVectorLayer) -> str:
@@ -262,6 +264,31 @@ class layerSelectionDialog(QDialog):
         return result
 
 class MainWindow(QDialog):
+    def parse_structures(self, directory:str) -> dict:
+            temp_strcut = {}
+            for root, struct_dirs, _ in os.walk(directory):
+                for struct_dir in struct_dirs:
+                    structure_path = os.path.join(root, struct_dir)
+                    for _, version_dirs, _ in os.walk(structure_path):
+                        for sub_dir in version_dirs:
+                            version_path = os.path.join(structure_path, sub_dir)
+                            converter = Csv_to_json_structure_converter(version_path)
+                            temp_metadata = converter.create_metadata_json()
+                            temp_csr = converter.create_crs_json()
+                            temp_branch = {
+                                'path': version_path, #треба буде доробити в плагіні
+                                'structure_name': temp_metadata["structure_name"],
+                                'structure_date': temp_metadata["structure_date"],
+                                'author': temp_metadata["author"],
+                                'description': temp_metadata["description"],
+                                'format': temp_metadata["format"],
+                                'crs': temp_csr
+                            }
+                            temp_strcut[temp_metadata["short_structure_name"]] = {}
+                            temp_strcut[temp_metadata["short_structure_name"]][temp_metadata["structure_version"]] = temp_branch
+                    
+            return temp_strcut
+
     def __init__(self, parent=None):
         super().__init__(parent)        
         self.setWindowTitle("Налаштуйте параметри перевірки")
@@ -273,7 +300,7 @@ class MainWindow(QDialog):
         self.from_layer_tree_frame = QFrame()
 
         max_height = QApplication.desktop().screenGeometry().height()
-        max_width = QApplication.desktop().screenGeometry().width()
+        max_width = 640#QApplication.desktop().screenGeometry().width()
         self.setMaximumSize(QSize(max_width-40, max_height-40))
 
         layersTopButtonsLayout = QHBoxLayout(self)
@@ -301,41 +328,51 @@ class MainWindow(QDialog):
         # Add the tree view to the layout
         layerslayout.addWidget(self.layer_list_widget)
 
-        self.strutures = {
-            'ЄДРА':
-            {
-                'path': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/stuctures/EDRA/',
-                'crs': ['EPSG:4326;EPSG:5560','EPSG:5560', 'EPSG:5561','EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
-                        'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
-                        'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
-                        'EPSG:9852', 'EPSG:9853', 'EPSG:9854', 'EPSG:9855', 'EPSG:9856',
-                        'EPSG:9857', 'EPSG:9858', 'EPSG:9859', 'EPSG:9860', 'EPSG:9861',
-                        'EPSG:9862', 'EPSG:9863', 'EPSG:9864', 'EPSG:9865']
-            },
-            'МБД':{
-                'path': 'C:/Users/brych/OneDrive/Документы/01 Робота/98 Сторонні проекти/ua mbd team/Плагіни/Перевірка на МБД/BGD_Validator/stuctures/MBD/',
-                'crs': ['EPSG:9821', 'EPSG:9831', 'EPSG:9832', 'EPSG:9833', 'EPSG:9834',
-                        'EPSG:9835', 'EPSG:9836', 'EPSG:9837', 'EPSG:9838', 'EPSG:9839',
-                        'EPSG:9840', 'EPSG:9841', 'EPSG:9842', 'EPSG:9843', 'EPSG:9851',
-                        'EPSG:9852', 'EPSG:9853', 'EPSG:9854', 'EPSG:9855', 'EPSG:9856',
-                        'EPSG:9857', 'EPSG:9858', 'EPSG:9859', 'EPSG:9860', 'EPSG:9861',
-                        'EPSG:9862', 'EPSG:9863', 'EPSG:9864', 'EPSG:9865']
-                }
-        }
+        
+
+
+        
+        self.strutures = self.parse_structures(r"C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\stuctures")
+        print(self.strutures)
+        print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
+        
         self.BGD_type_combo_box = QComboBox()
-        self.BGD_type_combo_box.addItems(self.strutures.keys())
+        for key in self.strutures:
+            self.BGD_type_combo_box.addItem(key)
         self.BGD_type_combo_box.setCurrentIndex(0)
+        
+
+        self.BGD_version_combo_box = QComboBox()
+        self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
+        self.BGD_type_combo_box.currentIndexChanged.connect(lambda: 
+            {
+                self.BGD_version_combo_box.clear(),
+                self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
+            })
+        self.BGD_version_combo_box.setCurrentIndex(0)
+
         self.crs_combo_box = QComboBox()
-        self.crs_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()]['crs'])
+        self.crs_combo_box.addItems([key if len(key)<30 else key[0:30] + '...' for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
         self.BGD_type_combo_box.currentIndexChanged.connect(lambda: 
             {
                 self.crs_combo_box.clear(),
-                self.crs_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()]['crs'])
+                self.crs_combo_box.addItems([key if len(key)<30 else key[0:30] + '...' for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
             })
+        self.BGD_version_combo_box.currentIndexChanged.connect(lambda: 
+            {
+                self.crs_combo_box.clear(),
+                self.crs_combo_box.addItems([key if len(key)<30 else key[0:30] + '...' for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
+            })
+        
+        for i in range(self.BGD_type_combo_box.count()):
+            print(self.BGD_type_combo_box.itemText(i))
+            self.BGD_type_combo_box.setItemData(i, self.strutures[self.BGD_type_combo_box.itemText(i)][self.BGD_version_combo_box.currentText()]['structure_name'], Qt.ToolTipRole)
+
         self.printLayerDataButton = QPushButton("Вивести дані шару")
         self.printLayerDataButton.clicked.connect(self.printSelectedLayerData)
         layerslayout.addWidget(self.printLayerDataButton)
         layerslayout.addWidget(self.BGD_type_combo_box)
+        layerslayout.addWidget(self.BGD_version_combo_box)
         layerslayout.addWidget(self.crs_combo_box)
         self.runButton = QPushButton("Запустити перевірку")
         self.runButton.clicked.connect(self.run)
