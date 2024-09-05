@@ -164,6 +164,11 @@ class Csv_to_json_structure_converter:
             crs_json = {}
             
             for x in crs_structure:
-                crs_json[x['crs']] = x['alias']
+                if len(x["crs"]) > 20:                    
+                    description = f"{x['crs'][:35]}..."
+                else:
+                    description = x['crs']
+                
+                crs_json[f'{x["alias"]}({description})'] = x['crs']
                 
             return crs_json
