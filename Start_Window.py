@@ -119,6 +119,10 @@ def run_validator(layers:dict, structure_folder:str):
         if layer is None:
             raise AttributeError(f'Не вдалося відкрити шар {layers[id]["path"]}')
         
+        guid_dict = {}
+
+        #guid {guid:[(layer, feature_id), (layer, feature_id)....]}
+
         layer_EDRA_valid_class = EDRA_validator(
             layer = layer,
             layer_exchange_name=layer_real_name,
@@ -272,6 +276,7 @@ class MainWindow(QDialog):
                     for _, version_dirs, _ in os.walk(structure_path):
                         for sub_dir in version_dirs:
                             version_path = os.path.join(structure_path, sub_dir)
+                            
                             converter = Csv_to_json_structure_converter(version_path)
                             temp_metadata = converter.create_metadata_json()
                             temp_csr = converter.create_crs_json()
@@ -284,7 +289,9 @@ class MainWindow(QDialog):
                                 'format': temp_metadata["format"],
                                 'crs': temp_csr
                             }
-                            temp_strcut[temp_metadata["short_structure_name"]] = {}
+                            
+                            if temp_metadata["short_structure_name"] not in temp_strcut:
+                                temp_strcut[temp_metadata["short_structure_name"]] = {}
                             temp_strcut[temp_metadata["short_structure_name"]][temp_metadata["structure_version"]] = temp_branch
                     
             return temp_strcut
@@ -327,46 +334,41 @@ class MainWindow(QDialog):
         self.layer_list_widget.customContextMenuRequested.connect(self.show_context_menu)
         # Add the tree view to the layout
         layerslayout.addWidget(self.layer_list_widget)
-
-        
-
-
         
         self.strutures = self.parse_structures(r"C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\BGD_Validator\stuctures")
-        print(self.strutures)
-        print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
+        #print(self.strutures)
+        #print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
         
         self.BGD_type_combo_box = QComboBox()
-        for key in self.strutures:
-            self.BGD_type_combo_box.addItem(key)
-        self.BGD_type_combo_box.setCurrentIndex(0)
-        
+        self.BGD_type_combo_box.addItems(self.strutures.keys())
 
         self.BGD_version_combo_box = QComboBox()
         self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
-        self.BGD_type_combo_box.currentIndexChanged.connect(lambda: 
-            {
-                self.BGD_version_combo_box.clear(),
-                self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
-            })
-        self.BGD_version_combo_box.setCurrentIndex(0)
-
-        self.crs_combo_box = QComboBox()
-        self.crs_combo_box.addItems([key if len(key)<30 else key[0:30] + '...' for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
-        self.BGD_type_combo_box.currentIndexChanged.connect(lambda: 
-            {
-                self.crs_combo_box.clear(),
-                self.crs_combo_box.addItems([key if len(key)<30 else key[0:30] + '...' for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
-            })
-        self.BGD_version_combo_box.currentIndexChanged.connect(lambda: 
-            {
-                self.crs_combo_box.clear(),
-                self.crs_combo_box.addItems([key if len(key)<30 else key[0:30] + '...' for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
-            })
         
+        self.crs_combo_box = QComboBox()        
+        self.crs_combo_box.addItems([key for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
+
         for i in range(self.BGD_type_combo_box.count()):
-            print(self.BGD_type_combo_box.itemText(i))
             self.BGD_type_combo_box.setItemData(i, self.strutures[self.BGD_type_combo_box.itemText(i)][self.BGD_version_combo_box.currentText()]['structure_name'], Qt.ToolTipRole)
+        
+        def update_version_combo_box():
+            if self.BGD_type_combo_box.currentText() != '':
+                self.BGD_version_combo_box.clear()
+                self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
+                self.BGD_version_combo_box.setCurrentIndex(0)
+                
+                for i in range(self.BGD_type_combo_box.count()):
+                    self.BGD_type_combo_box.setItemData(i, self.strutures[self.BGD_type_combo_box.itemText(i)][self.BGD_version_combo_box.currentText()]['structure_name'], Qt.ToolTipRole)
+
+        self.BGD_type_combo_box.currentIndexChanged.connect(update_version_combo_box)
+        
+        def update_crs_combo_box():
+            if self.BGD_version_combo_box.currentText() != '' and self.BGD_type_combo_box.currentText() != '':
+                self.crs_combo_box.clear()
+                self.crs_combo_box.addItems([key for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
+                
+        print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
+        self.BGD_version_combo_box.currentIndexChanged.connect(update_crs_combo_box)
 
         self.printLayerDataButton = QPushButton("Вивести дані шару")
         self.printLayerDataButton.clicked.connect(self.printSelectedLayerData)
