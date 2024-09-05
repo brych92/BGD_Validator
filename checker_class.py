@@ -223,16 +223,23 @@ class EDRA_validator:
         return attr_validate_result_list
     
     
-    def check_feature_req_attrs_is_empty(self, feature):
-        
+    def check_feature_req_attrs_is_empty_or_null(self, feature, type):
+        #type == 'empty' OR 'null' or 'both'
         req_attrs_is_empty_result_list = {}
         
         for i in range(feature.GetFieldCount()):
             field_name = feature.GetFieldDefnRef(i).GetNameRef()
             if field_name in self.fields_structure_json.keys():
                 if self.fields_structure_json[field_name]['attribute_required'] == 'True':
-                    if feature[field_name] == '' or feature[field_name] == None:
-                        req_attrs_is_empty_result_list[field_name] = True
+                    if type == 'empty':
+                        if feature[field_name] == '':
+                            req_attrs_is_empty_result_list[field_name] = True
+                    elif type == 'null':
+                        if feature[field_name] == None:
+                            req_attrs_is_empty_result_list[field_name] = True
+                    elif type == 'both':
+                        if feature[field_name] == '' or feature[field_name] == None:
+                            req_attrs_is_empty_result_list[field_name] = True
                     else:
                         req_attrs_is_empty_result_list[field_name] = False
                 else: pass
@@ -345,12 +352,12 @@ class EDRA_exchange_layer_checker:
         else:
             print('Жодне поле не пройшло перевірку на назву та тип, тому обмеження не можуть бути встановлені')
             
-    def check_required_fields_is_empty(self, feature):
-        check_required_fields_is_empty_result = self.layer_EDRA_valid_class.check_feature_req_attrs_is_empty(feature)
+    def check_required_fields_is_empty_or_null(self, feature, type):
+        check_required_fields_is_empty_or_null_result = self.layer_EDRA_valid_class.check_feature_req_attrs_is_empty_or_null(feature, type)
         empty_required_fields_list = []
-        if check_required_fields_is_empty_result:
-            for x in check_required_fields_is_empty_result:
-                if check_required_fields_is_empty_result[x]:
+        if check_required_fields_is_empty_or_null_result:
+            for x in check_required_fields_is_empty_or_null_result:
+                if check_required_fields_is_empty_or_null_result[x]:
                     empty_required_fields_list.append(x)
                 else:
                     continue
@@ -393,7 +400,8 @@ class EDRA_exchange_layer_checker:
                     {"empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
                     "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
                     "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)},
-                "required_attribute_empty": self.check_required_fields_is_empty(feature),
+                "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'empty'),
+                "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'null'),
                 "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature),
                 "duplicated_GUID": self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['layer_id'], features_fids)
                 }
