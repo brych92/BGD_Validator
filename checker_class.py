@@ -515,7 +515,7 @@ class EDRA_exchange_layer_checker:
             
             
             if self.layer_EDRA_valid_class.nameError:
-                layer_name_errors_check_result = self.layer_EDRA_valid_class.check_text_in_objects_list(self, self.layer_EDRA_valid_class.layer_exchange_name, type)
+                layer_name_errors_check_result = self.layer_EDRA_valid_class.check_text_in_objects_list(self.layer_EDRA_valid_class.layer_exchange_name, type)
                 #return {'any_similar_name': True, "result_dict": all_errors_dict[x]}
                 if layer_name_errors_check_result['any_similar_name']:
                     self.layer_EDRA_valid_class = EDRA_validator(self.layer_EDRA_valid_class.layer, layer_name_errors_check_result['result_dict']['valid_name'], self.layer_EDRA_valid_class.structure_json, self.layer_EDRA_valid_class.domains_json)
