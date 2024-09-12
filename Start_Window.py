@@ -437,9 +437,9 @@ class MainWindow(QDialog):
 
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
         
-        print('Вхідний список шарів:')
+        # print('Вхідний список шарів:')
         # print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
-        print(json.dumps(self.strutures, indent=4,ensure_ascii=False))        
+        # print(json.dumps(self.strutures, indent=4,ensure_ascii=False))        
         result_structure = run_validator(
             layers = layers_dict,
             structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
@@ -498,16 +498,15 @@ class MainWindow(QDialog):
                 lsDialog = layerSelectionDialog(tempLayersList, parent=self)
                 errors_list = []
                 if lsDialog.exec_() == 1:
-                    
                     layersList = lsDialog.get_selected_layers()
                     
-                    for item in selectedItems:
-                        datachecker =  ogr.Open(path, 0)
-                        layer = datachecker.GetLayerByName(item.getRealName())
-                        if layer is None:
-                            errors_list.append(item)
-                            continue
-                        layersList.append(item)
+                    # for item in layersList:
+                    #     datachecker =  ogr.Open(path, 0)
+                    #     layer = datachecker.GetLayerByName(item.getRealName())
+                    #     if layer is None:
+                    #         errors_list.append(item)
+                    #         continue
+                    #     layersList.append(item)
                     
 
                 if len(errors_list) > 0: QMessageBox.critical(None, "Помилка", '\r\n'.join([f"Шар '{item.getLayerName()}', файлу '{path}' пошкоджено" for item in errors_list]))
@@ -515,6 +514,7 @@ class MainWindow(QDialog):
 
         if not addLayers:
             self.layer_list_widget.clear()
+        
         for layer in layersList:
             self.layer_list_widget.addTopLevelItem(layer)
             
@@ -523,7 +523,8 @@ class MainWindow(QDialog):
         layerVisibleName = layer.name()
         layerRealName = get_real_layer_name(layer)
         layerPath = layer.dataProvider().dataSourceUri()
-        layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath)
+        features_qty = layer.featureCount()
+        layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath, features_qty = features_qty)
         return layer_item
 
     def update_layers(self):
@@ -559,7 +560,6 @@ class MainWindow(QDialog):
             menu.addAction("Видалити шар")
             
             if menu.isEmpty():
-                print('empty')
                 return
             
             selected_action = menu.exec_(QCursor.pos())
