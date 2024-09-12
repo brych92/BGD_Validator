@@ -113,7 +113,7 @@ class EDRA_validator:
                 
     def compare_object_geometry_type(self, checking_object_geometry_type, required_geometry_type):
         try:
-            if required_geometry_type in checking_object_geometry_type:
+            if checking_object_geometry_type in required_geometry_type:
                 return True
             else:
                 return False
