@@ -41,7 +41,7 @@ class EDRA_validator:
         self.layer_exchange_name = layer_exchange_name
         self.structure_json = structure_json
         self.domains_json = domains_json
-        if layer_exchange_name in structure_json:
+        if layer_exchange_name in structure_json.keys():
             self.structure_field_names = structure_json[layer_exchange_name]['attributes'].keys()
             self.fields_structure_json = structure_json[layer_exchange_name]['attributes']
             self.required_geometry_type = structure_json[layer_exchange_name]['geometry_type']
@@ -66,6 +66,86 @@ class EDRA_validator:
             self.id_field = None
             self.nameError = True
 
+    def str_contains_cyrillic(text):
+        return any('А' <= char <= 'я' or char == 'ё' or char == 'Ё' for char in text)
+    
+    def convert_cyrillic_to_latin_text(text):
+        cyrillic_to_latin_map = {
+            'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'І': 'I', 'Ј': 'J', 'К': 'K',
+            'М': 'M', 'О': 'O', 'Р': 'P', 'Ѕ': 'S', 'Т': 'T', 'Х': 'X', 'У': 'Y', 'а': 'a',
+            'с': 'c', 'е': 'e', 'і': 'i', 'ј': 'j', 'о': 'o', 'р': 'p', 'ѕ': 's', 'х': 'x',
+            'у': 'y'
+        }
+        
+        return ''.join(cyrillic_to_latin_map.get(char, char) for char in text)
+
+    def str_contains_uppercase(text):
+        return any(char.isupper() for char in text)
+    
+    def str_contains_spaces(text):
+        return ' ' in text
+    
+    def check_object_name(self, current_text, required_text, alias):
+        
+        error_dict = {}
+        if type(current_text) == str and type(required_text) == str and type(alias) == str:
+
+            if self.layer_EDRA_valid_class.str_contains_uppercase(current_text) and not self.layer_EDRA_valid_class.str_contains_uppercase(required_text):
+                lower_current_text = current_text.lower()
+                if lower_current_text == required_text:
+                    error_dict['capital_leters'] = True
+                            
+            if self.str_contains_cyrillic(current_text) and not self.layer_EDRA_valid_class.str_contains_cyrillic(required_text):
+                latin_current_text = self.layer_EDRA_valid_class.convert_cyrillic_to_latin_text(current_text)
+                if latin_current_text == required_text:
+                    error_dict['used_cyrillic'] = True
+                            
+            if self.layer_EDRA_valid_class.str_contains_spaces(current_text) and not self.layer_EDRA_valid_class.str_contains_spaces(required_text):
+                unspaced_current_text = current_text.replace(' ', '')
+                if unspaced_current_text == required_text:
+                    error_dict['spaces_used'] = True
+                            
+                if current_text == alias:
+                    error_dict['used_alias'] = required_text
+        else:
+            raise TypeError
+        
+        return error_dict
+    
+    
+    def check_text_in_objects_list(self, current_text, type):
+        #type = layer OR feature
+        
+        if type == 'layer': 
+            object_alias_key = 'layer_name_ua'
+            object_json = self.layer_EDRA_valid_class.structure_json
+            
+        if type == 'feature':    
+            object_alias_key = 'attribute_name_ua'
+            object_json = self.layer_EDRA_valid_class.fields_structure_json
+            
+            all_errors_dict = {}
+            for required_text in object_json.keys():
+                alias = object_json[required_text][object_alias_key]
+                
+                error_dict = self.check_object_name(current_text, required_text, alias)
+                if len(error_dict.keys()) > 0:
+                    all_errors_dict[required_text] = {"general": [True,"Посилання на сторінку хелпу з переліком назв"]}
+                else:    
+                    error_dict['valid_name'] = required_text
+                    all_errors_dict[required_text] = error_dict
+                    
+            for x in all_errors_dict:
+                if any(elem in all_errors_dict[x].keys() for elem in ['used_alias', 'used_cyrillic', 'spaces_used', 'capital_leters']):
+                    return {'any_similar_name': True, "result_dict": all_errors_dict[x]}
+                else:
+                    continue    
+                
+        if type == 'layer':     
+            return {'any_similar_name': False, "result_dict": {"general": [True,"Посилання на сторінку хелпу з переліком назв"]}}
+        if type == 'feature':
+            return {'any_similar_name': False, "result_dict": {"general": [True,"Посилання на сторінку хелпу з переліком назв"]}}
+            
 
     def get_required_fields_names(self):
         required_field_names_list = []
@@ -222,10 +302,22 @@ class EDRA_validator:
             
         return attr_validate_result_list
     
+    def check_feature_attribute_length_exceed(self, feature):
+        #type == 'empty' OR 'null' or 'both'
+        attrs_length_is_exceed_dict = {}
+        
+        for i in range(feature.GetFieldCount()):
+            field_name = feature.GetFieldDefnRef(i).GetNameRef()
+            if field_name in self.fields_structure_json.keys():
+                if self.fields_structure_json[field_name]['attribute_type'] == 'text':
+                    attribute_len = self.fields_structure_json[field_name]['attribute_len']
+                    if len(feature[field_name]) > attribute_len:
+                        attrs_length_is_exceed_dict[field_name] = [len(feature[field_name]) ,attribute_len]
+    
     
     def check_feature_req_attrs_is_empty_or_null(self, feature, type):
         #type == 'empty' OR 'null' or 'both'
-        req_attrs_is_empty_result_list = {}
+        req_attrs_is_empty_result_dict = {}
         
         for i in range(feature.GetFieldCount()):
             field_name = feature.GetFieldDefnRef(i).GetNameRef()
@@ -233,18 +325,18 @@ class EDRA_validator:
                 if self.fields_structure_json[field_name]['attribute_required'] == 'True':
                     if type == 'empty':
                         if feature[field_name] == '':
-                            req_attrs_is_empty_result_list[field_name] = True
+                            req_attrs_is_empty_result_dict[field_name] = True
                     elif type == 'null':
                         if feature[field_name] == None:
-                            req_attrs_is_empty_result_list[field_name] = True
+                            req_attrs_is_empty_result_dict[field_name] = True
                     elif type == 'both':
                         if feature[field_name] == '' or feature[field_name] == None:
-                            req_attrs_is_empty_result_list[field_name] = True
+                            req_attrs_is_empty_result_dict[field_name] = True
                     else:
-                        req_attrs_is_empty_result_list[field_name] = False
+                        req_attrs_is_empty_result_dict[field_name] = False
                 else: pass
                     
-        return req_attrs_is_empty_result_list
+        return req_attrs_is_empty_result_dict
 
     
     def check_feature_unique_attrs_is_unique(self, feature):
@@ -403,7 +495,8 @@ class EDRA_exchange_layer_checker:
                 "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'empty'),
                 "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'null'),
                 "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature),
-                "duplicated_GUID": self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['layer_id'], features_fids)
+                "duplicated_GUID": self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['layer_id'], features_fids),
+                "attribute_length_exceed": self.layer_EDRA_valid_class.check_feature_attribute_length_exceed(feature)
                 }
             
             
@@ -422,7 +515,12 @@ class EDRA_exchange_layer_checker:
             
             
             if self.layer_EDRA_valid_class.nameError:
-                self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
+                layer_name_errors_check_result = self.layer_EDRA_valid_class.check_text_in_objects_list(self, self.layer_EDRA_valid_class.layer_exchange_name, type)
+                #return {'any_similar_name': True, "result_dict": all_errors_dict[x]}
+                if layer_name_errors_check_result['any_similar_name']:
+                    self.layer_EDRA_valid_class = EDRA_validator(self.layer_EDRA_valid_class.layer, layer_name_errors_check_result['result_dict']['valid_name'], self.layer_EDRA_valid_class.structure_json, self.layer_EDRA_valid_class.domains_json)
+                else: 
+                    self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
                 self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
                 
             else:
