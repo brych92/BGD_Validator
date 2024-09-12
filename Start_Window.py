@@ -106,7 +106,7 @@ def run_validator(layers:dict, structure_folder:str):
         
         layer_real_name = layers[id]['layer_real_name']
         
-        converter = Csv_to_json_structure_converter(os.path.dirname(structure_folder))
+        converter = Csv_to_json_structure_converter(structure_folder)
 
         structure = converter.create_structure_json() 
         domains = converter.create_domain_json()
@@ -396,13 +396,14 @@ class MainWindow(QDialog):
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
         
         print('Вхідний список шарів:')
-        print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
+        # print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
+        print(json.dumps(self.strutures, indent=4,ensure_ascii=False))        
         result_structure = run_validator(
             layers = layers_dict,
-            structure_folder = self.strutures[self.BGD_type_combo_box.currentText()]['path'])
+            structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
 
-        print('\n\n\n\n\nВивід')
-        print(json.dumps(result_structure, indent=4, ensure_ascii=False))
+        # print('\n\n\n\n\nВивід')
+        # print(json.dumps(result_structure, indent=4, ensure_ascii=False))
         window = ResultWindow(result_structure, parent=iface.mainWindow())
         window.show()
 
