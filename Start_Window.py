@@ -6,6 +6,7 @@ from typing import Union, cast
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox
 from PyQt5.QtCore import Qt, QMimeData, QSize
+from PyQt5.QtGui import QCursor
 from numpy import unicode_
 from qgis.core import QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsLayerTree, QgsProviderRegistry, QgsVectorLayer
 from qgis.utils import iface
@@ -168,7 +169,7 @@ class layerItem(QTreeWidgetItem):
     """
     Елемент списку шарів, що додається до customlayerListWidget.
     """
-    def __init__(self, id:str, visible_name:str, path:str, real_name:str):
+    def __init__(self, id:str, visible_name:str, path:str, real_name:str, features_qty:int = None):
         """
         Аргументи:
             id (str): ідентифікатор шару (унікальний для кожного шару)
@@ -186,15 +187,19 @@ class layerItem(QTreeWidgetItem):
         self.__layerVisibleName__ = visible_name
         self.__layerRealName__ = real_name
         self.__layerPath__ = path
+        self.__layerFeaturesQty__ = features_qty
         
         if self.__layerVisibleName__ is not None and self.__layerVisibleName__ != "":
-            self.setText(0, self.__layerVisibleName__)
+            self.setText(0, f"{self.__layerVisibleName__}[{self.__layerFeaturesQty__}]")
         else:
-            self.setText(0, self.__layerPath__)
+            self.setText(0, f"{self.__layerPath__}[{self.__layerFeaturesQty__}]")
     
     def get_layer_value(self):
         return {'id':self.__layerID__, 'name':self.__layerVisibleName__, 'path':self.__layerPath__, 'real_name':self.__layerRealName__}
     
+    def getFeaturesQty(self):
+        return self.__layerFeaturesQty__
+
     def isConnected(self):
         if '⁂' in self.__layerID__:
             return False
@@ -215,13 +220,28 @@ class layerItem(QTreeWidgetItem):
     
     def __repr__(self) -> str:
         '''Текстове представлення елемента.'''
-        return f'{self.__layerVisibleName__}({self.__layerPath__})'
+        return f'{self.__layerVisibleName__}({self.__layerPath__})[{self.__layerFeaturesQty__}]'
 
 class layerSelectionDialog(QDialog):
     def __init__(self, layer_list: list[layerItem], parent=None ):
         super().__init__(parent)
 
         layout = QVBoxLayout(self)
+        
+        hbox = QHBoxLayout()
+        layout.addLayout(hbox)
+        
+        select_all_button = QPushButton("Вибрати всі")
+        select_all_button.clicked.connect(self.select_all)
+        hbox.addWidget(select_all_button)
+        
+        select_with_objects = QPushButton("Вибрати з об'єктами")
+        select_with_objects.clicked.connect(self.select_with_objects)
+        hbox.addWidget(select_with_objects)
+        
+        deselect_all_button = QPushButton("Скинути всі")
+        deselect_all_button.clicked.connect(self.deselect_all)
+        hbox.addWidget(deselect_all_button)
 
         self.layer_list = QTreeWidget(self)
         self.layer_list.setHeaderHidden(True)
@@ -235,17 +255,9 @@ class layerSelectionDialog(QDialog):
         
         layout.addWidget(self.layer_list)
 
-        hbox = QHBoxLayout()
-        select_all_button = QPushButton("Вибрати всі")
-        select_all_button.clicked.connect(self.select_all)
-        hbox.addWidget(select_all_button)
-        deselect_all_button = QPushButton("Скинути всі")
-        deselect_all_button.clicked.connect(self.deselect_all)
-        hbox.addWidget(deselect_all_button)
         done_button = QPushButton("Готово")
         done_button.clicked.connect(self.accept)        
-        hbox.addWidget(done_button)
-        layout.addLayout(hbox)
+        layout.addWidget(done_button)
 
     def select_all(self):
         for i in range(self.layer_list.topLevelItemCount()):
@@ -257,12 +269,19 @@ class layerSelectionDialog(QDialog):
             item = self.layer_list.topLevelItem(i)
             item.setCheckState(0, Qt.Unchecked)
     
+    def select_with_objects(self):
+        for i in range(self.layer_list.topLevelItemCount()):
+            item = self.layer_list.topLevelItem(i)
+            item = cast(layerItem, item)
+            if item.getFeaturesQty() > 0:
+                item.setCheckState(0, Qt.Checked)
+
     def get_selected_layers(self) -> list[layerItem]:
         result = []
         for i in range(self.layer_list.topLevelItemCount()):
             item = cast(layerItem, self.layer_list.topLevelItem(i))
             if item.checkState(0) == Qt.Checked:
-                new_item = layerItem(id = item.getID(), visible_name=item.getVisibleName(), real_name=item.getRealName(), path = item.getPath())
+                new_item = layerItem(id = item.getID(), visible_name=item.getVisibleName(), real_name=item.getRealName(), path = item.getPath(), features_qty = item.getFeaturesQty())
                 result.append(new_item)
         
         return result
@@ -297,6 +316,29 @@ class MainWindow(QDialog):
             return temp_strcut
 
     def __init__(self, parent=None):
+        def update_version_combo_box():
+            if self.BGD_type_combo_box.currentText() != '':
+                self.BGD_version_combo_box.clear()
+                self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
+                
+                if self.BGD_version_combo_box.count() == 1:
+                    self.BGD_version_combo_box.hide()
+                else:
+                    self.BGD_version_combo_box.show()
+                
+                for i in range(self.BGD_version_combo_box.count()):
+                    tooltip = f"Структура від {self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.itemText(i)]['structure_date']}"
+                    self.BGD_version_combo_box.setItemData(i, tooltip, Qt.ToolTipRole)
+        
+        def update_crs_combo_box():
+            if self.BGD_version_combo_box.currentText() != '' and self.BGD_type_combo_box.currentText() != '':
+                self.crs_combo_box.clear()
+                self.crs_combo_box.addItems([key for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
+                if self.crs_combo_box.count() == 1:
+                    self.crs_combo_box.hide()
+                else:
+                    self.crs_combo_box.show()
+
         super().__init__(parent)        
         self.setWindowTitle("Налаштуйте параметри перевірки")
         self.folder_path=os.path.expanduser('~')
@@ -311,22 +353,31 @@ class MainWindow(QDialog):
         self.setMaximumSize(QSize(max_width-40, max_height-40))
 
         layersTopButtonsLayout = QHBoxLayout(self)
-        layertreeWidgetbuttonslayout = QVBoxLayout(self)
-        layersTopButtonsLayout.addLayout(layertreeWidgetbuttonslayout)
+        layertreeWidgetbuttonslayout1 = QVBoxLayout(self)
+        layertreeWidgetbuttonslayout2 = QVBoxLayout(self)
+        layersTopButtonsLayout.addLayout(layertreeWidgetbuttonslayout1)
+        layersTopButtonsLayout.addLayout(layertreeWidgetbuttonslayout2)
         
-        update_layers_button = QPushButton("З виділених")
+        update_layers_button = QPushButton("🔄 З виділених")
         update_layers_button.setToolTip("Очистити список та заповнити виділеними шарами")
         update_layers_button.clicked.connect(self.update_layers)
-        layertreeWidgetbuttonslayout.addWidget(update_layers_button)
+        layertreeWidgetbuttonslayout1.addWidget(update_layers_button)
         
-        update_layers_button = QPushButton("Додати виділені")
-        update_layers_button.setToolTip("Додати в кінець списку виділені шари")
-        update_layers_button.clicked.connect(self.add_selected_layers)
-        layertreeWidgetbuttonslayout.addWidget(update_layers_button)
+        add_layers_button = QPushButton("➕ Додати виділені")
+        add_layers_button.setToolTip("Додати в кінець списку виділені шари")
+        add_layers_button.clicked.connect(self.add_selected_layers)
+        layertreeWidgetbuttonslayout1.addWidget(add_layers_button)
 
-        self.openFromFileButton = QPushButton("Відкрити з файлу")
-        layersTopButtonsLayout.addWidget(self.openFromFileButton)
-        self.openFromFileButton.clicked.connect(self.openFiles)
+        openFromFileButton = QPushButton("📂🔄 Відкрити з файлу")
+        openFromFileButton.setToolTip("Очистити список та заповнити шарами з файлу")
+        openFromFileButton.clicked.connect(self.openFiles)
+        layertreeWidgetbuttonslayout2.addWidget(openFromFileButton)
+
+        addFromFileButton = QPushButton("📂➕ Додати з файлу")
+        addFromFileButton.setToolTip("Додати в кінець списку шари з файлу")
+        addFromFileButton.clicked.connect(lambda: self.openFiles(True))
+        layertreeWidgetbuttonslayout2.addWidget(addFromFileButton)
+
         layerslayout.addLayout(layersTopButtonsLayout)
 
         self.layer_list_widget = customlayerListWidget()
@@ -341,34 +392,24 @@ class MainWindow(QDialog):
         
         self.BGD_type_combo_box = QComboBox()
         self.BGD_type_combo_box.addItems(self.strutures.keys())
+        for i in range(self.BGD_type_combo_box.count()):
+            version_index = [key for key in self.strutures[self.BGD_type_combo_box.itemText(i)].keys()][0]
+            self.BGD_type_combo_box.setItemData(i, self.strutures[self.BGD_type_combo_box.itemText(i)][version_index]['structure_name'], Qt.ToolTipRole)
 
         self.BGD_version_combo_box = QComboBox()
-        self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
+        update_version_combo_box()
+        # self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
         
-        self.crs_combo_box = QComboBox()        
-        self.crs_combo_box.addItems([key for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
-
-        for i in range(self.BGD_type_combo_box.count()):
-            self.BGD_type_combo_box.setItemData(i, self.strutures[self.BGD_type_combo_box.itemText(i)][self.BGD_version_combo_box.currentText()]['structure_name'], Qt.ToolTipRole)
+        self.crs_combo_box = QComboBox()
+        update_crs_combo_box()
+        # self.crs_combo_box.addItems([key for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
+        # if self.crs_combo_box.count() == 1:
+        #     self.crs_combo_box.hide()
+            
         
-        def update_version_combo_box():
-            if self.BGD_type_combo_box.currentText() != '':
-                self.BGD_version_combo_box.clear()
-                self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
-                self.BGD_version_combo_box.setCurrentIndex(0)
-                
-                for i in range(self.BGD_type_combo_box.count()):
-                    self.BGD_type_combo_box.setItemData(i, self.strutures[self.BGD_type_combo_box.itemText(i)][self.BGD_version_combo_box.currentText()]['structure_name'], Qt.ToolTipRole)
-
         self.BGD_type_combo_box.currentIndexChanged.connect(update_version_combo_box)
-        
-        def update_crs_combo_box():
-            if self.BGD_version_combo_box.currentText() != '' and self.BGD_type_combo_box.currentText() != '':
-                self.crs_combo_box.clear()
-                self.crs_combo_box.addItems([key for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
-                
-        print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
         self.BGD_version_combo_box.currentIndexChanged.connect(update_crs_combo_box)
+        # print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
 
         self.printLayerDataButton = QPushButton("Вивести дані шару")
         self.printLayerDataButton.clicked.connect(self.printSelectedLayerData)
@@ -411,7 +452,7 @@ class MainWindow(QDialog):
         for item in self.layer_list_widget.selectedItems():
             print(item.get_layer_vlaue())
 
-    def openFiles(self):
+    def openFiles(self, addLayers:bool = False):
         def random_id(layerName):
             randomid = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(36))
             return f"⁂{layerName}_{randomid}"
@@ -447,16 +488,18 @@ class MainWindow(QDialog):
                 for i in range(ds.GetLayerCount()):
                     layer = ds.GetLayerByIndex(i)
                     layerName = layer.GetName()
+                    obj_qty = layer.GetFeatureCount()
                     id = random_id(layerName)
                     layerpath = path
 
-                    tempLayersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path))
+                    tempLayersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
                 
                 lsDialog = layerSelectionDialog(tempLayersList, parent=self)
-                
+                errors_list = []
                 if lsDialog.exec_() == 1:
-                    selectedItems = lsDialog.get_selected_layers()
-                    errors_list = []
+                    
+                    layersList = lsDialog.get_selected_layers()
+                    
                     for item in selectedItems:
                         datachecker =  ogr.Open(path, 0)
                         layer = datachecker.GetLayerByName(item.getRealName())
@@ -464,11 +507,13 @@ class MainWindow(QDialog):
                             errors_list.append(item)
                             continue
                         layersList.append(item)
-                
+                    
+
                 if len(errors_list) > 0: QMessageBox.critical(None, "Помилка", '\r\n'.join([f"Шар '{item.getLayerName()}', файлу '{path}' пошкоджено" for item in errors_list]))
                 lsDialog = None
 
-        self.layer_list_widget.clear()
+        if not addLayers:
+            self.layer_list_widget.clear()
         for layer in layersList:
             self.layer_list_widget.addTopLevelItem(layer)
             
@@ -490,11 +535,14 @@ class MainWindow(QDialog):
             self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
         
     def show_context_menu(self, position):
+        if self.layer_list_widget.selectedItems() == []:
+            return
+        
         selected_item = self.layer_list_widget.selectedItems()[0]
         selected_item = cast(layerItem, selected_item)
 
         if selected_item is not None:
-            print(selected_item)
+            #print(selected_item)
             menu = QMenu(self)
             if selected_item.isConnected():
                 layer = QgsProject.instance().mapLayer(selected_item.__layerID__)
@@ -503,15 +551,17 @@ class MainWindow(QDialog):
                     menu.addAction("Виділити шар")
                     menu.addAction("Перейти в налаштування шару")
                     menu.addAction("Переглянуи таблицю атрибутів шару")
-                    menu.addAction("")
-                    menu.addAction("Видалити шар")
+                    menu.addSeparator()
                 else:
                     related_layer =  None
-                    menu.addAction("Видалити шар")
+                
+            menu.addAction("Видалити шар")
+            
             if menu.isEmpty():
+                print('empty')
                 return
             
-            selected_action = menu.exec_(self.mapToGlobal(position))
+            selected_action = menu.exec_(QCursor.pos())
 
             if selected_action:
                 if selected_action.text() == "Виділити шар":
@@ -527,7 +577,7 @@ class MainWindow(QDialog):
                     selected_index = self.layer_list_widget.indexOfTopLevelItem(selected_item)
                     self.layer_list_widget.takeTopLevelItem(selected_index)
 
-                print(f"Вибрано дію: {selected_action.text()}")
+                # print(f"Вибрано дію: {selected_action.text()}")
     
 window = MainWindow(parent=iface.mainWindow())
 
