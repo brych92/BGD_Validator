@@ -90,17 +90,17 @@ class EDRA_validator:
         error_dict = {}
         if type(current_text) == str and type(required_text) == str and type(alias) == str:
 
-            if self.layer_EDRA_valid_class.str_contains_uppercase(current_text) and not self.layer_EDRA_valid_class.str_contains_uppercase(required_text):
+            if self.str_contains_uppercase(current_text) and not self.str_contains_uppercase(required_text):
                 lower_current_text = current_text.lower()
                 if lower_current_text == required_text:
                     error_dict['capital_leters'] = True
                             
-            if self.str_contains_cyrillic(current_text) and not self.layer_EDRA_valid_class.str_contains_cyrillic(required_text):
-                latin_current_text = self.layer_EDRA_valid_class.convert_cyrillic_to_latin_text(current_text)
+            if self.str_contains_cyrillic(current_text) and not self.str_contains_cyrillic(required_text):
+                latin_current_text = self.convert_cyrillic_to_latin_text(current_text)
                 if latin_current_text == required_text:
                     error_dict['used_cyrillic'] = True
                             
-            if self.layer_EDRA_valid_class.str_contains_spaces(current_text) and not self.layer_EDRA_valid_class.str_contains_spaces(required_text):
+            if self.str_contains_spaces(current_text) and not self.str_contains_spaces(required_text):
                 unspaced_current_text = current_text.replace(' ', '')
                 if unspaced_current_text == required_text:
                     error_dict['spaces_used'] = True
@@ -118,11 +118,11 @@ class EDRA_validator:
         
         if type == 'layer': 
             object_alias_key = 'layer_name_ua'
-            object_json = self.layer_EDRA_valid_class.structure_json
+            object_json = self.structure_json
             
         if type == 'feature':    
             object_alias_key = 'attribute_name_ua'
-            object_json = self.layer_EDRA_valid_class.fields_structure_json
+            object_json = self.fields_structure_json
             
             all_errors_dict = {}
             for required_text in object_json.keys():
