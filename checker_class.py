@@ -286,22 +286,22 @@ class EDRA_validator:
                     self.layer.setFieldConstraint(self.layer.fields().indexOf(x['current_field_name']), ConstraintUnique, ConstraintStrengthHard)
 
 
-    def check_feature_geometry(self, feature):
+    # def check_feature_geometry(self, feature):
         
-        feature_geometry = feature.geometry()
-        geometry_type_check_result = self.check_object_geometry_type(feature_geometry, self.required_geometry_type)
+    #     feature_geometry = feature.geometry()
+    #     geometry_type_check_result = self.check_object_geometry_type(feature_geometry, self.required_geometry_type)
         
-        return {"geometry_type_check_result": {"current_type": QgsWkbTypes().displayString(feature_geometry.wkbType()), "required_type": self.required_geometry_type, "check_result":geometry_type_check_result}, "isEmpty":feature_geometry.isEmpty(), "isValid":feature_geometry.validateGeometry()}
+    #     return {"geometry_type_check_result": {"current_type": QgsWkbTypes().displayString(feature_geometry.wkbType()), "required_type": self.required_geometry_type, "check_result":geometry_type_check_result}, "isEmpty":feature_geometry.isEmpty(), "isValid":feature_geometry.validateGeometry()}
     
     
-    def check_feature_attributes(self, feature):
+    # def check_feature_attributes(self, feature):
         
-        attr_validate_result_list = []
-        for field in feature.fields():
-            attr_validate_result = QgsVectorLayerUtils.validateAttribute(layer, feature, feature.fields().indexOf(field.name()), 1, 0), 
-            attr_validate_result_list.append({field.name(): attr_validate_result})
+    #     attr_validate_result_list = []
+    #     for field in feature.fields():
+    #         attr_validate_result = QgsVectorLayerUtils.validateAttribute(layer, feature, feature.fields().indexOf(field.name()), 1, 0), 
+    #         attr_validate_result_list.append({field.name(): attr_validate_result})
             
-        return attr_validate_result_list
+    #     return attr_validate_result_list
     
     def check_feature_attribute_length_exceed(self, feature):
         #type == 'empty' OR 'null' or 'both'
