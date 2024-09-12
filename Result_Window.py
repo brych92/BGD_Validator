@@ -425,6 +425,9 @@ class ErrorTreeWidget(QTreeWidget):
 
                 if "spaces_used" in layer_inspections['layer_name_errors'] and layer_inspections['layer_name_errors']['spaces_used']:
                     error_item = CustomTreeWidgetItem(parent = current_layer_tree_item, el_name = f"В назві класу «{current_source_layer_name}» наявні пробіли", el_criticity=1, el_type="Помилка")
+                
+                if "used_cyrillic" in layer_inspections['layer_name_errors'] and layer_inspections['layer_name_errors']['used_cyrillic']:
+                    error_item = CustomTreeWidgetItem(parent = current_layer_tree_item, el_name = f"В назві класу «{current_source_layer_name}» наявні кириличні літери", el_criticity=1, el_type="Помилка")
 
                 error_item = None
 
