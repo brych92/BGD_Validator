@@ -13,7 +13,7 @@ EDRA,buildings_polygon,Будівлі та споруди (полігони) (О
 EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,category,Категорія об’єкту (згідно державного класифікатора будівель ДК 018-2000),text,,,False,False,category,False
 EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,obj_type,Тип об'єкта,integer,,,False,False,obj_type,False
 EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,condition,Стан,integer,,,False,False,condition,False
-EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,area,Площа,double precision,,,False,False,,False
+EDRA,buildings_polygon,Будівлі та споруди (полігони) (ОЗПА),Polygon,area,Площа,double,,,False,False,,False
 EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_id,Ідентифікатор вулиці,text,,,True,True,,True
 EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_type,Тип дорожньо-вуличної мережі,integer,,,True,True,str_type,False
 EDRA,streets,Вісі вулиць (ОЗПА),LineString,str_name,Назва вулиці,text,,,True,True,,False
