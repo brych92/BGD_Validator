@@ -44,7 +44,11 @@ class EDRA_validator:
         if layer_exchange_name in structure_json.keys():
             self.structure_field_names = structure_json[layer_exchange_name]['attributes'].keys()
             self.fields_structure_json = structure_json[layer_exchange_name]['attributes']
-            self.required_geometry_type = structure_json[layer_exchange_name]['geometry_type']
+            print(structure_json[layer_exchange_name]['geometry_type'])
+            if structure_json[layer_exchange_name]['geometry_type'] == ['None']:
+                self.required_geometry_type = None
+            else:
+                self.required_geometry_type = structure_json[layer_exchange_name]['geometry_type']
             self.qt_and_ogr_data_types = {'integer': {'ogr_code': 0, 'qt_code': 2}, 'boolean': {'ogr_code': 0, 'qt_code': 1},
                                     'double': {'ogr_code': 2, 'qt_code': 6}, 'text': {'ogr_code': 4, 'qt_code': 10}, 
                                     'Date': {'ogr_code': 9, 'qt_code': 14}, 'Time': {'ogr_code': 10, 'qt_code': 15}, 
@@ -82,8 +86,18 @@ class EDRA_validator:
     def str_contains_uppercase(self, text):
         return any(char.isupper() for char in text)
     
-    def str_contains_spaces(self,text):
+    def str_contains_spaces(self, text):
         return ' ' in text
+    
+    def is_integer(self, string):
+    # Перевіряємо, чи є рядок мінусовим числом
+        if string:
+            if isinstance(string, int):
+                return True
+            if string.startswith('-'):
+                return string[1:].isdigit() and len(string) > 1
+            return string.isdigit()
+        else: return False
     
     def check_object_name(self, current_text, required_text, alias):
         
@@ -157,7 +171,7 @@ class EDRA_validator:
         return required_field_names_list
     
     def check_feature_geometry_is_empty(self, feature):
-        if self.check_feature_geometry_is_null(feature) == True:
+        if self.check_feature_geometry_is_null(feature) == False:
             if feature.geometry().IsEmpty():
                 return True
             else:
@@ -166,8 +180,12 @@ class EDRA_validator:
             return False
     
     def check_feature_geometry_is_null(self, feature):
-        if feature.GetGeometryRef() == None:
+        if self.required_geometry_type != None and feature.GetGeometryRef() == None:
             return True
+        elif self.required_geometry_type == None and feature.GetGeometryRef() == None:
+            return False
+        elif self.required_geometry_type != None and feature.GetGeometryRef() != None:
+            return False
         else:
             return False
     
@@ -178,6 +196,7 @@ class EDRA_validator:
             return False
         
     def compare_crs(self, required_crs_list, layer_crs):
+        
         if layer_crs in required_crs_list:
             return True
         else:
@@ -325,7 +344,7 @@ class EDRA_validator:
             # print(feature[field_name])
             if field_name in self.fields_structure_json.keys() and feature[field_name] != None:
                 if self.fields_structure_json[field_name]['attribute_type'] == 'text':
-                    attribute_len = self.fields_structure_json[field_name]['attribute_len']
+                    attribute_len = self.fields_structure_json[field_name]['attribute_len'].replace(' ', '')
                     if attribute_len == '' or attribute_len == 0:
                         continue
                     elif len(feature[field_name]) > int(attribute_len):
@@ -383,16 +402,31 @@ class EDRA_validator:
         
     
     def check_attr_value_in_domain(self, feature, field_name):        
-            
-        domain_codes = self.domains_json[self.fields_structure_json[field_name]['domain']]['codes']
+        
+        domain_dict = self.domains_json[self.fields_structure_json[field_name]['domain']]['codes']
+        domain_codes = []
+        for x in domain_dict.keys():
+            if self.is_integer(x.replace(' ', '')) and self.fields_structure_json[field_name]['attribute_type'] != 'text':
+                domain_codes.append(int(x.replace(' ', '')))
+            else: 
+                domain_codes.append(x)
+        # print(f'DOMAIN {domain_codes} {type()}')
             
         return feature[field_name] in domain_codes
     
     def get_layer_crs(self):
+        
         srs = self.layer.GetSpatialRef()
-        auth_name = str(srs.GetAuthorityName('GEOGCS'))
-        auth_code = str(srs.GetAuthorityCode('GEOGCS'))
-        return f'{auth_name}:{auth_code}'
+        # print(srs)
+        auth_name = None
+        auth_code = None
+        if srs is not None:
+            auth_name = str(srs.GetAuthorityName(None))
+            auth_code = str(srs.GetAuthorityCode(None))
+            print(f'{auth_name}:{auth_code}')
+            return f'{auth_name}:{auth_code}'
+        else:
+            return ''
                     
         
         
@@ -508,12 +542,9 @@ class EDRA_exchange_layer_checker:
 
         
         for feature in self.layer_EDRA_valid_class.layer:
+         
             
             features_dict[feature.GetFID()] = {
-                'geometry_errors':
-                    {"empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
-                    "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
-                    "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)},
                 "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'empty'),
                 "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'null'),
                 "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature),
@@ -522,13 +553,23 @@ class EDRA_exchange_layer_checker:
                 
                 }
             
+            if self.layer_EDRA_valid_class.required_geometry_type != None:
+                features_dict[feature.GetFID()]['geometry_errors'] = {
+                    "empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
+                    "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
+                    "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)
+                    }
+            
             
         #print(features_dict)
         return features_dict
             
     def write_result_dict(self):
             self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
-            self.check_result_dict[self.layer_props['layer_id']]['wrong_layer_CRS'] = self.check_crs_is_equal_required()
+            if self.layer_EDRA_valid_class.required_geometry_type != None:
+                self.check_result_dict[self.layer_props['layer_id']]['wrong_layer_CRS'] = self.check_crs_is_equal_required()
+                self.check_result_dict[self.layer_props['layer_id']]['wrong_geometry_type'] = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
+                
             self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
             self.check_result_dict[self.layer_props['layer_id']]['field_errors'] = {}
             self.check_result_dict[self.layer_props['layer_id']]['field_errors']['missing_required_fields'] = self.check_missing_required_fields()
@@ -539,7 +580,7 @@ class EDRA_exchange_layer_checker:
             'field_name_errors'
             
             #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
-            self.check_result_dict[self.layer_props['layer_id']]['wrong_geometry_type'] = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
+            
             self.check_result_dict[self.layer_props['layer_id']]['features'] = self.write_features_check_result()        
     
     def run(self):
