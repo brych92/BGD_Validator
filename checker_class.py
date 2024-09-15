@@ -44,7 +44,7 @@ class EDRA_validator:
         if layer_exchange_name in structure_json.keys():
             self.structure_field_names = structure_json[layer_exchange_name]['attributes'].keys()
             self.fields_structure_json = structure_json[layer_exchange_name]['attributes']
-            print(structure_json[layer_exchange_name]['geometry_type'])
+            # print(structure_json[layer_exchange_name]['geometry_type'])
             if structure_json[layer_exchange_name]['geometry_type'] == ['None']:
                 self.required_geometry_type = None
             else:
@@ -71,7 +71,13 @@ class EDRA_validator:
             self.nameError = True
 
     def str_contains_cyrillic(self, text):
-        return any('А' <= char <= 'я' or char == 'ё' or char == 'Ё' for char in text)
+        cyrillic_to_latin_map = {
+            'А': 'A', 'В': 'B', 'С': 'C', 'Е': 'E', 'Н': 'H', 'І': 'I', 'Ј': 'J', 'К': 'K',
+            'М': 'M', 'О': 'O', 'Р': 'P', 'Ѕ': 'S', 'Т': 'T', 'Х': 'X', 'У': 'Y', 'а': 'a',
+            'с': 'c', 'е': 'e', 'і': 'i', 'ј': 'j', 'о': 'o', 'р': 'p', 'ѕ': 's', 'х': 'x',
+            'у': 'y'
+        }
+        return any(char in cyrillic_to_latin_map.keys() for char in text)
     
     def convert_cyrillic_to_latin_text(self, text):
         cyrillic_to_latin_map = {
@@ -104,23 +110,31 @@ class EDRA_validator:
         error_dict = {}
         if type(current_text) == str and type(required_text) == str and type(alias) == str:
 
-            if self.str_contains_uppercase(current_text) and not self.str_contains_uppercase(required_text):
-                lower_current_text = current_text.lower()
-                if lower_current_text == required_text:
-                    error_dict['capital_leters'] = True
-                            
-            if self.str_contains_cyrillic(current_text) and not self.str_contains_cyrillic(required_text):
-                latin_current_text = self.convert_cyrillic_to_latin_text(current_text)
-                if latin_current_text == required_text:
-                    error_dict['used_cyrillic'] = True
-                            
-            if self.str_contains_spaces(current_text) and not self.str_contains_spaces(required_text):
-                unspaced_current_text = current_text.replace(' ', '')
-                if unspaced_current_text == required_text:
-                    error_dict['spaces_used'] = True
-                            
-                if current_text == alias:
+            if len(error_dict.keys()) == 0 and not self.str_contains_uppercase(required_text) and not self.str_contains_cyrillic(required_text) and not self.str_contains_spaces(required_text):
+                current_text_not_changed = None
+                
+                current_text_not_changed = current_text
+                current_text = current_text.lower()
+                # print(current_text == required_text)
+                current_text = self.convert_cyrillic_to_latin_text(current_text)
+                # print(current_text == required_text)
+                current_text = current_text.replace(' ', '')
+                # print(f'current_text {current_text}')
+                
+                if current_text == required_text:
+                    # print(f'current_text == required_text is TRUE')
+                    if self.str_contains_uppercase(current_text_not_changed):
+                        # print('capit')
+                        error_dict['capital_leters'] = True
+                    if self.str_contains_cyrillic(current_text_not_changed):
+                        # print('cyr')
+                        error_dict['used_cyrillic'] = True
+                    if self.str_contains_spaces(current_text_not_changed):
+                        # print('space')
+                        error_dict['spaces_used'] = True
+                elif current_text_not_changed == alias:
                     error_dict['used_alias'] = required_text
+                
         else:
             raise TypeError
         
@@ -139,7 +153,10 @@ class EDRA_validator:
             object_json = self.fields_structure_json
             
         all_errors_dict = {}
+        
         for required_text in object_json.keys():
+            if current_text == required_text:
+                return {'any_similar_name': True, "result_dict": {}}
             alias = object_json[required_text][object_alias_key]
             
             error_dict = self.check_object_name(current_text, required_text, alias)
@@ -148,6 +165,7 @@ class EDRA_validator:
                 all_errors_dict[required_text] = {"general": [True,"Посилання на сторінку хелпу з переліком назв"]}
             else:    
                 error_dict['valid_name'] = required_text
+                # print(error_dict)
                 all_errors_dict[required_text] = error_dict
                 
         for x in all_errors_dict:
@@ -155,7 +173,8 @@ class EDRA_validator:
                 return {'any_similar_name': True, "result_dict": all_errors_dict[x]}
             else:
                 continue    
-                
+        
+        
         if type == 'layer':     
             return {'any_similar_name': False, "result_dict": {"general": [True,"Посилання на сторінку хелпу з переліком назв"]}}
         if type == 'field':
@@ -226,8 +245,9 @@ class EDRA_validator:
         for field_name in self.layer_field_names:
             field_name_errors_check_result = None
             field_name_errors_check_result = self.check_text_in_objects_list(field_name, 'field')
-            if field_name_errors_check_result['any_similar_name']:
-                field_name_errors[field_name] = field_name_errors_check_result['result_dict']
+            print(f'field_name_errors_check_result {field_name_errors_check_result}')
+            # if field_name_errors_check_result['any_similar_name']:
+            field_name_errors[field_name] = field_name_errors_check_result['result_dict']
                 
         return field_name_errors
             
@@ -423,7 +443,7 @@ class EDRA_validator:
         if srs is not None:
             auth_name = str(srs.GetAuthorityName(None))
             auth_code = str(srs.GetAuthorityCode(None))
-            print(f'{auth_name}:{auth_code}')
+            # print(f'{auth_name}:{auth_code}')
             return f'{auth_name}:{auth_code}'
         else:
             return ''
@@ -570,7 +590,8 @@ class EDRA_exchange_layer_checker:
                 self.check_result_dict[self.layer_props['layer_id']]['wrong_layer_CRS'] = self.check_crs_is_equal_required()
                 self.check_result_dict[self.layer_props['layer_id']]['wrong_geometry_type'] = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
                 
-            self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
+            if 'layer_name_errors' not in self.check_result_dict[self.layer_props['layer_id']].keys():
+                self.check_result_dict[self.layer_props['layer_id']]['layer_name_errors'] = {}
             self.check_result_dict[self.layer_props['layer_id']]['field_errors'] = {}
             self.check_result_dict[self.layer_props['layer_id']]['field_errors']['missing_required_fields'] = self.check_missing_required_fields()
             self.check_result_dict[self.layer_props['layer_id']]['field_errors']['missing_fields'] = self.check_missing_fields()
