@@ -15,21 +15,21 @@ from qgis.gui import QgsLayerTreeView
 import sys, os, string, random
 from osgeo import ogr
 import json
-sys.path.append(r'/home/bohdan/Programming/ПЛАГІН/GIT/BGD_Validator/')
+# sys.path.append(r'/home/bohdan/Programming/ПЛАГІН/GIT/BGD_Validator/')
 
 # import initialize_script
-import csv_to_json_structure_converter
-reload(csv_to_json_structure_converter)
-from csv_to_json_structure_converter import Csv_to_json_structure_converter
+# import csv_to_json_structure_converter
+# reload(csv_to_json_structure_converter)
+from .csv_to_json_structure_converter import Csv_to_json_structure_converter
 
 # reload(initialize_script)
-import Result_Window
-reload(Result_Window)
-from Result_Window import ResultWindow
+# import Result_Window
+# reload(Result_Window)
+from .Result_Window import ResultWindow
 
-import checker_class
-reload(checker_class)
-from checker_class import EDRA_exchange_layer_checker, EDRA_validator
+# import checker_class
+# reload(checker_class)
+from .checker_class import EDRA_exchange_layer_checker, EDRA_validator
 
 logging = True
 # from initialize_script import run_validator
@@ -386,8 +386,9 @@ class MainWindow(QDialog):
         self.layer_list_widget.customContextMenuRequested.connect(self.show_context_menu)
         # Add the tree view to the layout
         layerslayout.addWidget(self.layer_list_widget)
-        
-        self.strutures = self.parse_structures(r"/home/bohdan/Programming/ПЛАГІН/GIT/BGD_Validator/stuctures/")
+        self.plugin_dir = os.path.dirname(__file__)
+        self.path_to_structures = os.path.join(self.plugin_dir, 'stuctures')
+        self.strutures = self.parse_structures(self.path_to_structures)
         #print(self.strutures)
         #print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
         
@@ -580,6 +581,6 @@ class MainWindow(QDialog):
 
                 # print(f"Вибрано дію: {selected_action.text()}")
     
-window = MainWindow(parent=iface.mainWindow())
-
-window.show()
+# window = MainWindow(parent=iface.mainWindow())
+# 
+# window.show()
