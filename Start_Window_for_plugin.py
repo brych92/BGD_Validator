@@ -99,6 +99,7 @@ def run_validator(layers:dict, structure_folder:str):
     all_layers_check_result_dict['missing_layers'] = []
 
     for id in layers:
+        
         dataSource = ogr.Open(layers[id]['path'], 0) # 0 means read-only. 1 means writeable.
         
         if dataSource.GetDriver().GetName() in ['OpenFileGDB', 'GPKG']:
@@ -523,7 +524,7 @@ class MainWindow(QDialog):
         layerID = layer.id()
         layerVisibleName = layer.name()
         layerRealName = get_real_layer_name(layer)
-        layerPath = layer.dataProvider().dataSourceUri()
+        layerPath = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())['path']
         features_qty = layer.featureCount()
         layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath, features_qty = features_qty)
         return layer_item
