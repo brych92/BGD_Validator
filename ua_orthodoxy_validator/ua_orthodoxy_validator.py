@@ -21,11 +21,13 @@
  *                                                                         *
  ***************************************************************************/
 """
-from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
+from typing import cast
+from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QToolBar, QMenu, QWidget
 
-from qgis.utils import iface
+#from qgis.utils import iface
+from qgis.gui import QgisInterface
 
 # Initialize Qt resources from file resources.py
 from .resources import *
@@ -37,7 +39,49 @@ import os.path
 
 class UA_orthodoxy_validator:
     """QGIS Plugin Implementation."""
+        # noinspection PyMethodMayBeStatic
+    def tr(self, message):
+        """Get the translation for a string using Qt translation API.
 
+        We implement this ourselves since we do not inherit QObject.
+
+        :param message: String for translation.
+        :type message: str, QString
+
+        :returns: Translated version of message.
+        :rtype: QString
+        """
+        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
+        return QCoreApplication.translate('UA_orthodoxy_validator', message)
+
+    def get_ua_spt_menu(self)->QMenu:
+        '''
+        Повертає меню ініціативи "Відкриті інструменти просторового планування для України"
+
+        :return: ua_spt_menu - об'єкт QMenu з ідентифікатором "ua_spt_menu"
+        '''
+        menu = self.iface.pluginMenu()
+        spt_menu = menu.findChild(QToolBar, 'ua_spt_menu')
+        if not spt_menu:
+            spt_menu = menu.addMenu(self.tr('Панель UA SPT'))
+            spt_menu.setObjectName('ua_spt_menu')
+            spt_menu.setToolTip('Меню ініціативи "Відкриті інструменти просторового планування для України"')
+        return spt_menu
+    
+    def get_ua_spt_toolbar(self)->QToolBar: 
+        """
+        Повертає тулбар ініціативи "Відкриті інструменти просторового планування для України"
+
+        :return: toolbar - об'єкт QToolBar з ідентифікатором "ua_spt_panel"
+        """
+        toolbar = self.iface.mainWindow().findChild(QToolBar, 'ua_spt_panel')
+        if not toolbar:
+            toolbar = self.iface.addToolBar("Панель UA SPT")
+            toolbar.setObjectName('ua_spt_panel')
+            toolbar.setToolTip('Панель ініціативи "Відкриті інструменти просторового планування для України"')
+        return toolbar
+
+    
     def __init__(self, iface):
         """Constructor.
 
@@ -47,6 +91,7 @@ class UA_orthodoxy_validator:
         :type iface: QgsInterface
         """
         # Save reference to the QGIS interface
+        iface = cast(QgisInterface, iface) # аби читалися методи iface
         self.iface = iface
         # initialize plugin directory
         self.plugin_dir = os.path.dirname(__file__)
@@ -64,26 +109,19 @@ class UA_orthodoxy_validator:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&UA_orthodoxy_validator')
+        
+        self.ua_spt_menu = self.get_ua_spt_menu()
+        self.ua_spt_toolbar = self.get_ua_spt_toolbar()
+
+        self.menu = None
+        self.menu_name = self.tr('UA orthodoxy validator')
+        
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
 
-    # noinspection PyMethodMayBeStatic
-    def tr(self, message):
-        """Get the translation for a string using Qt translation API.
 
-        We implement this ourselves since we do not inherit QObject.
-
-        :param message: String for translation.
-        :type message: str, QString
-
-        :returns: Translated version of message.
-        :rtype: QString
-        """
-        # noinspection PyTypeChecker,PyArgumentList,PyCallByClass
-        return QCoreApplication.translate('UA_orthodoxy_validator', message)
 
 
     def add_action(
@@ -147,14 +185,18 @@ class UA_orthodoxy_validator:
         if whats_this is not None:
             action.setWhatsThis(whats_this)
 
-        if add_to_toolbar:
+        if add_to_toolbar: #Змінив тулбар до якого буде додаватися іконка
             # Adds plugin icon to Plugins toolbar
-            self.iface.addToolBarIcon(action)
+            
+            self.ua_spt_toolbar.addAction(action)
+            #self.iface.addToolBarIcon(action)
 
         if add_to_menu:
-            self.iface.addPluginToMenu(
-                self.menu,
-                action)
+            self.menu = self.ua_spt_menu.addMenu(self.menu_name)
+            self.menu.addAction(action)
+            # self.iface.addPluginToMenu(
+            #     'UA SPT',self.menu,
+            #     action)
 
         self.actions.append(action)
 
@@ -166,7 +208,7 @@ class UA_orthodoxy_validator:
         icon_path = os.path.join(self.plugin_dir, 'icon.png')
         self.add_action(
             icon_path,
-            text=self.tr(u'UA_orthodoxy_validator'),
+            text=self.tr('UA orthodoxy validator'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -177,10 +219,13 @@ class UA_orthodoxy_validator:
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            self.iface.removePluginMenu(
-                self.tr(u'&UA_orthodoxy_validator'),
-                action)
-            self.iface.removeToolBarIcon(action)
+            menuaction = self.menu.menuAction()
+            self.ua_spt_menu.removeAction(menuaction)
+            # self.iface.removePluginMenu(
+            #     self.tr('UA orthodoxy validator'),
+            #     action)
+            self.ua_spt_toolbar.removeAction(action)
+            # self.iface.removeToolBarIcon(action)
 
 
     def run(self):
@@ -190,7 +235,7 @@ class UA_orthodoxy_validator:
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
-            self.window = MainWindow(parent=iface.mainWindow())
+            self.window = MainWindow(parent = self.iface.mainWindow())
 
 
             # self.dlg = UA_orthodoxy_validatorDialog()
