@@ -433,7 +433,7 @@ class MainWindow(QDialog):
                 'layer_name': layer.getRealName(),
                 'path': layer.getPath(),
                 'layer_real_name': layer.getRealName(),
-                'required_crs_list': self.crs_combo_box.currentText().split(';')
+                'required_crs_list': self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'][self.crs_combo_box.currentText()].split(';')
                 }
 
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
@@ -523,7 +523,7 @@ class MainWindow(QDialog):
         layerID = layer.id()
         layerVisibleName = layer.name()
         layerRealName = get_real_layer_name(layer)
-        layerPath = layer.dataProvider().dataSourceUri()
+        layerPath = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())['path']
         features_qty = layer.featureCount()
         layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath, features_qty = features_qty)
         return layer_item
