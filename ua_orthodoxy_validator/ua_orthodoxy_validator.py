@@ -22,6 +22,7 @@
  ***************************************************************************/
 """
 from typing import cast
+from uu import Error
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QToolBar, QMenu, QWidget
@@ -61,9 +62,10 @@ class UA_orthodoxy_validator:
         :return: ua_spt_menu - об'єкт QMenu з ідентифікатором "ua_spt_menu"
         '''
         menu = self.iface.pluginMenu()
-        spt_menu = menu.findChild(QToolBar, 'ua_spt_menu')
+        spt_menu = menu.findChild(QMenu, 'ua_spt_menu')
+        
         if not spt_menu:
-            spt_menu = menu.addMenu(self.tr('Панель UA SPT'))
+            spt_menu = menu.addMenu(self.tr('Плагіни UA SPT'))
             spt_menu.setObjectName('ua_spt_menu')
             spt_menu.setToolTip('Меню ініціативи "Відкриті інструменти просторового планування для України"')
         return spt_menu
@@ -193,6 +195,7 @@ class UA_orthodoxy_validator:
 
         if add_to_menu:
             self.menu = self.ua_spt_menu.addMenu(self.menu_name)
+            self.menu.setObjectName('ua_validator_menu')
             self.menu.addAction(action)
             # self.iface.addPluginToMenu(
             #     'UA SPT',self.menu,
@@ -219,14 +222,46 @@ class UA_orthodoxy_validator:
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
-            menuaction = self.menu.menuAction()
-            self.ua_spt_menu.removeAction(menuaction)
+            
+            self.ua_spt_toolbar.removeAction(action)
+            
             # self.iface.removePluginMenu(
             #     self.tr('UA orthodoxy validator'),
             #     action)
-            self.ua_spt_toolbar.removeAction(action)
             # self.iface.removeToolBarIcon(action)
-
+        self.menu.clear()
+        menuaction = self.menu.menuAction()
+        for item in self.ua_spt_menu.children():
+            try:
+                print(f"Object name: {item.objectName()}")
+                print(f"Class name: {item.__class__.__name__}")
+                print(f"Tooltip: {item.toolTip()}")
+                print(f"Status tip: {item.statusTip()}")
+                print(f"Whats this: {item.whatsThis()}")
+                print(f"Text: {item.text()}")
+            except Exception as err:
+                print(err)
+        self.ua_spt_menu.removeAction(menuaction)
+        #self.menu.deleteLater()
+        print(f'{self.menu} deleted from menu')
+        
+        for item in self.ua_spt_menu.children():
+            try:
+                print(f"Object name: {item.objectName()}")
+                print(f"Class name: {item.__class__.__name__}")
+                print(f"Tooltip: {item.toolTip()}")
+                print(f"Status tip: {item.statusTip()}")
+                print(f"Whats this: {item.whatsThis()}")
+                print(f"Text: {item.text()}")
+            except Exception as err:
+                print(err)
+        if len(self.ua_spt_menu.children()) == 1:
+            self.ua_spt_menu.deleteLater()
+        else:
+            print(False)
+        if self.ua_spt_toolbar.children() == []:
+            self.ua_spt_toolbar.deleteLater()
+        
 
     def run(self):
         """Run method that performs all the real work"""
