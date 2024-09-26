@@ -231,30 +231,30 @@ class UA_orthodoxy_validator:
             # self.iface.removeToolBarIcon(action)
         self.menu.clear()
         menuaction = self.menu.menuAction()
-        for item in self.ua_spt_menu.children():
-            try:
-                print(f"Object name: {item.objectName()}")
-                print(f"Class name: {item.__class__.__name__}")
-                print(f"Tooltip: {item.toolTip()}")
-                print(f"Status tip: {item.statusTip()}")
-                print(f"Whats this: {item.whatsThis()}")
-                print(f"Text: {item.text()}")
-            except Exception as err:
-                print(err)
+        # for item in self.ua_spt_menu.children():
+        #     try:
+        #         print(f"Object name: {item.objectName()}")
+        #         print(f"Class name: {item.__class__.__name__}")
+        #         print(f"Tooltip: {item.toolTip()}")
+        #         print(f"Status tip: {item.statusTip()}")
+        #         print(f"Whats this: {item.whatsThis()}")
+        #         print(f"Text: {item.text()}")
+        #     except Exception as err:
+        #         print(err)
         self.ua_spt_menu.removeAction(menuaction)
         #self.menu.deleteLater()
-        print(f'{self.menu} deleted from menu')
+        # print(f'{self.menu} deleted from menu')
         
-        for item in self.ua_spt_menu.children():
-            try:
-                print(f"Object name: {item.objectName()}")
-                print(f"Class name: {item.__class__.__name__}")
-                print(f"Tooltip: {item.toolTip()}")
-                print(f"Status tip: {item.statusTip()}")
-                print(f"Whats this: {item.whatsThis()}")
-                print(f"Text: {item.text()}")
-            except Exception as err:
-                print(err)
+        # for item in self.ua_spt_menu.children():
+        #     try:
+        #         print(f"Object name: {item.objectName()}")
+        #         print(f"Class name: {item.__class__.__name__}")
+        #         print(f"Tooltip: {item.toolTip()}")
+        #         print(f"Status tip: {item.statusTip()}")
+        #         print(f"Whats this: {item.whatsThis()}")
+        #         print(f"Text: {item.text()}")
+        #     except Exception as err:
+        #         print(err)
         if len(self.ua_spt_menu.children()) == 1:
             self.ua_spt_menu.deleteLater()
         else:
