@@ -429,11 +429,14 @@ class MainWindow(QDialog):
         for i in range(self.layer_list_widget.topLevelItemCount()):
             layer = self.layer_list_widget.topLevelItem(i)
             layer = cast(layerItem, layer)
+            crs_text = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'][self.crs_combo_box.currentText()]
+            crs_list = crs_text.replace(' ', '').replace('\r', '').replace('\n', '').replace('\t', '').replace(';', ',').split(',')
+            print(crs_list)
             layers_dict[layer.getID()] = {
                 'layer_name': layer.getRealName(),
                 'path': layer.getPath(),
                 'layer_real_name': layer.getRealName(),
-                'required_crs_list': self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'][self.crs_combo_box.currentText()].split(';')
+                'required_crs_list': crs_list
                 }
 
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
