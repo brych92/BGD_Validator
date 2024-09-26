@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLay
 from PyQt5.QtCore import Qt, QMimeData, QSize
 from PyQt5.QtGui import QCursor
 from numpy import unicode_
-from qgis.core import QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsLayerTree, QgsProviderRegistry, QgsVectorLayer
+from qgis.core import QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsLayerTree, QgsProviderRegistry, QgsVectorLayer, QgsMapLayerType
 from qgis.utils import iface
 from qgis.gui import QgsLayerTreeView
 import sys, os, string, random
@@ -531,11 +531,13 @@ class MainWindow(QDialog):
     def update_layers(self):
         self.layer_list_widget.clear()
         for layer in iface.layerTreeView().selectedLayersRecursive():
-            self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
+            if layer.type() == QgsMapLayerType.VectorLayer:
+                self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
     
     def add_selected_layers(self):
         for layer in iface.layerTreeView().selectedLayersRecursive():
-            self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
+            if layer.type() == QgsMapLayerType.VectorLayer:
+                self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
         
     def show_context_menu(self, position):
         if self.layer_list_widget.selectedItems() == []:
