@@ -84,9 +84,9 @@
 
     Загальні атрибути для всіх об'єктів:
 
-        'type': 'container'/'file'/'layer'/'feature'/'inspection' * #для фільтрування
-        'item_name': -назва рядку у вікні- * #назва яка буде відображатися 
-        'item_tooltip': -підказка- #те що буде виводитися в першому рядку підказки, опціонально
+        'type' : 'container'/'file'/'layer'/'feature'/'inspection' * #для фільтрування
+        'item_name' : -назва рядку у вікні- * #назва яка буде відображатися 
+        'item_tooltip' : -підказка- #те що буде виводитися в першому рядку підказки, опціонально
         'help_url' : "-посилання_на_сторінку_хелпу_з_описом_форматів-"
         'subitems' : [-список дочірніх елементів-]
 
@@ -111,7 +111,6 @@
 
     для типу inspection:
         
-        'inspection_category' : 'general'/'file'/'layer'/'object' * #для фільтрування
         'inspection_type_name' :  #Кожна перевірка має починатися зі слова "Перевірка" аби я міг то відміняти при біді
             "Перевірка формату геоданих"
             "Перевірка наявності обов’язкових шарів"
@@ -119,10 +118,13 @@
             "Перевірка валідності шару"
             "Перевірка на тип геометрії"
             "Перевірка на систему координат шару"
-            "Перевірка на відсутність полів (атрибутів)"
-            "Перевірка на відсутність обов’язкових полів (атрибутів)"
-            "Перевірка назв полів (атрибутів)"
-            "Перевірка типу полів (атрибутів)"
+            ####"Перевірка на відсутність полів (атрибутів)"
+            "Перевірка на відсутність обов’язкових полів"
+            "Перевірка на відсутність обов’язкових атрибутів"
+            "Перевірка назв полів"
+            "Перевірка назв атрибутів"
+            "Перевірка типу полів"
+            "Перевірка типу атрибутів"
             "Перевірка на наявність об’єктів в шарі"
             "Перевірка типу геометрії об’єкта"
             "Перевірка чи пуста геометрія об’єкта"
@@ -137,16 +139,16 @@
             ....
         'criticity' : 0/1/2/-1 * # тип int критичність помилки, від 0 - не помилка до 2 -критична помилка, -1 - невдала перевірка - буде відображатися окремим значком    'item_name': -назва рядку у вікні- * (якшо оцю штуку зробити списком для помилкок, то воно виведе назву типу помилки: і окремі піделементи)
         error_geometry: {
-            'crs' : 'EPSG:4326' * (epsg код ск в якій будуть передані координати)
-            'error_points' : [-точки-] (воно буде виводити ці координати як піделементи, з номерами попорядку в WKT string)
-            'error_polygons' : [-полігони-](воно буде виводити ці елементи як піделементи помилки, з номерами попорядку в WKT string)
+            'crs' : 'EPSG:4326' * #(epsg код ск в якій будуть передані координати)
+            'error_points' : [-точки-] #(воно буде виводити ці координати як піделементи, з номерами попорядку в WKT string)
+            'error_polygons' : [-полігони-] #(воно буде виводити ці елементи як піделементи помилки, з номерами попорядку в WKT string)
         }
         'corresponding_objects' : [ #для помилок дублювання, відношень і топології
             {
             'related_layer_id' : "-ідентифікатор шару-" *
-            'related_object_id' : "-ідентифікатор об'єкту-" *
+            'related_feature_id' : "-ідентифікатор об'єкту-" *
             'object_GIUD' : "-GUid об'єкту-" *
-            'related_object_visible_name' : -відображувана назва об'єкту-
+            'related_feature_visible_name' : -відображувана назва об'єкту-
             },
             ...
         ]
@@ -167,7 +169,6 @@ result_v2 = [
         'subitems' : [
             {
                 'type' : 'inspection',
-                'inspection_category' : 'general',
                 'inspetcion_type_name' : "Перевірка наявності обов’язкових шарів",
                 'item_name' : "Відсутній шар 'Імя шару', що вимагається структурою",
                 'criticity' : 1,
@@ -175,7 +176,6 @@ result_v2 = [
             },
             {
                 'type' : 'inspection',
-                'inspection_category' : 'general',
                 'inspetcion_type_name' : "Перевірка наявності обов’язкових шарів",
                 'item_name' : "Відсутній шар 'Імя шару 2', що вимагається структурою",
                 'criticity' : 1,
@@ -198,12 +198,31 @@ result_v2 = [
     },
     {
         'type' : 'file',
+        'item_name' : "Файл 'блаблабла'",
+        'related_file_path' : r"C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\Для тестування\EDRA від Богдана\buildings.geojson",
+        'subitems' : [
+            {
+                'type' : 'inspection',
+                'inspetcion_type_name' : "Перевірка формату геоданих",
+                'criticity' : 0
+            },
+            {
+                'type' : 'inspection',
+                'inspetcion_type_name' : "Перевірка на наявність даних",
+                'item_name' : "У файлі 'Імя файлу' відсутні дані",
+                'criticity' : 1,
+                'help_url' : "https://genius.com/Nirvana-smells-like-teen-spirit-lyrics"
+            },
+            
+        ]
+    },
+    {
+        'type' : 'file',
         'item_name' : "Файл 'Імя файлу'",
         'related_file_path' : r"C:\Users\brych\OneDrive\Документы\01 Робота\98 Сторонні проекти\ua mbd team\Плагіни\Перевірка на МБД\Для тестування\EDRA від Богдана\streets.geojson",
         'subitems' : [                
             {
                 'type' : 'inspection',
-                'inspection_category' : 'file',
                 'inspetcion_type_name' : "Перевірка формату геоданих",
                 'item_name' : "Формат файлу 'GDB' не відповідає вимогам, вимагається 'GEOJSON' або 'SHP'",
                 'criticity' : 1,
@@ -211,7 +230,6 @@ result_v2 = [
             },
             {
                 'type' : 'inspection',
-                'inspection_category' : 'file',
                 'inspetcion_type_name' : "Перевірка кодування файлу",
                 'item_name' : "Кодування файлу 'WINDOWS-1251' не відповідає вимогам, вимагається 'UTF-8'",
                 'criticity' : 1,
@@ -219,13 +237,9 @@ result_v2 = [
             },
             {
                 'type' : 'inspection',
-                'inspection_category' : 'file',
                 'inspetcion_type_name' : "Перевірка на наявність даних",
-                'item_name' : "У файлі відсутні дані",
-                'criticity' : 1,
-                'help_url' : "https://genius.com/Nirvana-smells-like-teen-spirit-lyrics"
+                'criticity' : 0
             },
-            
             {
                 'type' : 'layer',
                 'item_name' : "Шар 'Імя шару'",
@@ -235,12 +249,89 @@ result_v2 = [
                 'subitems' : [
                     {
                         'type' : 'inspection',
-                        'inspection_category' : 'layer',
                         'inspetcion_type_name' : "Перевірка на тип геометрії",
                         'item_name' : "Тип геометрії шару 'Point' не відповідає структурі, вимагається 'LineString'",
                         'criticity' : 1,
                         'help_url' : "https://genius.com/Rammstein-du-hast-lyrics"
                     },
+                    {
+                        'type' : 'inspection',
+                        'inspetcion_type_name' : "Перевірка на систему координат шару",
+                        'item_tool_tip' : "А шо тии думав, шо тут буде підказка?",
+                        'item_name' : "Система координат шару 'EPSG:9999' не відповідає структурі, вимагається 'EPSG:4326'",
+                        'criticity' : 1,
+                        'help_url' : "https://genius.com/Nirvana-rape-me-lyrics"
+                    },
+                    {
+                        'type' : 'inspection',
+                        'inspetcion_type_name' : "Перевірка на відсутність полів",
+                        'item_name' : "В шарі відсутнє поле атрибуту 'Імя поля', що вимагається по структурі",
+                        'criticity' : 1,
+                        'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                    },
+                    {
+                        'type' : 'inspection',
+                        'inspetcion_type_name' : "Перевірка на відсутність полів",
+                        'item_name' : "В шарі відсутнє поле атрибуту 'Імя 2 поля', що вимагається по структурі",
+                        'criticity' : 1,
+                        'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                    },
+                    {
+                        'type' : 'feature',
+                        'item_name' : "Об'єкт 'id об'єкту'",
+                        'related_feature_id' : '1',
+                        'subitems' : [
+                            {
+                                'type' : 'inspection',
+                                'inspetcion_type_name' : "Перевірка наявності атрибутів",
+                                'item_name' : "В об'єкті не заповнений атрибут 'Імя атрибуту', що вимагається по структурі",
+                                'criticity' : 1,
+                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                            },
+                            {
+                                'type' : 'inspection',
+                                'inspetcion_type_name' : "Перевірка наявності атрибутів",
+                                'item_name' : "В об'єкті не заповнений атрибут 'Імя 2 атрибуту', що вимагається по структурі",
+                                'criticity' : 1,
+                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                            },
+                            {
+                                'type' : 'inspection',
+                                'inspetcion_type_name' : "Перевірка типу геометрії об’єкта",
+                                'item_name' :  "Тип геометрії об'єкту 'Point' не відповідає структурі, вимагається 'LineString'",
+                                'criticity' : 1,
+                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                            },
+                            {
+                                'type' : 'inspection',
+                                'inspetcion_type_name' : "Перевірка на наявність об’єктів в шарі",
+                                'item_name' :  "В шарі відсутні об’єкти, що вимагається по структурі",
+                                'criticity' : 1,
+                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                            },
+                            {
+                                'type' : 'inspection',
+                                'inspetcion_type_name' : "Перевірка дублювання GUID (унікального атрибуту)",
+                                'item_name' :  "GUID не унікальний в межах шарів що валідуються",
+                                'corresponding_objects' : [
+                                    {
+                                        'corrsesponding_layer_id' : 'dpt_area_002dcb97_0478_48d5_9667_367208a83219',
+                                        'corrsesponding_feature_id' : '1',
+                                        'related_object_visible_name' : 'Імя об’єкту'
+                                    }
+                                ],
+                                'criticity' : 1,
+                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                            },
+                            {
+                                'type' : 'inspection',
+                                'inspetcion_type_name' : "Перевірка чи значення атрибуту є в переліку доменів",
+                                'item_name' :  "Значення атрибуту 'Імя' не відповідає класифікатору, що вимагається по структурі",
+                                'criticity' : 1,
+                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                            }
+                        ]
+                    }
                 ]
                 
             }
