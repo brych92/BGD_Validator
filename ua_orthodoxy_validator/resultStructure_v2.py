@@ -204,6 +204,7 @@ result_v2 = [
             {
                 'type' : 'inspection',
                 'inspetcion_type_name' : "Перевірка формату геоданих",
+                'item_name' : "Формат файлу 'GeoJson' відповідає структурі",
                 'criticity' : 0
             },
             {
@@ -213,7 +214,7 @@ result_v2 = [
                 'criticity' : 1,
                 'help_url' : "https://genius.com/Nirvana-smells-like-teen-spirit-lyrics"
             },
-            
+
         ]
     },
     {
@@ -238,6 +239,7 @@ result_v2 = [
             {
                 'type' : 'inspection',
                 'inspetcion_type_name' : "Перевірка на наявність даних",
+                'item_name' : "У файлі 'Імя файлу' наявні дані",
                 'criticity' : 0
             },
             {
@@ -282,19 +284,32 @@ result_v2 = [
                         'related_feature_id' : '1',
                         'subitems' : [
                             {
-                                'type' : 'inspection',
-                                'inspetcion_type_name' : "Перевірка наявності атрибутів",
-                                'item_name' : "В об'єкті не заповнений атрибут 'Імя атрибуту', що вимагається по структурі",
-                                'criticity' : 1,
-                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
-                            },
-                            {
-                                'type' : 'inspection',
-                                'inspetcion_type_name' : "Перевірка наявності атрибутів",
-                                'item_name' : "В об'єкті не заповнений атрибут 'Імя 2 атрибуту', що вимагається по структурі",
-                                'criticity' : 1,
-                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
-                            },
+                                'type' : 'container',
+                                'item_name' : "Помилки атрибутів",
+                                'subitems' : [
+                                    {
+                                        'type' : 'inspection',
+                                        'inspetcion_type_name' : "Перевірка наявності атрибутів",
+                                        'item_name' : "В об'єкті не заповнений атрибут 'number', що вимагається по структурі",
+                                        'criticity' : 1,
+                                        'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                                    },
+                                    {
+                                        'type' : 'inspection',
+                                        'inspetcion_type_name' : "Перевірка наявності атрибутів",
+                                        'item_name' : "В об'єкті не заповнений атрибут 'street', що вимагається по структурі",
+                                        'criticity' : 1,
+                                        'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                                    },
+                                    {
+                                        'type' : 'inspection',
+                                        'inspetcion_type_name' : "Перевірка наявності атрибутів",
+                                        'item_name' : "В об'єкті не заповнений атрибут 'street', що вимагається по структурі",
+                                        'criticity' : 1,
+                                        'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                                    }
+                                ]
+                            },                            
                             {
                                 'type' : 'inspection',
                                 'inspetcion_type_name' : "Перевірка типу геометрії об’єкта",
@@ -320,6 +335,13 @@ result_v2 = [
                                         'related_object_visible_name' : 'Імя об’єкту'
                                     }
                                 ],
+                                'criticity' : 1,
+                                'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
+                            },
+                            {
+                                'type' : 'inspection',
+                                'inspetcion_type_name' : "Перевірка чи значення атрибуту є в переліку доменів",
+                                'item_name' :  "Значення атрибуту 'Імя' не відповідає класифікатору, що вимагається по структурі",
                                 'criticity' : 1,
                                 'help_url' : "https://genius.com/Evanescence-lithium-lyrics"
                             },
