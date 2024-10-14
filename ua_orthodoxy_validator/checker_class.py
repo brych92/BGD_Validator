@@ -757,7 +757,7 @@ class EDRA_validator:
         
         error_dict = {}
         if type(current_text) == str and type(required_text) == str and type(alias) == str:
-                           
+
             if len(error_dict.keys()) == 0 and not self.str_contains_uppercase(required_text) and not self.str_contains_cyrillic(required_text) and not self.str_contains_spaces(required_text):
                 current_text_not_changed = None
                 
@@ -1107,13 +1107,14 @@ class EDRA_exchange_layer_checker:
         self.layer_EDRA_valid_class = layer_EDRA_valid_class
         self.layer_props = layer_props
         self.check_result_dict = {}
+        self.check_result_legacy = {}
         self.layer_id = layer_id
         self.layer_props['related_layer_id'] = layer_id
 
     def check_crs_is_equal_required(self):
         layer_crs = self.layer_EDRA_valid_class.get_layer_crs()
         if self.layer_EDRA_valid_class.compare_crs(self.layer_props['required_crs_list'], layer_crs):
-            return []
+            []
         else:
             return [layer_crs, ', '.join(self.layer_props['required_crs_list'])]
 
@@ -1210,7 +1211,7 @@ class EDRA_exchange_layer_checker:
 
         
         for feature in self.layer_EDRA_valid_class.layer:
-         
+        
             
             features_dict[feature.GetFID()] = {
                 "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'empty'),
@@ -1233,13 +1234,62 @@ class EDRA_exchange_layer_checker:
         return features_dict
             
     def write_result_dict(self):
-            self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
+            
             if self.layer_EDRA_valid_class.required_geometry_type != None:
-                self.check_result_dict[self.layer_props['related_layer_id']]['wrong_layer_CRS'] = self.check_crs_is_equal_required()
+                
+                result_check_crs_layer = self.check_crs_is_equal_required()
+                
+                insception_dict_layer_wrong_crs = None
+                
+                insception_dict_layer_wrong_crs = {}
+                insception_dict_layer_wrong_crs['type'] = "inspection"
+                insception_dict_layer_wrong_crs['inspetcion_type_name'] = 'Перевірка системи координат шару' #Підтягувати перевірку з файлу структури з помилками
+                insception_dict_layer_wrong_crs['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                
+                if result_check_crs_layer != []:
+                    layer_crs = result_check_crs_layer[0]
+                    required_crs_str = result_check_crs_layer[1]
+                    insception_dict_layer_wrong_crs['item_name'] = f"Невідповідна СК шару: «{layer_crs}», очікується: «{required_crs_str}»"
+                    insception_dict_layer_wrong_crs['criticity'] = 1    
+                    insception_dict_layer_wrong_crs['item_tooltip'] = f"Невідповідна СК шару"
+                    
+                elif result_check_crs_layer == []:
+                    insception_dict_layer_wrong_crs['item_name'] = f"Система координат шару правильна"
+                    insception_dict_layer_wrong_crs['criticity'] = 0    
+                    insception_dict_layer_wrong_crs['item_tooltip'] = f"Система координат шару правильна"
+                
+                self.check_result_dict['subitems'].append(insception_dict_layer_wrong_crs)
+                
+                result_check_wrong_layer_geometry_type = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
+                
+                insception_dict_wrong_layer_geometry_type = None
+                
+                insception_dict_wrong_layer_geometry_type = {}
+                insception_dict_wrong_layer_geometry_type['type'] = "inspection"
+                insception_dict_wrong_layer_geometry_type['inspetcion_type_name'] = 'Перевірка системи координат шару' #Підтягувати перевірку з файлу структури з помилками
+                insception_dict_wrong_layer_geometry_type['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                
+                if result_check_wrong_layer_geometry_type != []:
+                    current_layer_geometry_type = result_check_wrong_layer_geometry_type[0]
+                    required_geometry_type = result_check_wrong_layer_geometry_type[1]
+                    insception_dict_wrong_layer_geometry_type['item_name'] = f"Невідповідний геометричний тип класу: «{current_layer_geometry_type}», вимагається: «{required_geometry_type}»"
+                    insception_dict_wrong_layer_geometry_type['criticity'] = 1    
+                    insception_dict_wrong_layer_geometry_type['item_tooltip'] = f"Невідповідний геометричний тип класу"
+                    
+                elif result_check_wrong_layer_geometry_type == []:
+                    insception_dict_wrong_layer_geometry_type['item_name'] = f"Геометричний тип класу правильний"
+                    insception_dict_wrong_layer_geometry_type['criticity'] = 0    
+                    insception_dict_wrong_layer_geometry_type['item_tooltip'] = f"Геометричний тип класу правильний"
+                
+                self.check_result_dict['subitems'].append(insception_dict_wrong_layer_geometry_type)
+                
                 self.check_result_dict[self.layer_props['related_layer_id']]['wrong_geometry_type'] = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
                 
-            if 'layer_name_errors' not in self.check_result_dict[self.layer_props['related_layer_id']].keys():
-                self.check_result_dict[self.layer_props['related_layer_id']]['layer_name_errors'] = {}
+            # if 'layer_name_errors' not in self.check_result_legacy[self.layer_props['related_layer_id']].keys():
+            #     self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = {}
+            
+            self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
+            
             self.check_result_dict[self.layer_props['related_layer_id']]['field_errors'] = {}
             self.check_result_dict[self.layer_props['related_layer_id']]['field_errors']['missing_required_fields'] = self.check_missing_required_fields()
             self.check_result_dict[self.layer_props['related_layer_id']]['field_errors']['missing_fields'] = self.check_missing_fields()
@@ -1250,7 +1300,7 @@ class EDRA_exchange_layer_checker:
             
             #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
             
-            self.check_result_dict[self.layer_props['related_layer_id']]['features'] = self.write_features_check_result()        
+            self.check_result_legacy[self.layer_props['related_layer_id']]['features'] = self.write_features_check_result()        
     
     def run(self):
         
@@ -1259,6 +1309,8 @@ class EDRA_exchange_layer_checker:
         self.check_result_dict['visible_layer_name'] = self.layer_props['layer_name']
         self.check_result_dict['real_layer_name'] = self.layer_props['layer_real_name']
         self.check_result_dict['subitems'] = []
+        
+        
         # if (checker_layer_empty):  
         
             
@@ -1272,35 +1324,94 @@ class EDRA_exchange_layer_checker:
                 insception_dict_is_empty['item_name'] = f'В шарі {self.layer_props['layer_name']} відсутні об\'єкти'
                 insception_dict_is_empty['criticity'] = 1
                 insception_dict_is_empty['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-                insception_dict_is_empty['item_tooltip'] = f"В шарі {self.layer_props['real_layer_name']} відсутні об\'єкти",
+                insception_dict_is_empty['item_tooltip'] = f"В шарі {self.layer_props['real_layer_name']} відсутні об\'єкти"
             else:
                 insception_dict_is_empty['inspetcion_type_name'] = 'Перевірка на наявність об’єктів в шарі' #Підтягувати перевірку з файлу структури з помилками
                 insception_dict_is_empty['item_name'] = f'В шарі {self.layer_props['layer_name']} наявні об\'єкти'
                 insception_dict_is_empty['criticity'] = 0
                 insception_dict_is_empty['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-                insception_dict_is_empty['item_tooltip'] = f"В шарі {self.layer_props['real_layer_name']} наявні об\'єкти",
+                insception_dict_is_empty['item_tooltip'] = f"В шарі {self.layer_props['real_layer_name']} наявні об\'єкти"
             self.check_result_dict['subitems'].append(insception_dict_is_empty)
-            
-            
             
             if self.layer_EDRA_valid_class.nameError:
                 layer_name_errors_check_result = self.layer_EDRA_valid_class.check_text_in_objects_list(self.layer_EDRA_valid_class.layer_exchange_name, 'layer')
-                
 
                 if layer_name_errors_check_result['any_similar_name']:
                     
                     container_layer_error_name = None
-                        
+                    container_layer_error_name = {}
+                    container_layer_error_name['type'] = 'container'
+                    container_layer_error_name['item_name'] = "Помилки назви шару"
+                    container_layer_error_name['subitems'] = []
                     
-                    for x in layer_name_errors_check_result['result_dict']:
+                    if len(layer_name_errors_check_result['result_dict'].keys()) > 0:
+                        for x in layer_name_errors_check_result['result_dict']:
+                            insception_dict_layer_error_name = None
+                            insception_dict_layer_error_name = {}
+                            insception_dict_layer_error_name['type'] = "inspection"
+                            
+                            if [x] == "general":
+                                # insception_dict_layer_error_name['type'] = "inspection"
+                                insception_dict_layer_error_name['inspetcion_type_name'] = 'Перевірка імені шару' #Підтягувати перевірку з файлу структури з помилками
+                                insception_dict_layer_error_name['item_name'] = f"Назва класу «{self.layer_props['real_layer_name']}» не відповідає структурі"
+                                insception_dict_layer_error_name['criticity'] = 1
+                                insception_dict_layer_error_name['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                                insception_dict_layer_error_name['item_tooltip'] = f"Назва класу не відповідає структурі"
+                            
+                            elif [x] == "used_alias":
+                                # insception_dict_layer_error_name['type'] = "inspection"
+                                insception_dict_layer_error_name['inspetcion_type_name'] = 'Перевірка імені шару' #Підтягувати перевірку з файлу структури з помилками
+                                insception_dict_layer_error_name['item_name'] = f"Замість назви класу використано псевдонім «{self.layer_props['real_layer_name']}», вимагається «{layer_name_errors_check_result['result_dict']['valid_name']}»"
+                                insception_dict_layer_error_name['criticity'] = 1
+                                insception_dict_layer_error_name['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                                insception_dict_layer_error_name['item_tooltip'] = f"Замість назви класу використано псевдонім»"
+                            
+                            elif [x] == "spaces_used":
+                                # insception_dict_layer_error_name['type'] = "inspection"
+                                insception_dict_layer_error_name['inspetcion_type_name'] = 'Перевірка імені шару' #Підтягувати перевірку з файлу структури з помилками
+                                insception_dict_layer_error_name['item_name'] = f"В назві класу «{self.layer_props['real_layer_name']}» наявні пробіли"
+                                insception_dict_layer_error_name['criticity'] = 1
+                                insception_dict_layer_error_name['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                                insception_dict_layer_error_name['item_tooltip'] = f"В назві класу наявні пробіли"
+                            
+                            elif [x] == "used_cyrillic":
+                                # insception_dict_layer_error_name['type'] = "inspection"
+                                insception_dict_layer_error_name['inspetcion_type_name'] = 'Перевірка імені шару' #Підтягувати перевірку з файлу структури з помилками
+                                insception_dict_layer_error_name['item_name'] = f"В назві класу «{self.layer_props['real_layer_name']}» наявні кириличні літери"
+                                insception_dict_layer_error_name['criticity'] = 1
+                                insception_dict_layer_error_name['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                                insception_dict_layer_error_name['item_tooltip'] = f"В назві класу наявні кириличні літери"
+
+                    if len(layer_name_errors_check_result['result_dict'].keys()) == 0:
                         insception_dict_layer_error_name = None
                         insception_dict_layer_error_name = {}
                         insception_dict_layer_error_name['type'] = "inspection"
+                        insception_dict_layer_error_name['inspetcion_type_name'] = 'Перевірка імені шару' #Підтягувати перевірку з файлу структури з помилками
+                        insception_dict_layer_error_name['item_name'] = f"Назва класу «{self.layer_props['real_layer_name']}» відповідає структурі"
+                        insception_dict_layer_error_name['criticity'] = 0
+                        insception_dict_layer_error_name['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                        insception_dict_layer_error_name['item_tooltip'] = f"Назва класу відповідає структурі"
                         
+                    container_layer_error_name['subitems'].append(insception_dict_layer_error_name)
+                    
+                    self.check_result_dict['subitems'].append(container_layer_error_name)
+                    
                     self.layer_EDRA_valid_class = EDRA_validator(self.layer_EDRA_valid_class.layer, layer_name_errors_check_result['result_dict']['valid_name'], self.layer_EDRA_valid_class.structure_json, self.layer_EDRA_valid_class.domains_json)
                     self.check_result_dict[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
+                    
                     self.write_result_dict()
                 else: 
+                    insception_dict_layer_error_name = None
+                    insception_dict_layer_error_name = {}
+                    insception_dict_layer_error_name['type'] = "inspection"
+                        
+                    insception_dict_layer_error_name['inspetcion_type_name'] = 'Перевірка імені шару' #Підтягувати перевірку з файлу структури з помилками
+                    insception_dict_layer_error_name['item_name'] = f"Назва класу «{self.layer_props['real_layer_name']}» не відповідає структурі"
+                    insception_dict_layer_error_name['criticity'] = 1
+                    insception_dict_layer_error_name['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                    insception_dict_layer_error_name['item_tooltip'] = f"Назва класу не відповідає структурі"
+                    
+                    self.check_result_dict['subitems'].append(insception_dict_layer_error_name)
                     # print(layer_name_errors_check_result['result_dict'])
                     self.check_result_dict[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
                 # self.check_result_dict[self.layer_props['related_layer_id']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
@@ -1320,7 +1431,7 @@ class EDRA_exchange_layer_checker:
             insception_dict['item_name'] = f'Шар {self.layer_props['layer_name']} не валідний. GDAL не може зчитати шар'
             insception_dict['criticity'] = 1
             insception_dict['help_url'] = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-            insception_dict['item_tooltip'] = "А шо тии думав, шо тут буде підказка?",
+            insception_dict['item_tooltip'] = f"Шар {self.layer_props['real_layer_name']}  не валідний."
             #Альтернативне посилання https://www.youtube.com/watch?v=asjQNZn7vng #Гендальф
             self.check_result_dict['subitems'].append(insception_dict)
             #self.check_result_dict[self.layer_props['layer_name']]['layer_invalid'] = True
