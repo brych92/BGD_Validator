@@ -3,6 +3,7 @@
 from importlib import reload
 
 from re import split
+import re
 from typing import Union, cast 
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox
@@ -25,7 +26,9 @@ from .csv_to_json_structure_converter import Csv_to_json_structure_converter
 # reload(initialize_script)
 # import Result_Window
 # reload(Result_Window)
-from .Result_Window import ResultWindow
+# from .Result_Window import ResultWindow
+from .result_windows_v2 import ResultWindow, CustomTreeView, CustomItemModel
+from .resultStructure_v2 import result_v2
 
 # import checker_class
 # reload(checker_class)
@@ -346,6 +349,7 @@ class MainWindow(QDialog):
 
         # Create a QVBoxLayout
         layerslayout = QVBoxLayout(self)
+        self.ll = layerslayout
         
         self.from_layer_tree_frame = QFrame()
 
@@ -425,32 +429,41 @@ class MainWindow(QDialog):
         self.setLayout(layerslayout)
 
     def run(self):
-        layers_dict = {}
-        for i in range(self.layer_list_widget.topLevelItemCount()):
-            layer = self.layer_list_widget.topLevelItem(i)
-            layer = cast(layerItem, layer)
-            crs_text = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'][self.crs_combo_box.currentText()]
-            crs_list = crs_text.replace(' ', '').replace('\r', '').replace('\n', '').replace('\t', '').replace(';', ',').split(',')
-            print(crs_list)
-            layers_dict[layer.getID()] = {
-                'layer_name': layer.getRealName(),
-                'path': layer.getPath(),
-                'layer_real_name': layer.getRealName(),
-                'required_crs_list': crs_list
-                }
+        # layers_dict = {}
+        # for i in range(self.layer_list_widget.topLevelItemCount()):
+        #     layer = self.layer_list_widget.topLevelItem(i)
+        #     layer = cast(layerItem, layer)
+        #     crs_text = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'][self.crs_combo_box.currentText()]
+        #     crs_list = crs_text.replace(' ', '').replace('\r', '').replace('\n', '').replace('\t', '').replace(';', ',').split(',')
+            
+        #     layers_dict[layer.getID()] = {
+        #         'layer_name': layer.getRealName(),
+        #         'path': layer.getPath(),
+        #         'layer_real_name': layer.getRealName(),
+        #         'required_crs_list': crs_list
+        #         }
 
             #print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
         
         # print('Вхідний список шарів:')
         # print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
         # print(json.dumps(self.strutures, indent=4,ensure_ascii=False))        
-        result_structure = run_validator(
-            layers = layers_dict,
-            structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
+        
+        
+        # result_structure = run_validator(
+        #     layers = layers_dict,
+        #     structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
 
         # print('\n\n\n\n\nВивід')
         # print(json.dumps(result_structure, indent=4, ensure_ascii=False))
-        window = ResultWindow(result_structure, parent=iface.mainWindow())
+        #print(result_v2)
+        
+        # self.tree_widget = CustomTreeView()
+        # self.model = CustomItemModel(result_v2)
+        # self.tree_widget.setModel(self.model)
+        # self.ll.addWidget(self.tree_widget)
+        #self.tree_widget.show()
+        window = ResultWindow(result_v2, parent=self)#iface.mainWindow())
         window.show()
 
     def printSelectedLayerData(self):

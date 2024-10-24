@@ -95,7 +95,7 @@ result_v2 = [
                     {
                         'type' : 'inspection',
                         'inspetcion_type_name' : "Перевірка на систему координат шару",
-                        'item_tool_tip' : "А шо тии думав, шо тут буде підказка?",
+                        'item_tooltip' : "А шо тии думав, шо тут буде підказка?",
                         'item_name' : "Система координат шару 'EPSG:9999' не відповідає структурі, вимагається 'EPSG:4326'",
                         'criticity' : 1,
                         'help_url' : "https://genius.com/Nirvana-rape-me-lyrics"
