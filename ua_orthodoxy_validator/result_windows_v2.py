@@ -1,17 +1,23 @@
 
-from logging import critical
+import inspect
+from logging import critical, warn
 import json
 from math import e
+from pyexpat import model
 from typing import Union, cast
+from warnings import filters
 from numpy import isin, union1d
 from qgis.PyQt.QtWidgets import (
     QLabel, QVBoxLayout, QTabWidget, QTreeWidget, QHBoxLayout,
-    QPushButton, QApplication, QMenu, QTreeWidgetItem, QDialog, QTextEdit, QWidget, QTreeView
+    QPushButton, QApplication, QMenu, QTreeWidgetItem, QDialog, 
+    QTextEdit, QWidget, QTreeView, QCheckBox
 )
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, QSortFilterProxyModel, QModelIndex, pyqtSignal, pyqtSlot
 from qgis.PyQt.QtGui import QFont, QColor, QPixmap, QIcon, QStandardItemModel, QStandardItem
 
-from qgis.core import QgsProject, QgsProviderRegistry, QgsVectorLayer, QgsFeature, QgsPointXY, QgsFeature
+from qgis.core import (
+    QgsProject, QgsProviderRegistry, QgsVectorLayer, 
+    QgsFeature, QgsPointXY, QgsFeature)
 from qgis.utils import iface
 
 from datetime import date
@@ -95,6 +101,77 @@ def get_index(list_v: list, index: int) -> Union[str, None]:
     else:
         return None    
 
+class CheckboxesGroup(QWidget):
+    checked_values_changed = pyqtSignal(list)
+    
+    def __init__(self, options: dict = None):
+        super().__init__()
+        self.options = options
+        self.checkboxes = {}
+        self.checked_values = []
+
+        self.create_checkboxes()
+
+    def create_checkboxes(self):
+        layout = QVBoxLayout()
+        if self.options is not None:
+            options = self.options
+        else:
+            options = {
+                0: "Всі перевірки", 
+                1: "Тільки неуспішні",
+                2: "Тільки критичні"
+            }
+
+        for k, v in options.items():
+            checkbox = QCheckBox(v)
+            layout.addWidget(checkbox)
+            self.checkboxes[k] = checkbox
+
+        button = QPushButton("Відфільтрувати")
+        button.clicked.connect(self.get_checked_values)
+        layout.addWidget(button)
+
+        self.setLayout(layout)
+
+    def get_checked_values(self):
+        self.checked_values = []
+        for k, checkbox in self.checkboxes.items():
+            if checkbox.isChecked():
+                self.checked_values.append(k)
+        print(self.checked_values)
+        
+        self.checked_values_changed.emit(self.checked_values)
+        
+        return self.checked_values
+
+class statusWidget(QLabel):
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        
+        total_inspections = model.inspection_QTY
+        warning_qty = model.warning_QTY
+        critical_qty = model.critical_QTY
+        errors_qty = warning_qty + critical_qty
+
+        
+        self.setAlignment(Qt.AlignCenter)
+        self.setMaximumHeight(101)
+        self.setMinimumHeight(100)
+        font = QFont()
+        font.setPointSize(16)
+        self.setFont(font)
+        if errors_qty == 0:
+            self.setStyleSheet("background-color: green; color: white;")
+            self.setText(f'Проведено {total_inspections} перевірок. \r\nПомилок не виявлено.')
+        else:
+            self.setStyleSheet("background-color: red; color: white;")
+            self.setText(
+                f'Проведено {total_inspections} перевірок. \r\nЗ них було виявлено помилки в {errors_qty} перевірках.\r\n({critical_qty} критичних, {warning_qty} важливих).')
+        
+        
+        
+        
 
 class InspectionItem(QStandardItem):
     '''Клас-контейнер для елементів дерева помилок.
@@ -122,24 +199,41 @@ class InspectionItem(QStandardItem):
     INSPECTION_TYPE_NAME = Qt.UserRole + 7
     CRITICITY = Qt.UserRole + 8
 
-    def __init__(self, IDict: dict):
-        '''Конструктор класу InspectionItem.'''
-        criticity = IDict.get('criticity', 0)
+    def set_color(self, criticity):
         colors = ["green", "orange", "red"]
         pixmap = QPixmap(16, 16)
         pixmap.fill(QColor(colors[criticity]))
 
         icon = QIcon()
         icon.addPixmap(pixmap)
+
+        self.setIcon(icon)
+        self.colorIndex = criticity
         
+    
+    def set_parent_color(self, criticity = None):
+        if criticity is None:
+            criticity = self.getData(self.CRITICITY)
+        parent = self.parent()
+        if parent is not None:
+            if parent.colorIndex <= criticity:
+                parent.set_color(criticity)
+                parent.set_parent_color(criticity)
+
+    def __init__(self, IDict: dict):
+        '''Конструктор класу InspectionItem.'''
+        self.colorIndex = 0
+
         item_name = IDict.get('item_name')
+        
         if type(item_name) is list and len(item_name) > 0:
             item_name = IDict.get('inspection_type_name', item_name[0]) + ':'
-        
+
         if item_name is None:
             raise AttributeError("Немає значення 'item_name' у даних елемента.")
         
-        super().__init__(icon, item_name)  # Викликаємо конструктор батьківського класу
+        super().__init__(item_name)  # Викликаємо конструктор батьківського класу
+        self.set_color(IDict.get('criticity', 0))
         
         item_type = IDict.get('type')
         if item_type is None:
@@ -164,7 +258,9 @@ class InspectionItem(QStandardItem):
 
         self.setData(IDict.get('criticity', 0), self.CRITICITY)
 
-        self.setEditable(False)
+        self.setEditable(False)# Забороняємо редагування елементів
+
+        #self.set_parent_color(IDict.get('criticity', 0))
 
     def setErrorGeometry(self, crs, error_points=None, error_polygons=None):
         """Встановлює геометрію помилки."""
@@ -223,32 +319,30 @@ class InspectionItem(QStandardItem):
         """Отримує текстову репрезентацію елемента."""
         return f"InspectionItem('{self.getData(0)}', type={self.getData(self.TYPE)}, criticity={self.getData(self.CRITICITY)})"
 
-class MyStandardItemModel(QStandardItemModel):
-    def __init__(self):
-        super().__init__()
-        print("Custom model initialized")
-        
-    # Custom method to add an item
-    def addItem(self, DICT):
-        item = InspectionItem(DICT)
-        print(item)
-        self.appendRow(item)
-
 class CustomItemModel(QStandardItemModel):
     def __init__(self, structure: list = None, parent=None):
+        self.inspection_QTY = 0
+        self.critical_QTY = 0
+        self.warning_QTY = 0
+
         super().__init__(parent)
         if structure is not None: 
             self.fill_model(structure)
+        
 
     def parse_dict(self, IDict, parent_item: InspectionItem = None):
         item = InspectionItem(IDict)
         children = IDict.get('subitems',[])
         name = IDict.get('item_name')
-        #print(json.dumps(IDict, indent=4, ensure_ascii=False))
         if len(children) > 0:
+            if type(name) is list and len(name) > 0:
+                raise Exception(f"Елемент {name} має дочірні елементи, і не має мати спискової назви.")
+            
             for child in children:
                 self.parse_dict(child, item)
+        
         elif type(name) is list and len(name) > 0:
+            #print(json.dumps(IDict, indent=4, ensure_ascii=False))
             for n in name:
                 IDict_n = IDict.copy()
                 IDict_n['item_name'] = n
@@ -266,7 +360,75 @@ class CustomItemModel(QStandardItemModel):
 
     def fill_model(self, structure: list):
         for element in structure:
-            self.invisibleRootItem().appendRow(self.parse_dict(element))        
+            self.invisibleRootItem().appendRow(self.parse_dict(element))
+
+        self.update_colors()
+        self.get_inspections()
+
+    def get_inspections(self):
+        def iterate_model(parent: InspectionItem):
+            items = []
+            if parent.hasChildren():
+                for row in range(parent.rowCount()):
+                    child = parent.child(row)
+                    items += iterate_model(child)
+            if type(parent) is InspectionItem and parent.getData(InspectionItem.TYPE) == 'inspection':
+                items.append(parent)
+            return items
+        
+        inspections = iterate_model(self.invisibleRootItem())
+        self.inspection_QTY = len(inspections)
+        
+        self.critical_QTY = len([item for item in inspections if item.getData(InspectionItem.CRITICITY) == 2])
+        self.warning_QTY = len([item for item in inspections if item.getData(InspectionItem.CRITICITY) == 1])
+        return iterate_model(self.invisibleRootItem())
+
+    def update_colors(self):
+        def iterate_model(parent: InspectionItem):
+            items = []
+            if parent.hasChildren():
+                for row in range(parent.rowCount()):
+                    child = parent.child(row)
+                    items += iterate_model(child)
+            else:
+                items.append(parent)
+            
+            
+            return items
+        
+        
+        for item in iterate_model(self.invisibleRootItem()):
+            item.set_parent_color()
+
+class FilterProxyModel(QSortFilterProxyModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.criricity_filter = []
+        self.type_filter = []
+        self.related_file_filter = []
+        self.related_layer_filter = []
+        self.related_feature_filter = []
+        self.inspection_type_name_filter = []
+
+        self.setRecursiveFilteringEnabled(True)
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex):
+        source_model = self.sourceModel()
+        index = source_model.index(source_row, 0, source_parent)
+        criticity = source_model.data(index, InspectionItem.CRITICITY)
+        inspection_type_name = source_model.data(index, InspectionItem.INSPECTION_TYPE_NAME)
+        if not criticity in self.criricity_filter and len(self.criricity_filter) > 0:
+            return False
+        return True
+
+    def setCriticityFilter(self, criticity_filter: list):
+        self.criricity_filter = criticity_filter
+    
+    @pyqtSlot(list)
+    def filterByCriticity(self, criticity_filter: list):
+        self.criricity_filter = criticity_filter
+        self.invalidateFilter()
+        
 
 class CustomTreeView(QTreeView):
     def __init__(self, parent=None):
@@ -292,26 +454,25 @@ class ResultWindow(QDialog):
         self.setWindowIcon(QIcon(icon_path))
         
         # Головний вертикальний лейаут
-        main_layout = QVBoxLayout(self)
+        sidebar_layout = QHBoxLayout(self)
+        main_layout = QVBoxLayout()
+        sidebar_layout.addLayout(main_layout)
 
         #дерево помилок
         self.tree_widget = CustomTreeView()
         self.model = CustomItemModel(self.errors_table)
-        self.tree_widget.setModel(self.model)
+        
+        self.proxyModel = FilterProxyModel()
+
+        self.proxyModel.setSourceModel(self.model)
+
+        self.tree_widget.setModel(self.proxyModel)
 
         main_layout.addWidget(self.tree_widget)
 
 
         # Поле результату перевірки
-        self.result_text_field = QLabel(self)
-        self.result_text_field.setAlignment(Qt.AlignCenter)
-        self.result_text_field.setMaximumHeight(101)
-        self.result_text_field.setMinimumHeight(100)
-        font = QFont()
-        font.setPointSize(16)
-        self.result_text_field.setFont(font)
-        self.result_text_field.setStyleSheet("background-color: pink; color: white;")
-        self.result_text_field.setText("Заглушка")
+        self.result_text_field = statusWidget(self.model)
         main_layout.addWidget(self.result_text_field)
 
         # Кнопки управління
@@ -325,8 +486,15 @@ class ResultWindow(QDialog):
         button_layout.addWidget(close_button)
 
         main_layout.addLayout(button_layout)
+        
+        filters_layout = QHBoxLayout()
+        sidebar_layout.addLayout(filters_layout)
 
-       
+        # Фільтри
+        filters_widget = CheckboxesGroup()
+        filters_layout.addWidget(filters_widget)
+
+        filters_widget.checked_values_changed.connect(self.proxyModel.filterByCriticity)
 
         # Підключення контекстного меню до багатошарового списку
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -335,10 +503,20 @@ class ResultWindow(QDialog):
 
     def show_context_menu(self, position):
         canvas = iface.mapCanvas()
-        selected_indexes = self.tree_widget.selectedIndexes()
-        if selected_indexes:
-            selected_item = self.tree_widget.model().itemFromIndex(selected_indexes[0])
-            print(selected_item.text())
+        proxy_index = self.tree_widget.selectedIndexes()
+        if proxy_index:
+            proxy_model = self.tree_widget.model()
+            proxy_model = cast(FilterProxyModel, proxy_model)
+            
+            main_model = proxy_model.sourceModel()
+            main_model = cast(CustomItemModel, main_model)
+
+            main_index = proxy_model.mapToSource(proxy_index[0])
+            
+            selected_item = main_model.itemFromIndex(main_index)
+            
+            print(selected_item.parent())
+            
             selected_item = cast(InspectionItem, selected_item)
         else:
             print("No item selected")
