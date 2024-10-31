@@ -75,8 +75,7 @@ def get_real_layer_name(layer: QgsVectorLayer) -> str:
     return source_layer_name
 
 def run_validator(layers:dict, structure_folder:str):
-    def get_guid_dict(layers):
-        return "Ich bin schoen!"
+    
     """
     Запустити валідатор для шарів.
 
@@ -95,15 +94,27 @@ def run_validator(layers:dict, structure_folder:str):
             - exchange_format_error (list): Список шарів з помилками формату обміну.
             - missing_layers (list): Список відсутніх шарів.
     """
-
+    output = []
     all_layers_check_result_dict = {}
     all_layers_check_result_dict['layers'] = {}
     all_layers_check_result_dict['exchange_format_error'] = []
     all_layers_check_result_dict['missing_layers'] = []
 
+    temp_files_dict = {}
+
     for id in layers:
         dataSource = ogr.Open(layers[id]['path'], 0) # 0 means read-only. 1 means writeable.
-        
+        file_path = layers[id]['path']
+        if not file_path in temp_files_dict: 
+            temp_files_dict[file_path] = {
+                'type' : 'file',
+                'item_name' :  f"Файл: «{os.path.basename(file_path)}»",
+                'related_file_path' : file_path,
+                'item_tooltip' : file_path, #те що буде виводитися в першому рядку підказки, опціонально
+                'help_url' : "www.google.com",
+                'subitems' : []
+            }
+
         if dataSource.GetDriver().GetName() in ['OpenFileGDB', 'GPKG']:
             layer = dataSource.GetLayerByName(layers[id]['layer_name'])
         else:
@@ -142,10 +153,10 @@ def run_validator(layers:dict, structure_folder:str):
         validate_result = validate_checker.run()
         
         ## Я обрізав твій тестовий словник і додавав замість твоїх layers результат перевірок. А ти будь ласка вже допиши те що треба, щоб все формувалося як треба
-        result_v2[1]['subitems'].append(validate_result)
-        all_layers_check_result_dict['layers'][list(validate_result.keys())[0]] = validate_result[list(validate_result.keys())[0]]
-        
-    return result_v2
+        temp_files_dict[layers[id]['path']]['subitems'].append(validate_result)
+    for k, v in temp_files_dict.items():
+        output.append(v)    
+    return output
 
 class customlayerListWidget(QTreeWidget):
     def __init__(self, parent=None):
