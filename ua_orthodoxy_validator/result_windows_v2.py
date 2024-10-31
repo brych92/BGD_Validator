@@ -24,6 +24,7 @@ from datetime import date
 
 import os, urllib.parse
 
+from .result_window_widgets import SwitchWidget, FilterWidget
 
 def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
     """
@@ -383,6 +384,19 @@ class CustomItemModel(QStandardItemModel):
         self.warning_QTY = len([item for item in inspections if item.getData(InspectionItem.CRITICITY) == 1])
         return iterate_model(self.invisibleRootItem())
 
+    def get_all_elements(self)->list[InspectionItem]:
+        def iterate_model(parent: InspectionItem):
+            items = []
+            if parent.hasChildren():
+                for row in range(parent.rowCount()):
+                    child = parent.child(row)
+                    items += iterate_model(child)
+            if type(parent) is InspectionItem:
+                items.append(parent)
+            return items
+        
+        return iterate_model(self.invisibleRootItem())
+
     def update_colors(self):
         def iterate_model(parent: InspectionItem):
             items = []
@@ -400,6 +414,24 @@ class CustomItemModel(QStandardItemModel):
         for item in iterate_model(self.invisibleRootItem()):
             item.set_parent_color()
 
+    def get_filtration_dict(self):
+        filtration_dict = {'files': {}, 'layers': {}, 'errors': {}}
+        for item in self.get_all_elements():
+            item_file = item.getData(InspectionItem.RELATED_FILE_PATH)
+            if item_file is not None and  item_file != '':
+                filtration_dict['files'][item_file] = os.path.basename(item_file)
+
+            item_layer = item.getData(InspectionItem.RELATED_LAYER_ID)
+            item_layer_name = item.getData(InspectionItem.VISIBLE_LAYER_NAME)
+            if item_layer is not None and item_layer != '':
+                filtration_dict['layers'][item_layer] = item_layer_name
+            
+            item_error = item.getData(InspectionItem.INSPECTION_TYPE_NAME)
+            if item_error is not None and item_error != '':
+                filtration_dict['errors'][item_error] = item_error
+
+        return filtration_dict
+    
 class FilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -440,15 +472,20 @@ class CustomTreeView(QTreeView):
 class ResultWindow(QDialog):
     def __init__(self, errors_table:dict, parent=None):
         super().__init__(parent)
-        
+        print(json.dumps(errors_table, indent=4, ensure_ascii=False))
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
         self.errors_table = errors_table
-    
+
+        #ініціалізація моделі
+        self.model = CustomItemModel(self.errors_table)        
+        self.proxyModel = FilterProxyModel()
+        self.proxyModel.setSourceModel(self.model)
+        
         # Налаштування основного вікна
         self.setWindowTitle("Результати перевірки")
         
-        #self.setWindowFlags(self.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMinMaxButtonsHint)
         
         icon_path = "/resources/Team_logo_c_512.png"
         self.setWindowIcon(QIcon(icon_path))
@@ -457,17 +494,16 @@ class ResultWindow(QDialog):
         sidebar_layout = QHBoxLayout(self)
         main_layout = QVBoxLayout()
         sidebar_layout.addLayout(main_layout)
+        
 
+        # Поле вибору критичності
+        self.criticity_radio = SwitchWidget(self)
+        self.criticity_radio.changed_signal.connect(self.proxyModel.filterByCriticity)
+        main_layout.addWidget(self.criticity_radio)
+        
         #дерево помилок
         self.tree_widget = CustomTreeView()
-        self.model = CustomItemModel(self.errors_table)
-        
-        self.proxyModel = FilterProxyModel()
-
-        self.proxyModel.setSourceModel(self.model)
-
         self.tree_widget.setModel(self.proxyModel)
-
         main_layout.addWidget(self.tree_widget)
 
 
@@ -490,15 +526,16 @@ class ResultWindow(QDialog):
         filters_layout = QHBoxLayout()
         sidebar_layout.addLayout(filters_layout)
 
-        # Фільтри
-        filters_widget = CheckboxesGroup()
+        # Фільтрація
+        filters_widget = FilterWidget(parent = self, filtration_dict = self.make_filter_dict())
         filters_layout.addWidget(filters_widget)
-
-        filters_widget.checked_values_changed.connect(self.proxyModel.filterByCriticity)
 
         # Підключення контекстного меню до багатошарового списку
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_context_menu)
+
+    def make_filter_dict(self):
+        return self.model.get_filtration_dict()
 
 
     def show_context_menu(self, position):
