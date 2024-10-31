@@ -563,36 +563,218 @@ class EDRA_exchange_layer_checker:
         return result_dict
     
     def write_features_check_result(self):
-        features_dict = {}
+        features_dict_legacy = {}
         
         features_fids = {}
         if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
             for feature in self.layer_EDRA_valid_class.layer:
                 features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
 
+        container_features = None
+        container_features = {}
+        container_features['type'] = 'container'
+        container_features['item_name'] = "Об'єкти шару"
+        container_features['subitems'] = []
+        
+        
         
         for feature in self.layer_EDRA_valid_class.layer:
-        
+            feature_dict_result = None
             
-            features_dict[feature.GetFID()] = {
-                "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'empty'),
-                "required_attribute_empty": self.check_required_fields_is_empty_or_null(feature, 'null'),
-                "attribute_value_unclassifyed": self.check_attr_value_in_domain(feature),
-                "duplicated_GUID": self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids),
-                "attribute_length_exceed": self.layer_EDRA_valid_class.check_feature_attribute_length_exceed(feature),
+            feature_dict_result = {
+                'type' : 'feature',
+                'item_name' : f"Об'єкт '{feature.GetFID()}'",
+                'related_feature_id' : feature.GetFID(),
+                'subitems' : []
+            }
+            
+            container_features_attribute_errors = None
+            container_features_attribute_errors = {}
+            container_features_attribute_errors['type'] = 'container'
+            container_features_attribute_errors['item_name'] = "Перевірка на наявність помилок в атрибутах об'єктів (features) об'єкту"
+            container_features_attribute_errors['subitems'] = []
+        
+            required_fields_is_empty_list = self.check_required_fields_is_empty_or_null(feature, 'empty')
+            
+            required_fields_is_null_list = self.check_required_fields_is_empty_or_null(feature, 'null')
+            
+            container_required_fields_is_empty_or_null = None
+            container_required_fields_is_empty_or_null = {}
+            container_required_fields_is_empty_or_null['type'] = 'container'
+            container_required_fields_is_empty_or_null['item_name'] = "Перевірка на заповненість обов'язкових (атрибутів) об'єкту"
+            container_required_fields_is_empty_or_null['subitems'] = []
+            
+            if len(required_fields_is_empty_list) > 0:
+                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+                for empty_field in required_fields_is_empty_list:
+                    insception_empty_field_error = None
+                    insception_empty_field_error = self.create_inspection_dict(
+                        inspection_type_name = "Перевірка на заповненість полів (атрибутів) об'єкту", #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Обов'язковий атрибут «{empty_field}» не заповнений (is empty)", 
+                        item_tool_tip = f"Обов'язковий атрибут «{empty_field}» не заповнений (is empty)", 
+                        criticity = 1, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
+                    container_required_fields_is_empty_or_null['subitems'].append(insception_empty_field_error)
+                    
+            if len(required_fields_is_null_list) > 0:
+                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+                for null_field in required_fields_is_null_list:
+                    insception_null_field_error = None
+                    insception_null_field_error = self.create_inspection_dict(
+                        inspection_type_name = "Перевірка на заповненість полів (атрибутів) об'єкту", #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Обов'язковий атрибут «{null_field}» не заповнений (is null)", 
+                        item_tool_tip = f"Обов'язковий атрибут «{null_field}» не заповнений (is null)", 
+                        criticity = 1, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
+                    container_required_fields_is_empty_or_null['subitems'].append(insception_null_field_error)
+                    
+            if len(required_fields_is_empty_list) == 0 and len(required_fields_is_null_list) == 0:
+                insception_dict_field_not_emprty_or_null = None
+                insception_dict_field_not_emprty_or_null = self.create_inspection_dict(                    
+                    inspection_type_name = "Перевірка на заповненість обов'язкових полів (атрибутів) об'єкту", #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Всі обов'язкові поля (атрибути) класу заповнені", 
+                    item_tool_tip = f"Всі обов'язкові поля (атрибути) класу заповнені", 
+                    criticity = 0, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                container_required_fields_is_empty_or_null['subitems'].append(insception_dict_field_not_emprty_or_null)
+                
+            container_features_attribute_errors['subitems'].append(container_required_fields_is_empty_or_null)
+            
+            
+            attribute_values_unclassified_dict = self.check_attr_value_in_domain(feature)
+            
+            container_attributes_values_unclassified = None
+            container_attributes_values_unclassified = {}
+            container_attributes_values_unclassified['type'] = 'container'
+            container_attributes_values_unclassified['item_name'] = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам"
+            container_attributes_values_unclassified['subitems'] = []
+            
+            if len(attribute_values_unclassified_dict.keys()) > 0:
+                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+                for field_name in attribute_values_unclassified_dict:
+                    insception_unclassified_value_error = None
+                    insception_unclassified_value_error = self.create_inspection_dict(
+                        inspection_type_name = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Атрибут: '{field_name}' має значення {attribute_values_unclassified_dict[field_name][0]}, що не відповідає домену (див. опис поля)", 
+                        item_tool_tip = f"Значення атрибуту '{field_name}' не відповідає домену", 
+                        criticity = 1, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
+                    container_attributes_values_unclassified['subitems'].append(insception_unclassified_value_error)
+                    
+            elif len(attribute_values_unclassified_dict.keys()) == 0 :
+                insception_classified_value = None
+                insception_classified_value = self.create_inspection_dict(                    
+                    inspection_type_name = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Всі значення полів відповідають доменам", 
+                    item_tool_tip = f"Всі значення полів відповідають доменам", 
+                    criticity = 0, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                container_attributes_values_unclassified['subitems'].append(insception_classified_value)
+                
+            container_features_attribute_errors['subitems'].append(container_attributes_values_unclassified)
+            
+            
+            
+            attributes_length_exceed_dict = self.layer_EDRA_valid_class.check_feature_attribute_length_exceed(feature)
+            
+            container_attributes_values_length = None
+            container_attributes_values_length = {}
+            container_attributes_values_length['type'] = 'container'
+            container_attributes_values_length['item_name'] = "Перевірка на відповідність довжини значення полів (атрибутів) об'єкту"
+            container_attributes_values_length['subitems'] = []
+            
+            if len(attributes_length_exceed_dict.keys()) > 0:
+                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+                for field_name in attributes_length_exceed_dict:
+                    insception_attributes_length_value_exceed = None
+                    insception_attributes_length_value_exceed = self.create_inspection_dict(
+                        inspection_type_name = 'Перевірка на відповідність довжини значення атрибуту', #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Атрибут: '{field_name}' має довжину {attributes_length_exceed_dict[field_name][0]}, а треба не більше {attributes_length_exceed_dict[field_name][1]}", 
+                        item_tool_tip = f"Атрибут: '{field_name}' має довжину більше дозволеної структурою", 
+                        criticity = 1, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
+                    container_attributes_values_length['subitems'].append(insception_attributes_length_value_exceed)
+                    
+            elif len(attributes_length_exceed_dict.keys()) == 0 :
+                insception_attributes_length_value = None
+                insception_attributes_length_value = self.create_inspection_dict(                    
+                    inspection_type_name = "Перевірка на відповідність довжини значення атрибуту", #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Всі значення атрибутів не перевищують допустиму довжину", 
+                    item_tool_tip = f"Всі значення атрибутів не перевищують допустиму довжину", 
+                    criticity = 0, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                container_attributes_values_length['subitems'].append(insception_attributes_length_value)
+                
+            container_features_attribute_errors['subitems'].append(container_attributes_values_length)
+            
+            
+            
+            duplicated_guid_list = self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids)
+            
+            
+            # Розкоментувати код і дописати контейнер для дуплікейтед гуід
+            # container_duplicated_guid = None
+            # container_duplicated_guid = {}
+            # container_duplicated_guid['type'] = 'container'
+            # container_duplicated_guid['item_name'] = "Перевірка на відповідність довжини значення полів (атрибутів) об'єкту"
+            # container_duplicated_guid['subitems'] = []
+            
+            # if len(attributes_length_exceed_dict.keys()) > 0:
+            #     #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+            #     for field_name in attributes_length_exceed_dict:
+            #         insception_attributes_length_value_exceed = None
+            #         insception_attributes_length_value_exceed = self.create_inspection_dict(
+            #             inspection_type_name = 'Перевірка на відповідність довжини значення атрибуту', #Підтягувати перевірку з файлу структури з помилками
+            #             item_name = f"Атрибут: '{field_name}' має довжину {attributes_length_exceed_dict[field_name][0]}, а треба не більше {attributes_length_exceed_dict[field_name][1]}", 
+            #             item_tool_tip = f"Атрибут: '{field_name}' має довжину більше дозволеної структурою", 
+            #             criticity = 1, 
+            #             help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+            #         )
+            #         container_duplicated_guid['subitems'].append(insception_attributes_length_value_exceed)
+                    
+            # elif len(attributes_length_exceed_dict.keys()) == 0 :
+            #     insception_attributes_length_value = None
+            #     insception_attributes_length_value = self.create_inspection_dict(                    
+            #         inspection_type_name = "Перевірка на відповідність довжини значення атрибуту", #Підтягувати перевірку з файлу структури з помилками
+            #         item_name = f"Всі значення атрибутів не перевищують допустиму довжину", 
+            #         item_tool_tip = f"Всі значення атрибутів не перевищують допустиму довжину", 
+            #         criticity = 0, 
+            #         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+            #     )
+            #     container_duplicated_guid['subitems'].append(insception_attributes_length_value)
+                
+            # container_features_attribute_errors['subitems'].append(container_duplicated_guid)
+            
+            
+            
+            
+            
+            features_dict_legacy[feature.GetFID()] = {
+                "required_attribute_empty": required_fields_is_empty_list,
+                "required_attribute_empty": required_fields_is_null_list,
+                "attribute_value_unclassifyed": attribute_values_unclassified_dict,
+                "duplicated_GUID": duplicated_guid_list,
+                "attribute_length_exceed": attributes_length_exceed_dict,
                 
                 }
             
             if self.layer_EDRA_valid_class.required_geometry_type != None:
-                features_dict[feature.GetFID()]['geometry_errors'] = {
+                features_dict_legacy[feature.GetFID()]['geometry_errors'] = {
                     "empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
                     "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
                     "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)
                     }
             
-            
+        
         #print(features_dict)
-        return features_dict
+        return [features_dict_legacy, container_features_attribute_errors]
             
     def write_result_dict(self):
             
@@ -667,21 +849,26 @@ class EDRA_exchange_layer_checker:
             
             missing_required_fields_list = self.check_missing_required_fields()
             
+            container_missing_required_fields = None
+            container_missing_required_fields = {}
+            container_missing_required_fields['type'] = 'container'
+            container_missing_required_fields['item_name'] = "Перевірка на наявність обов\'язкових полів (атрибутів) шару"
+            container_missing_required_fields['subitems'] = []
+            
             if len(missing_required_fields_list) > 0:
-
-                insception_dict_layer_missing_required_fields = None
-                insception_dict_layer_missing_required_fields = self.create_inspection_dict(                    
-                    inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                    item_name = missing_required_fields_list, 
-                    item_tool_tip = f"Відсутні деякі обов\'язкові атрибути класу", 
-                    criticity = 1, 
-                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                )
-
-                container_layer_field_errors['subitems'].append(insception_dict_layer_missing_required_fields)
-                
+                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+                for missing_required_field in missing_required_fields_list:
+                    insception_missing_required_field_error = None
+                    insception_missing_required_field_error = self.create_inspection_dict(
+                        inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
+                        item_tool_tip = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
+                        criticity = 1, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
+                    container_missing_required_fields['subitems'].append(insception_missing_required_field_error)
+                    
             elif len(missing_required_fields_list) == 0:
-
                 insception_dict_layer_missing_required_fields = None
                 insception_dict_layer_missing_required_fields = self.create_inspection_dict(                    
                     inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
@@ -690,36 +877,44 @@ class EDRA_exchange_layer_checker:
                     criticity = 0, 
                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                 )
-
-                container_layer_field_errors['subitems'].append(insception_dict_layer_missing_required_fields)
+                container_missing_required_fields['subitems'].append(insception_dict_layer_missing_required_fields)
+                
+            container_layer_field_errors['subitems'].append(container_missing_required_fields)
+            
             
             missing_fields_list = self.check_missing_fields()
             
+            container_missing_fields = None
+            container_missing_fields = {}
+            container_missing_fields['type'] = 'container'
+            container_missing_fields['item_name'] = "Перевірка на наявність всіх полів (атрибутів) шару"
+            container_missing_fields['subitems'] = []
+            
             if len(missing_fields_list) > 0:
-
-                insception_dict_layer_missing_fields = None
-                insception_dict_layer_missing_fields = self.create_inspection_dict(                    
-                    inspection_type_name = 'Перевірка на наявність всіх полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                    item_name = missing_fields_list, 
-                    item_tool_tip = f"Відсутні деякі атрибути класу", 
-                    criticity = 1, 
-                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                )
-
-                container_layer_field_errors['subitems'].append(insception_dict_layer_missing_fields)
-                
+                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+                for missing_field in missing_fields_list:
+                    insception_missing_field_error = None
+                    insception_missing_field_error = self.create_inspection_dict(
+                        inspection_type_name = 'Перевірка на наявність полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Відсутній атрибут «{missing_field}»", 
+                        item_tool_tip = f"Відсутній атрибут «{missing_field}»", 
+                        criticity = 1, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
+                    container_missing_fields['subitems'].append(insception_missing_field_error)
+                    
             elif len(missing_fields_list) == 0:
-
                 insception_dict_layer_missing_fields = None
                 insception_dict_layer_missing_fields = self.create_inspection_dict(                    
                     inspection_type_name = 'Перевірка на наявність всіх полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                    item_name = f"Всі атрибути класу наявні", 
-                    item_tool_tip = f"Всі атрибути класу наявні", 
+                    item_name = f"Всі поля (атрибути) класу наявні", 
+                    item_tool_tip = f"Всі поля (атрибути) класу наявні", 
                     criticity = 0, 
                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                 )
-
-                container_layer_field_errors['subitems'].append(insception_dict_layer_missing_fields)
+                container_missing_fields['subitems'].append(insception_dict_layer_missing_fields)
+                
+            container_layer_field_errors['subitems'].append(container_missing_fields)
             
             wrong_fields_types_list = self.check_wrong_fields_types()
             
@@ -861,7 +1056,8 @@ class EDRA_exchange_layer_checker:
             
             
             #### НЕ ЗАБУТИ РОЗКОМЕНТУВАТИ
-            # self.check_result_legacy[self.layer_props['related_layer_id']]['features'] = self.write_features_check_result()        
+            features_check_results = self.write_features_check_result() #повертається список, перший об'єкт це легасі словник, другий це контейнер для нової структури
+            self.check_result_legacy[self.layer_props['related_layer_id']]['features'] = features_check_results[0]      
     
     def run(self):
         
