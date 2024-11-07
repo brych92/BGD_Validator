@@ -331,16 +331,33 @@ class CustomItemModel(QStandardItemModel):
             self.fill_model(structure)
         
 
-    def parse_dict(self, IDict, parent_item: InspectionItem = None):
+    def parse_dict(self, IDict, parent_item: InspectionItem = None, PIDict = None):
+        def copy_key_if_absent(IDict, PIDict, keys:list):
+            for key in keys:
+                if key not in IDict and key in PIDict:
+                    IDict[key] = PIDict[key]
+
+        if PIDict is not None:
+            copy_key_if_absent(IDict, PIDict,
+                ['item_tooltip',
+                'help_url', 
+                'related_file_path', 
+                'related_layer_id', 
+                'real_layer_name', 
+                'visible_layer_name', 
+                'related_feature_id', 
+                'inspetcion_type_name'] )
+        
         item = InspectionItem(IDict)
         children = IDict.get('subitems',[])
         name = IDict.get('item_name')
+
         if len(children) > 0:
             if type(name) is list and len(name) > 0:
                 raise Exception(f"Елемент {name} має дочірні елементи, і не має мати спискової назви.")
             
             for child in children:
-                self.parse_dict(child, item)
+                self.parse_dict(child, item, IDict)
         
         elif type(name) is list and len(name) > 0:
             #print(json.dumps(IDict, indent=4, ensure_ascii=False))
@@ -435,32 +452,64 @@ class CustomItemModel(QStandardItemModel):
 class FilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.criricity_filter = []
-        self.type_filter = []
-        self.related_file_filter = []
-        self.related_layer_filter = []
-        self.related_feature_filter = []
-        self.inspection_type_name_filter = []
+        self.filter_dict = {
+            'criticity': [],
+            'type': [],
+            'related_file': [],
+            'related_layer': [],
+            'related_feature': [],
+            'inspection_type_name': []
+        }
 
         self.setRecursiveFilteringEnabled(True)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex):
         source_model = self.sourceModel()
         index = source_model.index(source_row, 0, source_parent)
-        criticity = source_model.data(index, InspectionItem.CRITICITY)
-        inspection_type_name = source_model.data(index, InspectionItem.INSPECTION_TYPE_NAME)
-        if not criticity in self.criricity_filter and len(self.criricity_filter) > 0:
-            return False
+        
+        item_data = {
+            'criticity': source_model.data(index, InspectionItem.CRITICITY),
+            'type': source_model.data(index, InspectionItem.TYPE),
+            'related_file': source_model.data(index, InspectionItem.RELATED_FILE_PATH),
+            'related_layer': source_model.data(index, InspectionItem.RELATED_LAYER_ID),
+            'related_feature': source_model.data(index, InspectionItem.RELATED_FEATURE_ID),
+            'inspection_type_name': source_model.data(index, InspectionItem.INSPECTION_TYPE_NAME)
+        }
+        
+        for key, value in self.filter_dict.items():
+            if item_data[key] is None:
+                continue
+            if len(value) > 0 and item_data[key] not in value:
+                return False
+        
         return True
 
-    def setCriticityFilter(self, criticity_filter: list):
-        self.criricity_filter = criticity_filter
+    
     
     @pyqtSlot(list)
     def filterByCriticity(self, criticity_filter: list):
-        self.criricity_filter = criticity_filter
+        self.filter_dict['criticity'] = criticity_filter
         self.invalidateFilter()
-        
+    
+    @pyqtSlot(list)
+    def filterByType(self, type_filter: list):
+        self.filter_dict['type'] = type_filter    
+        self.invalidateFilter()   
+
+    @pyqtSlot(list)
+    def filterByFile(self, related_file_filter: list):
+        self.filter_dict['related_file'] = related_file_filter    
+        self.invalidateFilter()
+
+    @pyqtSlot(list)
+    def filterByLayer(self, related_layer_filter: list):
+        self.filter_dict['related_layer'] = related_layer_filter    
+        self.invalidateFilter()
+
+    @pyqtSlot(list)
+    def filterByInspectionType(self, inspection_type_name_filter: list):
+        self.filter_dict['inspection_type_name'] = inspection_type_name_filter    
+        self.invalidateFilter()
 
 class CustomTreeView(QTreeView):
     def __init__(self, parent=None):
@@ -529,6 +578,9 @@ class ResultWindow(QDialog):
         # Фільтрація
         filters_widget = FilterWidget(parent = self, filtration_dict = self.make_filter_dict())
         filters_layout.addWidget(filters_widget)
+        filters_widget.file_filtered_signal.connect(self.proxyModel.filterByFile)
+        filters_widget.layer_filtered_signal.connect(self.proxyModel.filterByLayer)
+        filters_widget.inspection_name_filtered_signal.connect(self.proxyModel.filterByInspectionType)
 
         # Підключення контекстного меню до багатошарового списку
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
