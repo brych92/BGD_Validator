@@ -140,7 +140,7 @@ class CheckboxesGroup(QWidget):
         for k, checkbox in self.checkboxes.items():
             if checkbox.isChecked():
                 self.checked_values.append(k)
-        print(self.checked_values)
+        #print(self.checked_values)
         
         self.checked_values_changed.emit(self.checked_values)
         
@@ -521,7 +521,7 @@ class CustomTreeView(QTreeView):
 class ResultWindow(QDialog):
     def __init__(self, errors_table:dict, parent=None):
         super().__init__(parent)
-        print(json.dumps(errors_table, indent=4, ensure_ascii=False))
+        #print(json.dumps(errors_table, indent=4, ensure_ascii=False))
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
         self.errors_table = errors_table
@@ -604,7 +604,7 @@ class ResultWindow(QDialog):
             
             selected_item = main_model.itemFromIndex(main_index)
             
-            print(selected_item.parent())
+            #print(selected_item.parent())
             
             selected_item = cast(InspectionItem, selected_item)
         else:
