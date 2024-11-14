@@ -1,7 +1,3 @@
-
-#зміна
-from importlib import reload
-
 from re import split
 import re
 from typing import Union, cast 
@@ -16,32 +12,25 @@ from qgis.gui import QgsLayerTreeView
 import sys, os, string, random
 from osgeo import ogr
 import json
-# sys.path.append(r'/home/bohdan/Programming/ПЛАГІН/GIT/BGD_Validator/')
 
-# import initialize_script
-# import csv_to_json_structure_converter
-# reload(csv_to_json_structure_converter)
 from .csv_to_json_structure_converter import Csv_to_json_structure_converter
 
-# reload(initialize_script)
-# import Result_Window
-# reload(Result_Window)
-# from .Result_Window import ResultWindow
+
 from .result_windows_v2 import ResultWindow, CustomTreeView, CustomItemModel
 from .resultStructure_v2 import result_v2
 
-# import checker_class
-# reload(checker_class)
+
 from .checker_class import EDRA_exchange_layer_checker, EDRA_validator
 
+import gc
+
 logging = True
-# from initialize_script import run_validator
-# import initialize_script
-# import Result_Window
+
 
 def log(text: str) -> None:
     if logging:
         print(text)
+
 
 
 
@@ -102,6 +91,8 @@ def run_validator(layers:dict, structure_folder:str):
 
     temp_files_dict = {}
 
+    global_guid_dict = {}
+
     for id in layers:
         dataSource = ogr.Open(layers[id]['path'], 0) # 0 means read-only. 1 means writeable.
         file_path = layers[id]['path']
@@ -124,36 +115,30 @@ def run_validator(layers:dict, structure_folder:str):
         
         converter = Csv_to_json_structure_converter(structure_folder)
 
-        structure = converter.create_structure_json() 
+        structure = converter.create_structure_json()
         domains = converter.create_domain_json()
-        # with open(structure_path, 'r', encoding='utf-8') as f: 
-        #     structure = json.loads(f.read())
         
-        # with open(domains_path, 'r', encoding='utf-8') as f: 
-        #     domains = json.loads(f.read())
             
         if layer is None:
             raise AttributeError(f'Не вдалося відкрити шар {layers[id]["path"]}')
         
-        guid_dict = {}
-
-        #guid {guid:[(layer, feature_id), (layer, feature_id)....]}
-
-        layer_EDRA_valid_class = EDRA_validator(
+        
+        
+        validate_checker = EDRA_exchange_layer_checker(
             layer = layer,
             layer_exchange_name=layer_real_name,
             structure_json=structure,
-            domains_json=domains)
-        
-        validate_checker = EDRA_exchange_layer_checker(
-            layer_EDRA_valid_class = layer_EDRA_valid_class,
+            domains_json=domains,
             layer_props = layers[id],
             layer_id = id)
         
         validate_result = validate_checker.run()
         
-        ## Я обрізав твій тестовий словник і додавав замість твоїх layers результат перевірок. А ти будь ласка вже допиши те що треба, щоб все формувалося як треба
         temp_files_dict[layers[id]['path']]['subitems'].append(validate_result)
+        del validate_result
+        del validate_checker
+        del layer
+
     for k, v in temp_files_dict.items():
         output.append(v)    
     return output
@@ -205,11 +190,20 @@ class layerItem(QTreeWidgetItem):
         self.__layerRealName__ = real_name
         self.__layerPath__ = path
         self.__layerFeaturesQty__ = features_qty
-        
+        tootip = ''
         if self.__layerVisibleName__ is not None and self.__layerVisibleName__ != "":
             self.setText(0, f"{self.__layerVisibleName__}[{self.__layerFeaturesQty__}]")
+            if self.__layerPath__ is not None and self.__layerPath__ != "":
+                tootip = f'{self.__layerPath__}\r\n'
+            if self.__layerRealName__ is not None and self.__layerRealName__ != "":
+                tootip = f'{tootip}{self.__layerRealName__}' 
         else:
-            self.setText(0, f"{self.__layerPath__}[{self.__layerFeaturesQty__}]")
+            self.setText(0, f"{self.__layerRealName__}[{self.__layerFeaturesQty__}]")
+            if self.__layerPath__ is not None and self.__layerPath__ != "":
+                tootip = self.__layerPath__
+
+        self.setToolTip(0, tootip)
+            
     
     def get_layer_value(self):
         return {'id':self.__layerID__, 'name':self.__layerVisibleName__, 'path':self.__layerPath__, 'real_name':self.__layerRealName__}
@@ -359,6 +353,7 @@ class MainWindow(QDialog):
         super().__init__(parent)        
         self.setWindowTitle("Налаштуйте параметри перевірки")
         self.folder_path=os.path.expanduser('~')
+        self.filter = ''
 
         # Create a QVBoxLayout
         layerslayout = QVBoxLayout(self)
@@ -455,27 +450,14 @@ class MainWindow(QDialog):
                 'layer_real_name': layer.getRealName(),
                 'required_crs_list': crs_list
                 }
+        # layers = layers_dict,
+        # structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
 
-            # print(f"{layer.layerID} {layer.layerName} {layer.layerPath} {type(layer.layerPath)}")
-        
-        # print('Вхідний список шарів:')
-        # print(json.dumps(layers_dict, indent=4,ensure_ascii=False))        
-        # print(json.dumps(self.strutures, indent=4,ensure_ascii=False))        
-        
-        
+        #validator_task = QgsTask.fromFunction('Валідую валідую, та не вивалідую', run_validator, layers, structure_folder, )
         result_structure = run_validator(
             layers = layers_dict,
             structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
 
-        # print('\n\n\n\n\nВивід')
-        # print(json.dumps(result_structure, indent=4, ensure_ascii=False))
-        # print(result_v2)
-        
-        # self.tree_widget = CustomTreeView()
-        # self.model = CustomItemModel(result_v2)
-        # self.tree_widget.setModel(self.model)
-        # self.ll.addWidget(self.tree_widget)
-        # self.tree_widget.show()
         window = ResultWindow(result_structure, parent=self)#iface.mainWindow())
         window.show()
 
@@ -487,19 +469,32 @@ class MainWindow(QDialog):
         def random_id(layerName):
             randomid = ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(36))
             return f"⁂{layerName}_{randomid}"
-        
-        pathArr=QFileDialog.getOpenFileNames(None,"Виберіть файл(файли) для імпорту", self.folder_path, "Geopackage (*.gpkg);;GeoJSON (*.json, *.geojson);;GeoDatabase (*.gdb)")[0]
-        if pathArr==[]:
+
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.ExistingFiles)
+        file_dialog.setWindowTitle("Виберіть файл(файли) для імпорту")
+        file_dialog.setNameFilter("Geopackage (*.gpkg);;GeoJSON (*.json, *.geojson);;GeoDatabase (gdb);;Shapefile (*.shp)")
+        if self.filter != '': 
+            file_dialog.selectNameFilter(self.filter)
+
+        file_dialog.setDirectory(self.folder_path)
+
+        if file_dialog.exec_():
+            pathArr = file_dialog.selectedFiles()
+            self.filter = file_dialog.selectedNameFilter()
+            print(self.filter)  
+        else:
             print('Нічого не вибрано!')
             return
         
         self.folder_path=os.path.dirname(pathArr[0])
         type = pathArr[0].split('.')[-1]
 
+
         layersList = []
 
         for path in pathArr:
-            if type in ['json','geojson']:
+            if type in ['json','geojson', 'shp']:
                 #print(path)
                 ds  = ogr.Open(path, 0)
                 if ds is None:
@@ -507,8 +502,29 @@ class MainWindow(QDialog):
                     continue
                 layer = ds.GetLayer()
                 layerName = layer.GetName()
+                obj_qty = layer.GetFeatureCount()
                 id = random_id(layerName)
-                layersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path))
+                layersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
+            
+            elif type == 'gdb/gdb':
+                print(path)
+                print(os.path.dirname(path))
+                ds = ogr.Open(os.path.dirname(path))
+                if ds is None:
+                    QMessageBox.critical(None, "Помилка", f"Файл {path} пошкоджено")
+                
+                tempLayersList = []
+                for i in range(ds.GetLayerCount()):
+                    layer = ds.GetLayerByIndex(i)
+                    layerName = layer.GetName()
+                    obj_qty = layer.GetFeatureCount()
+                    id = random_id(layerName)
+                    tempLayersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
+                
+                lsDialog = layerSelectionDialog(tempLayersList, parent=self)
+                errors_list = []
+                if lsDialog.exec_() == 1:
+                    layersList = lsDialog.get_selected_layers()
 
             elif type=='gpkg':
                 ds = ogr.Open(path)
@@ -521,23 +537,12 @@ class MainWindow(QDialog):
                     layerName = layer.GetName()
                     obj_qty = layer.GetFeatureCount()
                     id = random_id(layerName)
-                    layerpath = path
-
                     tempLayersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
                 
                 lsDialog = layerSelectionDialog(tempLayersList, parent=self)
                 errors_list = []
                 if lsDialog.exec_() == 1:
                     layersList = lsDialog.get_selected_layers()
-                    
-                    # for item in layersList:
-                    #     datachecker =  ogr.Open(path, 0)
-                    #     layer = datachecker.GetLayerByName(item.getRealName())
-                    #     if layer is None:
-                    #         errors_list.append(item)
-                    #         continue
-                    #     layersList.append(item)
-                    
 
                 if len(errors_list) > 0: QMessageBox.critical(None, "Помилка", '\r\n'.join([f"Шар '{item.getLayerName()}', файлу '{path}' пошкоджено" for item in errors_list]))
                 lsDialog = None
@@ -554,6 +559,7 @@ class MainWindow(QDialog):
         layerRealName = get_real_layer_name(layer)
         layerPath = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())['path']
         features_qty = layer.featureCount()
+        print(f'{layerID} {layerVisibleName} {layerRealName} {layerPath} {features_qty}')
         layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath, features_qty = features_qty)
         return layer_item
 
@@ -576,7 +582,6 @@ class MainWindow(QDialog):
         selected_item = cast(layerItem, selected_item)
 
         if selected_item is not None:
-            #print(selected_item)
             menu = QMenu(self)
             if selected_item.isConnected():
                 layer = QgsProject.instance().mapLayer(selected_item.__layerID__)
@@ -610,8 +615,3 @@ class MainWindow(QDialog):
                     selected_index = self.layer_list_widget.indexOfTopLevelItem(selected_item)
                     self.layer_list_widget.takeTopLevelItem(selected_index)
 
-                # print(f"Вибрано дію: {selected_action.text()}")
-    
-# window = MainWindow(parent=iface.mainWindow())
-# 
-# window.show()
