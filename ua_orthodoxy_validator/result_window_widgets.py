@@ -13,7 +13,7 @@ class CheckboxFilterWidget(QWidget):
         self.setHidden(True)
         self.main_layout = QVBoxLayout(self)
         self.checkboxes = []
-        print(items)
+        #print(items)
         # Create checkboxes for each item
         for k, v in items.items():
             checkbox = QCheckBox(v, self)
@@ -91,6 +91,12 @@ class FilterWidget(QWidget):
         self.widgets[0].filtered_items_signal.connect(self.file_filtered_signal)
         self.widgets[1].filtered_items_signal.connect(self.layer_filtered_signal)
         self.widgets[2].filtered_items_signal.connect(self.inspection_name_filtered_signal)
+
+        self.tabs.setCurrentIndex(0)
+        self.widgets[0].setHidden(True)
+        self.tabs.setMaximumWidth(50)
+        self.setMaximumWidth(50)
+        self.isShrinked = True
 
     def tab_clicked(self, index):
         if self.isShrinked:
