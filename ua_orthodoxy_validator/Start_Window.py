@@ -6,7 +6,9 @@ from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLay
 from PyQt5.QtCore import Qt, QMimeData, QSize
 from PyQt5.QtGui import QCursor
 from numpy import unicode_
-from qgis.core import QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsLayerTree, QgsProviderRegistry, QgsVectorLayer, QgsMapLayerType
+from qgis.core import (
+    QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsTask, QgsApplication,
+    QgsLayerTree, QgsProviderRegistry, QgsVectorLayer, QgsMapLayerType)
 from qgis.utils import iface
 from qgis.gui import QgsLayerTreeView
 import sys, os, string, random
@@ -63,7 +65,7 @@ def get_real_layer_name(layer: QgsVectorLayer) -> str:
         
     return source_layer_name
 
-def run_validator(layers:dict, structure_folder:str):
+def run_validator(task:QgsTask, input_list:list):
     
     """
     Запустити валідатор для шарів.
@@ -83,6 +85,9 @@ def run_validator(layers:dict, structure_folder:str):
             - exchange_format_error (list): Список шарів з помилками формату обміну.
             - missing_layers (list): Список відсутніх шарів.
     """
+    layers = input_list[0]
+    structure_folder = input_list[1]
+
     output = []
     all_layers_check_result_dict = {}
     all_layers_check_result_dict['layers'] = {}
@@ -105,7 +110,6 @@ def run_validator(layers:dict, structure_folder:str):
                 'help_url' : "www.google.com",
                 'subitems' : []
             }
-
         if dataSource.GetDriver().GetName() in ['OpenFileGDB', 'GPKG']:
             layer = dataSource.GetLayerByName(layers[id]['layer_name'])
         else:
@@ -130,7 +134,8 @@ def run_validator(layers:dict, structure_folder:str):
             structure_json=structure,
             domains_json=domains,
             layer_props = layers[id],
-            layer_id = id)
+            layer_id = id,
+            task = task)
         
         validate_result = validate_checker.run()
         
@@ -138,7 +143,7 @@ def run_validator(layers:dict, structure_folder:str):
         del validate_result
         del validate_checker
         del layer
-
+    
     for k, v in temp_files_dict.items():
         output.append(v)    
     return output
@@ -326,6 +331,10 @@ class MainWindow(QDialog):
                     
             return temp_strcut
 
+    def closeEvent(self, event):
+        self.deleteLater()
+        event.accept()
+
     def __init__(self, parent=None):
         def update_version_combo_box():
             if self.BGD_type_combo_box.currentText() != '':
@@ -349,8 +358,11 @@ class MainWindow(QDialog):
                     self.crs_combo_box.hide()
                 else:
                     self.crs_combo_box.show()
-
+        
         super().__init__(parent)        
+        
+        self.validator_task = ''
+        
         self.setWindowTitle("Налаштуйте параметри перевірки")
         self.folder_path=os.path.expanduser('~')
         self.filter = ''
@@ -437,6 +449,18 @@ class MainWindow(QDialog):
         self.setLayout(layerslayout)
 
     def run(self):
+        def обробник(помилка, результат = None):
+            if помилка is None:
+                if результат is None:
+                    P
+                else:
+                    print('Запускаю вікно')
+                    window = ResultWindow(результат, parent=self)#iface.mainWindow())
+                    window.show()
+            else:
+                print(помилка)
+                raise помилка
+        
         layers_dict = {}
         for i in range(self.layer_list_widget.topLevelItemCount()):
             layer = self.layer_list_widget.topLevelItem(i)
@@ -450,16 +474,20 @@ class MainWindow(QDialog):
                 'layer_real_name': layer.getRealName(),
                 'required_crs_list': crs_list
                 }
-        # layers = layers_dict,
-        # structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
+        layers = layers_dict
+        structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path']
+        input = [layers, structure_folder]
 
-        #validator_task = QgsTask.fromFunction('Валідую валідую, та не вивалідую', run_validator, layers, structure_folder, )
-        result_structure = run_validator(
-            layers = layers_dict,
-            structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
-
-        window = ResultWindow(result_structure, parent=self)#iface.mainWindow())
-        window.show()
+        self.validator_task = QgsTask.fromFunction('Валідую валідую, та не вивалідую', run_validator, on_finished = обробник, input_list = input)
+        tm = QgsApplication.taskManager()
+        tm.addTask(self.validator_task)
+        
+        # result_structure = run_validator(
+        #     layers = layers_dict,
+        #     structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path'])
+        
+        # window = ResultWindow(result_structure, parent=self)#iface.mainWindow())
+        # window.show()
 
     def printSelectedLayerData(self):
         for item in self.layer_list_widget.selectedItems():
@@ -482,7 +510,6 @@ class MainWindow(QDialog):
         if file_dialog.exec_():
             pathArr = file_dialog.selectedFiles()
             self.filter = file_dialog.selectedNameFilter()
-            print(self.filter)  
         else:
             print('Нічого не вибрано!')
             return
@@ -507,8 +534,6 @@ class MainWindow(QDialog):
                 layersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
             
             elif type == 'gdb/gdb':
-                print(path)
-                print(os.path.dirname(path))
                 ds = ogr.Open(os.path.dirname(path))
                 if ds is None:
                     QMessageBox.critical(None, "Помилка", f"Файл {path} пошкоджено")
@@ -559,7 +584,6 @@ class MainWindow(QDialog):
         layerRealName = get_real_layer_name(layer)
         layerPath = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())['path']
         features_qty = layer.featureCount()
-        print(f'{layerID} {layerVisibleName} {layerRealName} {layerPath} {features_qty}')
         layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath, features_qty = features_qty)
         return layer_item
 
