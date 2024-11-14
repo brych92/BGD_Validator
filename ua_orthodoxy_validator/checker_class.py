@@ -455,9 +455,13 @@ class EDRA_validator:
 
 
 class EDRA_exchange_layer_checker:
-    def __init__(self, layer_EDRA_valid_class: EDRA_validator, layer_props: dict, layer_id: str):
-        
-        self.layer_EDRA_valid_class = layer_EDRA_valid_class
+    def __init__(self, layer:ogr.Layer, layer_exchange_name:str, structure_json:dict, domains_json:dict, layer_props: dict, layer_id: str):
+
+        self.layer_EDRA_valid_class = EDRA_validator(
+            layer = layer,
+            layer_exchange_name=layer_exchange_name,
+            structure_json=structure_json,
+            domains_json=domains_json)
         self.layer_props = layer_props
         self.check_result_dict = {}
         self.check_result_legacy = {}
@@ -569,10 +573,10 @@ class EDRA_exchange_layer_checker:
     def write_features_check_result(self):
         features_dict_legacy = {}
         
-        features_fids = {}
-        if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
-            for feature in self.layer_EDRA_valid_class.layer:
-                features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
+        # features_fids = {}
+        # if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
+        #     for feature in self.layer_EDRA_valid_class.layer:
+        #         features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
                 
 
         container_features = None
@@ -620,7 +624,10 @@ class EDRA_exchange_layer_checker:
                         criticity = 1, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
+                    
                     container_required_fields_is_empty_or_null['subitems'].append(insception_empty_field_error)
+                    del insception_empty_field_error
+                    
                     
             if len(required_fields_is_null_list) > 0:
                 #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
@@ -634,6 +641,7 @@ class EDRA_exchange_layer_checker:
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_required_fields_is_empty_or_null['subitems'].append(insception_null_field_error)
+                    del insception_null_field_error
                     
             if len(required_fields_is_empty_list) == 0 and len(required_fields_is_null_list) == 0:
                 insception_dict_field_not_emprty_or_null = None
@@ -645,8 +653,13 @@ class EDRA_exchange_layer_checker:
                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                 )
                 container_required_fields_is_empty_or_null['subitems'].append(insception_dict_field_not_emprty_or_null)
+                del insception_dict_field_not_emprty_or_null
                 
             container_features_attribute_errors['subitems'].append(container_required_fields_is_empty_or_null)
+            del container_required_fields_is_empty_or_null
+            
+            del required_fields_is_empty_list
+            del required_fields_is_null_list
             
             
             attribute_values_unclassified_dict = self.check_attr_value_in_domain(feature)
@@ -673,6 +686,7 @@ class EDRA_exchange_layer_checker:
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_attributes_values_unclassified['subitems'].append(insception_unclassified_value_error)
+                    del insception_unclassified_value_error
                     
             elif len(attribute_values_unclassified_dict.keys()) == 0 :
                 insception_classified_value = None
@@ -684,8 +698,11 @@ class EDRA_exchange_layer_checker:
                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                 )
                 container_attributes_values_unclassified['subitems'].append(insception_classified_value)
+                del insception_classified_value
                 
             container_features_attribute_errors['subitems'].append(container_attributes_values_unclassified)
+            del container_attributes_values_unclassified
+            del attribute_values_unclassified_dict
             
             
             
@@ -709,6 +726,7 @@ class EDRA_exchange_layer_checker:
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_attributes_values_length['subitems'].append(insception_attributes_length_value_exceed)
+                    del insception_attributes_length_value_exceed
                     
             elif len(attributes_length_exceed_dict.keys()) == 0 :
                 insception_attributes_length_value = None
@@ -720,72 +738,77 @@ class EDRA_exchange_layer_checker:
                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                 )
                 container_attributes_values_length['subitems'].append(insception_attributes_length_value)
+                del insception_attributes_length_value
                 
             container_features_attribute_errors['subitems'].append(container_attributes_values_length)
             
+            del attributes_length_exceed_dict
+            del container_attributes_values_length
             
             
-            duplicated_guid_list = self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids)
+            # duplicated_guid_list = self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids)
             
             
-            # Розкоментувати код і дописати контейнер для дуплікейтед гуід
-            container_duplicated_guid = None
-            container_duplicated_guid = {}
-            container_duplicated_guid['type'] = 'container'
-            container_duplicated_guid['item_name'] = "Перевірка на унікальність ID"
-            container_duplicated_guid['subitems'] = []
+            # # Розкоментувати код і дописати контейнер для дуплікейтед гуід
+            # container_duplicated_guid = None
+            # container_duplicated_guid = {}
+            # container_duplicated_guid['type'] = 'container'
+            # container_duplicated_guid['item_name'] = "Перевірка на унікальність ID"
+            # container_duplicated_guid['subitems'] = []
             
-            if len(duplicated_guid_list) > 0:
-                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
-                for duplicate_item in duplicated_guid_list:
+            # if len(duplicated_guid_list) > 0:
+            #     #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+            #     for duplicate_item in duplicated_guid_list:
                     
-                    insception_feature_id_is_not_unique = None
-                    insception_feature_id_is_not_unique = self.create_inspection_dict(
-                        inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Об'єкт ({feature.GetFID()}) має не унікальний ідентифікатор. Дублюючий елемент, ID: {[duplicate_item][0]}", 
-                        item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
-                        criticity = 1, 
-                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                    )
-                    container_duplicated_guid['subitems'].append(insception_feature_id_is_not_unique)
+            #         insception_feature_id_is_not_unique = None
+            #         insception_feature_id_is_not_unique = self.create_inspection_dict(
+            #             inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
+            #             item_name = f"Об'єкт ({feature.GetFID()}) має не унікальний ідентифікатор. Дублюючий елемент, ID: {[duplicate_item][0]}", 
+            #             item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
+            #             criticity = 1, 
+            #             help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+            #         )
+            #         container_duplicated_guid['subitems'].append(insception_feature_id_is_not_unique)
                     
-            elif len(duplicated_guid_list) == 0 :
-                insception_feature_id_is_unique = None
-                insception_feature_id_is_unique = self.create_inspection_dict(                    
-                    inspection_type_name = "Перевірка на унікальність ID", #Підтягувати перевірку з файлу структури з помилками
-                    item_name = f"Ідентифікатор об'єкта унікальний", 
-                    item_tool_tip = f"Ідентифікатор об'єкта унікальний", 
-                    criticity = 0, 
-                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                )
-                container_duplicated_guid['subitems'].append(insception_feature_id_is_unique)
+            # elif len(duplicated_guid_list) == 0 :
+            #     insception_feature_id_is_unique = None
+            #     insception_feature_id_is_unique = self.create_inspection_dict(                    
+            #         inspection_type_name = "Перевірка на унікальність ID", #Підтягувати перевірку з файлу структури з помилками
+            #         item_name = f"Ідентифікатор об'єкта унікальний", 
+            #         item_tool_tip = f"Ідентифікатор об'єкта унікальний", 
+            #         criticity = 0, 
+            #         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+            #     )
+            #     container_duplicated_guid['subitems'].append(insception_feature_id_is_unique)
                 
-            container_features_attribute_errors['subitems'].append(container_duplicated_guid)
+            # container_features_attribute_errors['subitems'].append(container_duplicated_guid)
             
             
             feature_dict_result['subitems'].append(container_features_attribute_errors)
+            del container_features_attribute_errors
             
             container_features['subitems'].append(feature_dict_result)
+            del feature_dict_result
             
-            features_dict_legacy[feature.GetFID()] = {
-                "required_attribute_empty": required_fields_is_empty_list,
-                "required_attribute_empty": required_fields_is_null_list,
-                "attribute_value_unclassifyed": attribute_values_unclassified_dict,
-                "duplicated_GUID": duplicated_guid_list,
-                "attribute_length_exceed": attributes_length_exceed_dict,
+            # features_dict_legacy[feature.GetFID()] = {
+            #     "required_attribute_empty": required_fields_is_empty_list,
+            #     "required_attribute_empty": required_fields_is_null_list,
+            #     "attribute_value_unclassifyed": attribute_values_unclassified_dict,
+            #     # "duplicated_GUID": duplicated_guid_list,
+            #     "attribute_length_exceed": attributes_length_exceed_dict,
                 
-                }
+            #     }
             
-            if self.layer_EDRA_valid_class.required_geometry_type != None:
-                features_dict_legacy[feature.GetFID()]['geometry_errors'] = {
-                    "empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
-                    "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
-                    "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)
-                    }
+            # if self.layer_EDRA_valid_class.required_geometry_type != None:
+            #     features_dict_legacy[feature.GetFID()]['geometry_errors'] = {
+            #         "empty" : self.layer_EDRA_valid_class.check_feature_geometry_is_empty(feature),
+            #         "null" : self.layer_EDRA_valid_class.check_feature_geometry_is_null(feature),
+            #         "geometry_type_wrong" : self.check_wrong_object_geometry_type(feature)
+            #         }
             
         
         #print(features_dict)
-        return [features_dict_legacy, container_features]
+        return container_features
             
     def write_result_dict(self):
             
@@ -816,8 +839,10 @@ class EDRA_exchange_layer_checker:
                     )
 
                 self.check_result_dict['subitems'].append(inspection_dict_layer_wrong_crs)
+                del inspection_dict_layer_wrong_crs
+                del result_check_crs_layer
                 
-                self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_layer_CRS'] = result_check_crs_layer
+                # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_layer_CRS'] = result_check_crs_layer
                 
                 result_check_wrong_layer_geometry_type = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
                 
@@ -845,7 +870,10 @@ class EDRA_exchange_layer_checker:
                 
                 self.check_result_dict['subitems'].append(insception_dict_wrong_layer_geometry_type)
                 
-                self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_geometry_type'] = result_check_wrong_layer_geometry_type
+                del insception_dict_wrong_layer_geometry_type
+                del result_check_wrong_layer_geometry_type
+                
+                # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_geometry_type'] = result_check_wrong_layer_geometry_type
                 
             # if 'layer_name_errors' not in self.check_result_legacy[self.layer_props['related_layer_id']].keys():
             #     self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = {}
@@ -892,6 +920,9 @@ class EDRA_exchange_layer_checker:
                 
             container_layer_field_errors['subitems'].append(container_missing_required_fields)
             
+            del missing_required_fields_list
+            del container_missing_required_fields
+            
             
             missing_fields_list = self.check_missing_fields()
             
@@ -926,6 +957,9 @@ class EDRA_exchange_layer_checker:
                 container_missing_fields['subitems'].append(insception_dict_layer_missing_fields)
                 
             container_layer_field_errors['subitems'].append(container_missing_fields)
+            del missing_fields_list
+            del container_missing_fields
+            
             
             wrong_fields_types_list = self.check_wrong_fields_types()
             
@@ -960,6 +994,9 @@ class EDRA_exchange_layer_checker:
                 container_wrong_fields_types_errors['subitems'].append(insception_no_wrong_field_type_error)
                 
             container_layer_field_errors['subitems'].append(container_wrong_fields_types_errors)
+            
+            del wrong_fields_types_list
+            del container_wrong_fields_types_errors
             
             container_wrong_fields_names_errors = None
             container_wrong_fields_names_errors = {}
@@ -1050,17 +1087,24 @@ class EDRA_exchange_layer_checker:
                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                 )
                 container_wrong_fields_names_errors['subitems'].append(insception_dict_fields_no_error_name)
-                    
+                del insception_dict_fields_no_error_name
+            
+            del wrong_layer_fields_names_list
             
                 
+            container_layer_field_errors['subitems'].append(container_wrong_fields_names_errors)
+            del container_wrong_fields_names_errors
+            
             self.check_result_dict['subitems'].append(container_layer_field_errors)
             
-            self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors'] = {}
-            self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_required_fields'] = missing_required_fields_list
-            self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_fields'] = missing_fields_list
-            self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['wrong_field_type'] = wrong_fields_types_list
+            del container_layer_field_errors
             
-            self.check_result_legacy[self.layer_props['related_layer_id']]['field_name_errors'] = wrong_layer_fields_names_list
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors'] = {}
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_required_fields'] = missing_required_fields_list
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_fields'] = missing_fields_list
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['wrong_field_type'] = wrong_fields_types_list
+            
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_name_errors'] = wrong_layer_fields_names_list
             # 'field_name_errors'
             
             #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
@@ -1068,9 +1112,10 @@ class EDRA_exchange_layer_checker:
             
             #### НЕ ЗАБУТИ РОЗКОМЕНТУВАТИ
             features_check_results = self.write_features_check_result() #повертається список, перший об'єкт це легасі словник, другий це контейнер для нової структури
-            self.check_result_dict['subitems'].append(features_check_results[1])
+            self.check_result_dict['subitems'].append(features_check_results)
+            del features_check_results
             
-            self.check_result_legacy[self.layer_props['related_layer_id']]['features'] = features_check_results[0]      
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['features'] = features_check_results[0]      
     
     def run(self):
         
@@ -1105,8 +1150,8 @@ class EDRA_exchange_layer_checker:
 
             self.check_result_dict['subitems'].append(insception_layer_is_empty)
             
-            self.check_result_legacy[self.layer_props['related_layer_id']] = {}
-            self.check_result_legacy[self.layer_props['related_layer_id']]["is_empty"] = layer_is_empty
+            # self.check_result_legacy[self.layer_props['related_layer_id']] = {}
+            # self.check_result_legacy[self.layer_props['related_layer_id']]["is_empty"] = layer_is_empty
             
             if self.layer_EDRA_valid_class.nameError:
                 layer_name_errors_check_result = self.layer_EDRA_valid_class.check_text_in_objects_list(self.layer_EDRA_valid_class.layer_exchange_name, 'layer')
@@ -1132,6 +1177,7 @@ class EDRA_exchange_layer_checker:
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_general)
+                                del insception_dict_layer_error_name_general
                             
                             if [x] == "used_alias":
                                 insception_dict_layer_error_name_used_alias = None
@@ -1143,6 +1189,7 @@ class EDRA_exchange_layer_checker:
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_used_alias)
+                                del insception_dict_layer_error_name_used_alias
                             
                             if [x] == "spaces_used":
                                 insception_dict_layer_error_name_spaces_used = None
@@ -1154,6 +1201,7 @@ class EDRA_exchange_layer_checker:
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_spaces_used)
+                                del insception_dict_layer_error_name_spaces_used
                             
                             if [x] == "used_cyrillic":
                                 insception_dict_layer_error_name_used_cyrillic = None
@@ -1165,6 +1213,7 @@ class EDRA_exchange_layer_checker:
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_used_cyrillic)
+                                del insception_dict_layer_error_name_used_cyrillic
                                 
 
                     elif len(layer_name_errors_check_result['result_dict'].keys()) == 0:
@@ -1177,11 +1226,13 @@ class EDRA_exchange_layer_checker:
                             help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                         )
                         container_layer_error_name['subitems'].append(insception_dict_layer_no_error_name)
+                        del insception_dict_layer_no_error_name
 
                     self.check_result_dict['subitems'].append(container_layer_error_name)
+                    del container_layer_error_name
                     
                     self.layer_EDRA_valid_class = EDRA_validator(self.layer_EDRA_valid_class.layer, layer_name_errors_check_result['result_dict']['valid_name'], self.layer_EDRA_valid_class.structure_json, self.layer_EDRA_valid_class.domains_json)
-                    self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
+                    # self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
                     
                     self.write_result_dict()
                 else: 
@@ -1195,8 +1246,10 @@ class EDRA_exchange_layer_checker:
                     )
                     
                     self.check_result_dict['subitems'].append(insception_dict_layer_error_name_else)
-
-                    self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
+                    del insception_dict_layer_error_name_else
+                    
+                del layer_name_errors_check_result
+                    # self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
                 # self.check_result_dict[self.layer_props['related_layer_id']]['layer_name_errors']["general"] = [True,"Посилання на сторінку хелпу з переліком атрибутів"]
                 
             else:
@@ -1218,9 +1271,11 @@ class EDRA_exchange_layer_checker:
 
             #Альтернативне посилання https://www.youtube.com/watch?v=asjQNZn7vng #Гендальф
             self.check_result_dict['subitems'].append(insception_layer_valid_dict)
-            
-            self.check_result_legacy[self.layer_props['layer_name']]['layer_invalid'] = True
-            
+            del insception_layer_valid_dict
+            # self.check_result_legacy[self.layer_props['layer_name']]['layer_invalid'] = True
+        
+        del self.layer_EDRA_valid_class 
+
         return self.check_result_dict
 
         
