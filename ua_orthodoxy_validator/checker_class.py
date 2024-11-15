@@ -468,7 +468,10 @@ class EDRA_exchange_layer_checker:
         self.check_result_legacy = {}
         self.layer_id = layer_id
         self.layer_props['related_layer_id'] = layer_id
-        
+        self.Task = task
+        if self.Task is not None:        
+            self.Task.setProgress(3)
+
     def create_inspection_dict(self, inspection_type_name=None, item_name=None, item_tool_tip=None, criticity=None, help_url=None):
         inspection_dict = {
             'type': 'inspection'
@@ -589,6 +592,13 @@ class EDRA_exchange_layer_checker:
         
         
         for feature in self.layer_EDRA_valid_class.layer:
+            if self.Task is not None:
+                if self.Task.isCanceled(): return 
+                progress = self.Task.progress()
+                if progress < 95:
+                    self.Task.setProgress(progress + 0.01)
+                else:
+                    self.Task.setProgress(3)
             feature_dict_result = None
             
             feature_dict_result = {
