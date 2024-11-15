@@ -1,6 +1,7 @@
 import json
 import copy
 from osgeo import ogr
+from qgis.core import QgsTask
 
 # Можливі помилки
 # Об'єкт з id "0" має помилку: "segments 142 and 229 of line 0 intersect at 33.5424, 48.2325"
@@ -455,7 +456,7 @@ class EDRA_validator:
 
 
 class EDRA_exchange_layer_checker:
-    def __init__(self, layer:ogr.Layer, layer_exchange_name:str, structure_json:dict, domains_json:dict, layer_props: dict, layer_id: str):
+    def __init__(self, layer:ogr.Layer, layer_exchange_name:str, structure_json:dict, domains_json:dict, layer_props: dict, layer_id: str, task: QgsTask = None):
 
         self.layer_EDRA_valid_class = EDRA_validator(
             layer = layer,
