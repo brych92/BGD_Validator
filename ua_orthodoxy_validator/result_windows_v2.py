@@ -1,5 +1,5 @@
 
-import inspect
+import sys
 from logging import critical, warn
 import json
 from math import e
@@ -10,10 +10,10 @@ from numpy import isin, union1d
 from qgis.PyQt.QtWidgets import (
     QLabel, QVBoxLayout, QTabWidget, QTreeWidget, QHBoxLayout,
     QPushButton, QApplication, QMenu, QTreeWidgetItem, QDialog, 
-    QTextEdit, QWidget, QTreeView, QCheckBox
+    QTextEdit, QWidget, QTreeView, QCheckBox, QSplitter
 )
-from qgis.PyQt.QtCore import Qt, QSortFilterProxyModel, QModelIndex, pyqtSignal, pyqtSlot
-from qgis.PyQt.QtGui import QFont, QColor, QPixmap, QIcon, QStandardItemModel, QStandardItem
+from qgis.PyQt.QtCore import Qt, QSortFilterProxyModel, QModelIndex, pyqtSignal, pyqtSlot, QUrl, QTimer
+from qgis.PyQt.QtGui import QFont, QColor, QPixmap, QIcon, QStandardItemModel, QStandardItem, QDesktopServices
 
 from qgis.core import (
     QgsProject, QgsProviderRegistry, QgsVectorLayer, 
@@ -296,6 +296,10 @@ class InspectionItem(QStandardItem):
         """Встановлює дані елемента для зазначеної ролі."""
         super().setData(value, role)
 
+    def realtedPath(self):
+        """Отримує повний шлях до файлу."""
+        return self.getData(self.RELATED_FILE_PATH)
+    
     def relatedLayer(self):
         """Отримує відповідний шар."""
         layer_id = self.getData(self.RELATED_LAYER_ID)
@@ -327,6 +331,12 @@ class CustomItemModel(QStandardItemModel):
         self.warning_QTY = 0
 
         super().__init__(parent)
+        
+        print(f'Memory usage of CustomItemModel: {self.__sizeof__()}')
+
+        qtimer = QTimer(self)
+        qtimer.timeout.connect(lambda:print(f'Memory usage of CustomItemModel: {self.__sizeof__()}'))
+        qtimer.start(5000)
         if structure is not None: 
             self.fill_model(structure)
         
@@ -452,6 +462,13 @@ class CustomItemModel(QStandardItemModel):
 class FilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
+        
+        print(f'Initial memory usage of FilterProxyModel: {self.__sizeof__()}')
+        
+        qtimer = QTimer(self)
+        qtimer.timeout.connect(lambda:print(f'Memory usage of ProxyModel: {self.__sizeof__()}'))
+        qtimer.start(5000)
+        
         self.filter_dict = {
             'criticity': [],
             'type': [],
@@ -515,20 +532,33 @@ class CustomTreeView(QTreeView):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setHeaderHidden(True)
+        
+        print(f'Initial memory usage of CustomTreeView: {self.__sizeof__()}')
+
+        qtimer = QTimer(self)
+        qtimer.timeout.connect(lambda:print(f'Memory usage of CustomTreeView: {self.__sizeof__()}'))
+        qtimer.start(5000)
 
 
 
 class ResultWindow(QDialog):
     def __init__(self, errors_table:dict, parent=None):
         super().__init__(parent)
+        print(f'При прийомі результату: {errors_table.__sizeof__()}')
+        
+
+        print(f'Initial memory usage of ResultWindow: {self.__sizeof__()}')
+        qtimer = QTimer(self)
+        qtimer.timeout.connect(lambda: print(f'Memory usage of ResultWindow: {self.__sizeof__()}'))
+        qtimer.start(5000)
         #print(json.dumps(errors_table, indent=4, ensure_ascii=False))
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
         self.errors_table = errors_table
 
         #ініціалізація моделі
-        self.model = CustomItemModel(self.errors_table)        
-        self.proxyModel = FilterProxyModel()
+        self.model = CustomItemModel(self.errors_table, parent=self)        
+        self.proxyModel = FilterProxyModel(self)
         self.proxyModel.setSourceModel(self.model)
         
         # Налаштування основного вікна
@@ -550,14 +580,15 @@ class ResultWindow(QDialog):
         self.criticity_radio.changed_signal.connect(self.proxyModel.filterByCriticity)
         main_layout.addWidget(self.criticity_radio)
         
+        
         #дерево помилок
-        self.tree_widget = CustomTreeView()
+        self.tree_widget = CustomTreeView(self)
         self.tree_widget.setModel(self.proxyModel)
         main_layout.addWidget(self.tree_widget)
 
 
         # Поле результату перевірки
-        self.result_text_field = statusWidget(self.model)
+        self.result_text_field = statusWidget(self.model, self)
         main_layout.addWidget(self.result_text_field)
 
         # Кнопки управління
@@ -586,13 +617,34 @@ class ResultWindow(QDialog):
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_context_menu)
 
+        print(f'End memory usage of ResultWindow: {self.__sizeof__()}')
+
     def make_filter_dict(self):
         return self.model.get_filtration_dict()
 
+    def closeEvent(self, event):
+        self.deleteLater()
+        event.accept()
 
     def show_context_menu(self, position):
+        #Задонатити на ЗСУ
+        def donate():
+            url = QUrl("https://send.monobank.ua/jar/6v8t4TNdaX")
+            QDesktopServices.openUrl(url)
+
+        #відкрити файл
+        def open_file(file_path):
+            os.startfile(file_path)
+        
+        #відкрити папку
+        def open_folder(file_path):
+            folder_path = os.path.dirname(file_path)
+            os.startfile(folder_path)
+
+
         canvas = iface.mapCanvas()
         proxy_index = self.tree_widget.selectedIndexes()
+        
         if proxy_index:
             proxy_model = self.tree_widget.model()
             proxy_model = cast(FilterProxyModel, proxy_model)
@@ -604,8 +656,6 @@ class ResultWindow(QDialog):
             
             selected_item = main_model.itemFromIndex(main_index)
             
-            #print(selected_item.parent())
-            
             selected_item = cast(InspectionItem, selected_item)
         else:
             print("No item selected")
@@ -613,11 +663,22 @@ class ResultWindow(QDialog):
 
         if selected_item is not None:
             menu = QMenu(self)
+            
+            menu.addAction("Задонатити на ЗСУ")
+            menu.addSeparator()
+
+            if selected_item.realtedPath() is not None:
+                related_file = selected_item.realtedPath()
+                menu.addAction("Відкрити файл")
+                menu.addAction("Відкрити папку")
+                menu.addSeparator()
+
             if selected_item.relatedLayer() is not None:
                 related_layer = selected_item.relatedLayer()
                 menu.addAction("Виділити шар")
                 menu.addAction("Перейти в налаштування шару")
                 menu.addAction("Переглянуи таблицю атрибутів шару")
+                menu.addSeparator()
             
             if selected_item.relatedFeature() is not None:
                 related_feature = selected_item.relatedFeature()
@@ -627,8 +688,7 @@ class ResultWindow(QDialog):
                     menu.addAction("Відкрити форму об'єкту")
                 
                 menu.addAction("Наблизити до об'єкту")
-            else:
-                related_feature = None
+            
 
             
 
@@ -637,8 +697,25 @@ class ResultWindow(QDialog):
             
             selected_action = menu.exec_(self.mapToGlobal(position))
 
+            actions = {
+                "Задонатити на ЗСУ": donate,
+                "Відкрити файл": lambda: open_file(related_file),
+                "Відкрити папку": lambda: open_folder(related_file),
+                "Виділити шар": lambda: iface.setActiveLayer(related_layer),
+                "Перейти в налаштування шару": lambda: iface.showLayerProperties(related_layer),
+                "Переглянуи таблицю атрибутів шару": lambda: iface.showAttributeTable(related_layer),
+                "Виділити об'єкт": lambda: related_layer.selectByIds([related_feature.id()]),
+                "Виділити та наблизити до об'єкту": lambda: related_layer.selectByIds([related_feature.id()]),
+                "Відкрити форму об'єкту": lambda: iface.showAttributeEditor(related_layer, related_feature),
+                "Наблизити до об'єкту": lambda: canvas.zoomToSelected(related_layer)
+            }
 
             if selected_action:
+
+                print(f"Вибрано дію: {selected_action.text()}")
+                actions[selected_action.text()]()
+                return
+
                 if selected_action.text() == "Виділити шар":
                     iface.setActiveLayer(related_layer)
                 
@@ -653,11 +730,9 @@ class ResultWindow(QDialog):
                         iface.showAttributeTable(related_layer)
                     
                 elif selected_action.text() == "Виділити об'єкт":
-                    print(related_feature.id())
                     related_layer.selectByIds([related_feature.id()])
 
                 elif selected_action.text() == "Виділити та наблизити до об'єкту":
-                    print(related_feature.id())
                     related_layer.selectByIds([related_feature.id()])
 
                     canvas.zoomToSelected(related_layer)
@@ -669,4 +744,3 @@ class ResultWindow(QDialog):
                     featureForm = iface.getFeatureForm(related_layer, related_feature)
                     featureForm.show()
 
-                print(f"Вибрано дію: {selected_action.text()}")
