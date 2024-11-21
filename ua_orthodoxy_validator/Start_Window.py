@@ -448,11 +448,10 @@ class MainWindow(QDialog):
         def обробник(помилка, результат = None):
             if помилка is None:
                 if результат is None:
-                    P
+                    pass
                 else:
                     print('Запускаю вікно')
-                    print(f'При передчі результату: {sys.getsizeof(результат)}')
-                    window = ResultWindow(результат, parent=self)#iface.mainWindow())
+                    window = ResultWindow(результат, parent=self)
                     window.show()
             else:
                 print(помилка)

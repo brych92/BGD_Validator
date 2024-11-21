@@ -331,12 +331,6 @@ class CustomItemModel(QStandardItemModel):
         self.warning_QTY = 0
 
         super().__init__(parent)
-        
-        print(f'Memory usage of CustomItemModel: {self.__sizeof__()}')
-
-        qtimer = QTimer(self)
-        qtimer.timeout.connect(lambda:print(f'Memory usage of CustomItemModel: {self.__sizeof__()}'))
-        qtimer.start(5000)
         if structure is not None: 
             self.fill_model(structure)
         
@@ -463,12 +457,6 @@ class FilterProxyModel(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        print(f'Initial memory usage of FilterProxyModel: {self.__sizeof__()}')
-        
-        qtimer = QTimer(self)
-        qtimer.timeout.connect(lambda:print(f'Memory usage of ProxyModel: {self.__sizeof__()}'))
-        qtimer.start(5000)
-        
         self.filter_dict = {
             'criticity': [],
             'type': [],
@@ -532,25 +520,13 @@ class CustomTreeView(QTreeView):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setHeaderHidden(True)
-        
-        print(f'Initial memory usage of CustomTreeView: {self.__sizeof__()}')
-
-        qtimer = QTimer(self)
-        qtimer.timeout.connect(lambda:print(f'Memory usage of CustomTreeView: {self.__sizeof__()}'))
-        qtimer.start(5000)
 
 
 
 class ResultWindow(QDialog):
     def __init__(self, errors_table:dict, parent=None):
         super().__init__(parent)
-        print(f'При прийомі результату: {errors_table.__sizeof__()}')
-        
 
-        print(f'Initial memory usage of ResultWindow: {self.__sizeof__()}')
-        qtimer = QTimer(self)
-        qtimer.timeout.connect(lambda: print(f'Memory usage of ResultWindow: {self.__sizeof__()}'))
-        qtimer.start(5000)
         #print(json.dumps(errors_table, indent=4, ensure_ascii=False))
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
@@ -616,8 +592,6 @@ class ResultWindow(QDialog):
         # Підключення контекстного меню до багатошарового списку
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_context_menu)
-
-        print(f'End memory usage of ResultWindow: {self.__sizeof__()}')
 
     def make_filter_dict(self):
         return self.model.get_filtration_dict()
