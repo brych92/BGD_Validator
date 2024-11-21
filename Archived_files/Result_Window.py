@@ -67,19 +67,6 @@ def get_feature_display_name(layer: QgsVectorLayer, feature: QgsFeature) -> str:
     return result
 
 def get_index(list_v: list, index: int) -> Union[str, None]:
-    """
-    Отримує відображальну назву елемента з заданого шару.
-
-    Аргументи:
-        layer (QgsVectorLayer): Шар, який містить елемент.
-        feature (QgsFeature): Елемент, з якого отримати відображальну назву.
-
-    Повертає:
-        будь-який: Відображальна назва елемента.
-
-    Звикання:
-        ValueError: Якщо назва поля відображення не встановлена або недействітна.
-    """
     if 0 <= index < len(list_v):
         element = list_v[index]
         return element
