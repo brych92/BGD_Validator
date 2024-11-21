@@ -511,25 +511,30 @@ class MainWindow(QDialog):
             return
         
         self.folder_path=os.path.dirname(pathArr[0])
-        type = pathArr[0].split('.')[-1]
+        file_type = pathArr[0].split('.')[-1]
 
 
         layersList = []
 
         for path in pathArr:
-            if type in ['json','geojson', 'shp']:
+            if file_type in ['json','geojson', 'shp']:
                 #print(path)
                 ds  = ogr.Open(path, 0)
                 if ds is None:
                     print('Could not open %s' % (path))
                     continue
                 layer = ds.GetLayer()
-                layerName = layer.GetName()
+                
+                if file_type in ['geojson', 'json']:
+                    layerName = os.path.splitext(os.path.basename(path))[0]
+                else:
+                    layerName = layer.GetName()
+                
                 obj_qty = layer.GetFeatureCount()
                 id = random_id(layerName)
                 layersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
             
-            elif type == 'gdb/gdb':
+            elif file_type == 'gdb/gdb':
                 ds = ogr.Open(os.path.dirname(path))
                 if ds is None:
                     QMessageBox.critical(None, "Помилка", f"Файл {path} пошкоджено")
@@ -547,7 +552,7 @@ class MainWindow(QDialog):
                 if lsDialog.exec_() == 1:
                     layersList = lsDialog.get_selected_layers()
 
-            elif type=='gpkg':
+            elif file_type=='gpkg':
                 ds = ogr.Open(path)
                 if ds is None:
                     QMessageBox.critical(None, "Помилка", f"Файл {path} пошкоджено")
