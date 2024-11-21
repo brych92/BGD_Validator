@@ -331,10 +331,6 @@ class MainWindow(QDialog):
                     
             return temp_strcut
 
-    def closeEvent(self, event):
-        self.deleteLater()
-        event.accept()
-
     def __init__(self, parent=None):
         def update_version_combo_box():
             if self.BGD_type_combo_box.currentText() != '':
@@ -455,6 +451,7 @@ class MainWindow(QDialog):
                     P
                 else:
                     print('Запускаю вікно')
+                    print(f'При передчі результату: {sys.getsizeof(результат)}')
                     window = ResultWindow(результат, parent=self)#iface.mainWindow())
                     window.show()
             else:
