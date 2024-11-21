@@ -111,7 +111,7 @@ class UA_orthodoxy_validator:
 
         # Declare instance attributes
         self.actions = []
-        
+        self.window = None
         self.ua_spt_menu = self.get_ua_spt_menu()
         self.ua_spt_toolbar = self.get_ua_spt_toolbar()
 
@@ -255,12 +255,17 @@ class UA_orthodoxy_validator:
         #         print(f"Text: {item.text()}")
         #     except Exception as err:
         #         print(err)
+
         if len(self.ua_spt_menu.children()) == 1:
             self.ua_spt_menu.deleteLater()
         else:
             print(False)
         if self.ua_spt_toolbar.children() == []:
             self.ua_spt_toolbar.deleteLater()
+        
+        if self.window is not None:
+            self.window.close()
+            self.window.deleteLater()
         
 
     def run(self):
