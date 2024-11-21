@@ -18,8 +18,7 @@ import json
 from .csv_to_json_structure_converter import Csv_to_json_structure_converter
 
 
-from .result_windows_v2 import ResultWindow, CustomTreeView, CustomItemModel
-from .resultStructure_v2 import result_v2
+from .result_windows import ResultWindow, CustomTreeView, CustomItemModel
 
 
 from .checker_class import EDRA_exchange_layer_checker, EDRA_validator
