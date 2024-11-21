@@ -632,7 +632,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = "Перевірка на заповненість полів (атрибутів) об'єкту", #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Обов'язковий атрибут «{empty_field}» не заповнений (is empty)", 
                         item_tool_tip = f"Обов'язковий атрибут «{empty_field}» не заповнений (is empty)", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     
@@ -648,7 +648,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = "Перевірка на заповненість полів (атрибутів) об'єкту", #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Обов'язковий атрибут «{null_field}» не заповнений (is null)", 
                         item_tool_tip = f"Обов'язковий атрибут «{null_field}» не заповнений (is null)", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_required_fields_is_empty_or_null['subitems'].append(insception_null_field_error)
@@ -693,7 +693,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Атрибут: '{field_name}' має значення '{attribute_values_unclassified_dict[field_name][0]}', що не відповідає домену (див. опис поля)", 
                         item_tool_tip = f"Значення атрибуту '{field_name}' не відповідає домену", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_attributes_values_unclassified['subitems'].append(insception_unclassified_value_error)
@@ -733,7 +733,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка на відповідність довжини значення атрибуту', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Атрибут: '{field_name}' має довжину {attributes_length_exceed_dict[field_name][0]}, а треба не більше {attributes_length_exceed_dict[field_name][1]}", 
                         item_tool_tip = f"Атрибут: '{field_name}' має довжину більше дозволеної структурою", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_attributes_values_length['subitems'].append(insception_attributes_length_value_exceed)
@@ -776,7 +776,7 @@ class EDRA_exchange_layer_checker:
             #             inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
             #             item_name = f"Об'єкт ({feature.GetFID()}) має не унікальний ідентифікатор. Дублюючий елемент, ID: {[duplicate_item][0]}", 
             #             item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
-            #             criticity = 1, 
+            #             criticity = 2, 
             #             help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
             #         )
             #         container_duplicated_guid['subitems'].append(insception_feature_id_is_not_unique)
@@ -836,7 +836,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Невідповідна СК шару: «{layer_crs}», очікується: «{required_crs_str}»", 
                         item_tool_tip = f"Невідповідна СК шару", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     
@@ -866,7 +866,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка типу геометрії шару', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Невідповідний геометричний тип класу: «{current_layer_geometry_type}», вимагається: «{required_geometry_type}»", 
                         item_tool_tip = f"Невідповідний геометричний тип класу", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     
@@ -913,7 +913,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
                         item_tool_tip = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_missing_required_fields['subitems'].append(insception_missing_required_field_error)
@@ -951,7 +951,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка на наявність полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Відсутній атрибут «{missing_field}»", 
                         item_tool_tip = f"Відсутній атрибут «{missing_field}»", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_missing_fields['subitems'].append(insception_missing_field_error)
@@ -988,7 +988,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка типу поля (атрибуту) шару', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Атрибут «{error_field}» має тип:«{wrong_fields_types_list[error_field][0]}», вимагається: «{wrong_fields_types_list[error_field][1]}»", 
                         item_tool_tip = f"Атрибут «{error_field}» має некоректний тип даних", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_wrong_fields_types_errors['subitems'].append(insception_wrong_field_type_error)
@@ -1036,7 +1036,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"Назва поля (атрибута) «{wrong_field_name}» не відповідає структурі", 
                                     item_tool_tip = f"Назва поля (атрибута) не відповідає структурі", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_general)
@@ -1047,7 +1047,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"Замість назви поля (атрибута) використано псевдонім «{wrong_field_name}», вимагається «{wrong_layer_fields_names_list[wrong_field_name]['result_dict']['valid_name']}»", 
                                     item_tool_tip = f"Замість назви поля (атрибута) використано псевдонім»", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_used_alias)
@@ -1058,7 +1058,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"В назві поля (атрибута) «{wrong_field_name}» наявні пробіли", 
                                     item_tool_tip = f"В назві поля (атрибута) наявні пробіли", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_spaces_used)
@@ -1069,7 +1069,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"В назві поля (атрибута) «{wrong_field_name}» наявні кириличні літери", 
                                     item_tool_tip = f"В назві поля (атрибута) наявні кириличні літери", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_used_cyrillic)
@@ -1094,7 +1094,7 @@ class EDRA_exchange_layer_checker:
                     inspection_type_name = 'Перевірка назви атрибутів', #Підтягувати перевірку з файлу структури з помилками
                     item_name = f"У шарі «{self.layer_props['layer_real_name']}» відсутні атрибути", 
                     item_tool_tip = f"У шарі  відсутні атрибути", 
-                    criticity = 1, 
+                    criticity = 2, 
                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                 )
                 container_wrong_fields_names_errors['subitems'].append(insception_dict_fields_no_error_name)
@@ -1147,7 +1147,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка на наявність об’єктів в шарі', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"В шарі {self.layer_props['layer_name']} відсутні об\'єкти", 
                         item_tool_tip = f"В шарі {self.layer_props['layer_real_name']} відсутні об\'єкти", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                     )
             else:
@@ -1184,7 +1184,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка імені шару', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"Назва класу «{self.layer_props['layer_real_name']}» не відповідає структурі", 
                                     item_tool_tip = f"Назва класу не відповідає структурі", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_general)
@@ -1196,7 +1196,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка імені шару', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"Замість назви класу використано псевдонім «{self.layer_props['layer_real_name']}», вимагається «{layer_name_errors_check_result['result_dict']['valid_name']}»", 
                                     item_tool_tip = f"Замість назви класу використано псевдонім»", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_used_alias)
@@ -1208,7 +1208,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка імені шару', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"В назві класу «{self.layer_props['layer_real_name']}» наявні пробіли", 
                                     item_tool_tip = f"В назві класу наявні пробіли", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_spaces_used)
@@ -1220,7 +1220,7 @@ class EDRA_exchange_layer_checker:
                                     inspection_type_name = 'Перевірка імені шару', #Підтягувати перевірку з файлу структури з помилками
                                     item_name = f"В назві класу «{self.layer_props['layer_real_name']}» наявні кириличні літери", 
                                     item_tool_tip = f"В назві класу наявні кириличні літери", 
-                                    criticity = 1, 
+                                    criticity = 2, 
                                     help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                                 )
                                 container_layer_error_name['subitems'].append(insception_dict_layer_error_name_used_cyrillic)
@@ -1252,7 +1252,7 @@ class EDRA_exchange_layer_checker:
                         inspection_type_name = 'Перевірка імені шару', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Назва класу «{self.layer_props['layer_real_name']}» не відповідає структурі", 
                         item_tool_tip = f"Назва класу не відповідає структурі", 
-                        criticity = 1, 
+                        criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                     )
                     
@@ -1276,7 +1276,7 @@ class EDRA_exchange_layer_checker:
                 inspection_type_name = 'Перевірка валідності шару', #Підтягувати перевірку з файлу структури з помилками
                 item_name = f"Шар {self.layer_props['layer_name']} не валідний. GDAL не може зчитати шар", 
                 item_tool_tip = f"Шар {self.layer_props['layer_real_name']}  не валідний.", 
-                criticity = 1, 
+                criticity = 2, 
                 help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
             )
 
