@@ -526,7 +526,7 @@ class CustomTreeView(QTreeView):
 class ResultWindow(QDialog):
     def __init__(self, errors_table:dict, parent=None):
         super().__init__(parent)
-
+        
         #print(json.dumps(errors_table, indent=4, ensure_ascii=False))
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
