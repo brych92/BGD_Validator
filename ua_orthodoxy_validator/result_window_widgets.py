@@ -1,6 +1,6 @@
 from qgis.PyQt.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, 
-    QRadioButton, QTabWidget, QCheckBox, QPushButton
+    QRadioButton, QTabWidget, QCheckBox, QPushButton, QScrollArea
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -12,9 +12,20 @@ class CheckboxFilterWidget(QWidget):
         super().__init__(parent)
         self.setHidden(True)
         self.main_layout = QVBoxLayout(self)
+        
         self.checkboxes = []
-        #print(items)
-        # Create checkboxes for each item
+        
+        
+        self.checkboxes_tray =  QWidget(self)
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setWidget(self.checkboxes_tray)
+        self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        
+        
+        self.checkboxes_tray_layout = QVBoxLayout(self.checkboxes_tray)
+        self.checkboxes_tray.setLayout(self.checkboxes_tray_layout)
+
         for k, v in items.items():
             checkbox = QCheckBox(v, self)
             checkbox.setProperty("value", k)
@@ -22,10 +33,11 @@ class CheckboxFilterWidget(QWidget):
             checkbox.setCheckState(Qt.Checked)
             checkbox.stateChanged.connect(self.filter_items)
             self.checkboxes.append(checkbox)
-            self.main_layout.addWidget(checkbox)
+            self.checkboxes_tray_layout.addWidget(checkbox)
         
-        self.main_layout.addStretch(1)
+        self.checkboxes_tray_layout.addStretch(1)
 
+        self.main_layout.addWidget(self.scroll_area)
         # Create buttons
         self.select_all_button = QPushButton("Всі", self)
         self.select_none_button = QPushButton("Нічого", self)
@@ -131,7 +143,7 @@ class SwitchWidget(QWidget):
         self.errors_button = QRadioButton("Тільки з помилками")
         self.critical_button = QRadioButton("Тільки критичні")
 
-        self.errors_button.setChecked(True)
+        self.all_button.setChecked(True)
 
         layout = QHBoxLayout()
         layout.addWidget(self.critical_button)
