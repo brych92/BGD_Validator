@@ -50,9 +50,9 @@ class Benchmark():
         for key, value in entries:
             report_lines.append(f'{key}: {value}')
         
-        report_lines.append(f'Benchmark: {self.bench_name}')
+        report_lines.append(f'\r\n\r\nBenchmark: {self.bench_name}')
         report = '\n'.join(report_lines)
-        report_lines.append(f'END {self.bench_name} END')
+        report_lines.append(f'END {self.bench_name} END\r\n\r\n')
         return report
 
 
