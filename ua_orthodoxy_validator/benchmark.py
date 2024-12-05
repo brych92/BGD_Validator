@@ -55,7 +55,7 @@ class Benchmark():
         
         report_lines.append(f'Benchmark: {self.bench_name}')
         for key, value in entries:
-            report_lines.append(f'{round(value,5)} : {key} ')
+            report_lines.append(f'{value:.5f} : {key} ')
         
         report = '\n'.join(report_lines)
         report += f'\nEND {self.bench_name} END'
