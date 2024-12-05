@@ -11,8 +11,11 @@ class Benchmark():
         self.currentoperation_start_time = None
 
     def start(self, operation_name):
+        if self.current_operation is not None:
+            self.stop()            
         self.current_operation = operation_name
         self.currentoperation_start_time = time.time()
+
     
     def stop(self):
         duration = time.time() - self.currentoperation_start_time
@@ -20,6 +23,9 @@ class Benchmark():
             self.sequence[self.current_operation].append(duration)
         else:
             self.sequence[self.current_operation] = [duration]
+        
+        self.current_operation = None
+        self.currentoperation_start_time = None
 
     def join(self, other_benchmark):
         for k, v in other_benchmark.sequence.items():
