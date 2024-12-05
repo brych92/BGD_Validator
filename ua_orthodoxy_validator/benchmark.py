@@ -47,12 +47,12 @@ class Benchmark():
         if sort_descending:
             entries = sorted(entries, key=lambda x: x[1], reverse=True)
         
+        report_lines.append(f'Benchmark: {self.bench_name}')
         for key, value in entries:
-            report_lines.append(f'{key}: {value}')
+            report_lines.append(f'{round(value,5)} : {key} ')
         
-        report_lines.append(f'\r\n\r\nBenchmark: {self.bench_name}')
         report = '\n'.join(report_lines)
-        report_lines.append(f'END {self.bench_name} END\r\n\r\n')
+        report += f'\nEND {self.bench_name} END'
         return report
 
 
