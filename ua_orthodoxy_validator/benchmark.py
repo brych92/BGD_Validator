@@ -60,5 +60,8 @@ class Benchmark():
         report = '\n'.join(report_lines)
         report += f'\nEND {self.bench_name} END'
         return report
+    
+    def print_report(self, sort_descending = True):
+        print(self.get_report(sort_descending))
 
 
