@@ -1,7 +1,7 @@
-import json
-import copy
 from osgeo import ogr
 from qgis.core import QgsTask
+
+from .benchmark import Benchmark
 
 # Можливі помилки
 # Об'єкт з id "0" має помилку: "segments 142 and 229 of line 0 intersect at 33.5424, 48.2325"
@@ -10,7 +10,7 @@ from qgis.core import QgsTask
 
 class EDRA_validator:
     
-    def __init__(self, layer, layer_exchange_name, structure_json, domains_json):
+    def __init__(self, layer, layer_exchange_name, structure_json, domains_json, driver_name):
 
         """
         Конструктор класу EDRA_validator.
@@ -42,6 +42,7 @@ class EDRA_validator:
         self.layer_exchange_name = layer_exchange_name
         self.structure_json = structure_json
         self.domains_json = domains_json
+        self.driver_name = driver_name
         if layer_exchange_name in structure_json.keys():
             self.structure_field_names = structure_json[layer_exchange_name]['attributes'].keys()
             self.fields_structure_json = structure_json[layer_exchange_name]['attributes']
@@ -50,12 +51,26 @@ class EDRA_validator:
                 self.required_geometry_type = None
             else:
                 self.required_geometry_type = structure_json[layer_exchange_name]['geometry_type']
-            self.qt_and_ogr_data_types = {'integer': {'ogr_code': 0, 'qt_code': 2}, 'boolean': {'ogr_code': 0, 'qt_code': 1},
-                                    'double': {'ogr_code': 2, 'qt_code': 6}, 'text': {'ogr_code': 4, 'qt_code': 10}, 
-                                    'Date': {'ogr_code': 9, 'qt_code': 14}, 'Time': {'ogr_code': 10, 'qt_code': 15}, 
-                                    'DateTime': {'ogr_code': 11, 'qt_code': 16}, 'Binary': {'ogr_code': 15, 'qt_code': None}, 
-                                    'IntegerList': {'ogr_code': 16, 'qt_code': None}, 'RealList': {'ogr_code': 17, 'qt_code': None}, 
-                                    'StringList': {'ogr_code': 18, 'qt_code': 0}}
+            # self.qt_and_ogr_data_types = {'integer': {'ogr_code': 0, 'qt_code': 2}, 'boolean': {'ogr_code': 0, 'qt_code': 1},
+            #                         'double': {'ogr_code': 2, 'qt_code': 6}, 'text': {'ogr_code': 4, 'qt_code': 10}, 
+            #                         'Date': {'ogr_code': 9, 'qt_code': 14}, 'Time': {'ogr_code': 10, 'qt_code': 15}, 
+            #                         'DateTime': {'ogr_code': 11, 'qt_code': 16}, 'Binary': {'ogr_code': 15, 'qt_code': None}, 
+            #                         'IntegerList': {'ogr_code': 16, 'qt_code': None}, 'RealList': {'ogr_code': 17, 'qt_code': None}, 
+            #                         'StringList': {'ogr_code': 18, 'qt_code': 0}}
+            
+            self.qt_and_ogr_data_types = {
+                'integer': {'ogr_codes': [0, 12], 'qt_codes': [2]},  # OFTInteger, OFTInteger64
+                'boolean': {'ogr_codes': [0], 'qt_codes': [1]},    # OFTInteger (немає окремого типу для булевих)
+                'double': {'ogr_codes': [2], 'qt_codes': [6]},     # OFTReal
+                'text': {'ogr_codes': [4], 'qt_codes': [10]},      # OFTString
+                'Date': {'ogr_codes': [9], 'qt_codes': [14]},      # OFTDate
+                'Time': {'ogr_codes': [10], 'qt_codes': [15]},      # OFTTime
+                'DateTime': {'ogr_codes': [11], 'qt_codes': [16]}, # OFTDateTime
+                'Binary': {'ogr_codes': [8], 'qt_codes': [None]},  # OFTBinary
+                'IntegerList': {'ogr_codes': [1, 13], 'qt_codes': [None]}, # OFTIntegerList, OFTInteger64List
+                'RealList': {'ogr_codes': [3], 'qt_codes': [None]},        # OFTRealList
+                'StringList': {'ogr_codes': [5], 'qt_codes': [0]}          # OFTStringList
+            }
             for x in structure_json[layer_exchange_name]['attributes']:
                 
                 if structure_json[layer_exchange_name]['attributes'][x]['attribute_is_id'] == 'True':
@@ -304,9 +319,12 @@ class EDRA_validator:
             
             if current_field_name in self.structure_field_names:
                 required_field_type_name = self.fields_structure_json[current_field_name]['attribute_type']
-                required_field_type_number = self.qt_and_ogr_data_types[required_field_type_name]['ogr_code']
+                required_field_type_number_list = self.qt_and_ogr_data_types[required_field_type_name]['ogr_codes']
+                required_field_type_names_list = [ogr.GetFieldTypeName(ogr_index) for ogr_index in required_field_type_number_list]
                 check_field_name_result = current_field_name in self.structure_field_names
-                check_field_type_result = current_field_type_name in ogr.GetFieldTypeName(required_field_type_number)
+                if self.driver_name == 'GeoJSON' and required_field_type_name in ['Time', 'Date', 'DateTime'] and current_field_type_name == 'text':
+                    check_field_type_result = True
+                else: check_field_type_result = current_field_type_name in required_field_type_names_list
                 #print(self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']])
                 list_check_fields.append({"current_field_name": current_field_name, "check_field_type_result": check_field_type_result,
                                         "current_field_type": current_field_type_name, "check_field_name_result": check_field_name_result, "required_field_type": required_field_type_name})
@@ -451,24 +469,40 @@ class EDRA_validator:
             return ''
                     
         
+    def check_null_attribute(self, attribute_name):
+    # Відкриваємо GeoJSON файл
+    
+        for feature in self.layer:
+            # Отримуємо значення атрибуту
+            attribute_value = feature.GetField(attribute_name)
+            
+            # Перевірка на NULL
+            if attribute_value is not None:
+                return False  # Знайшли об'єкт з ненульовим значенням атрибуту
         
+        return True  # Якщо жоден об'єкт не має ненульового значення атрибуту
+
     
 
 
 class EDRA_exchange_layer_checker:
-    def __init__(self, layer:ogr.Layer, layer_exchange_name:str, structure_json:dict, domains_json:dict, layer_props: dict, layer_id: str, task: QgsTask = None):
+    def __init__(self, layer:ogr.Layer, layer_exchange_name:str, structure_json:dict, domains_json:dict, layer_props: dict, layer_id: str, driver_name: str, task: QgsTask = None):
 
         self.layer_EDRA_valid_class = EDRA_validator(
             layer = layer,
-            layer_exchange_name=layer_exchange_name,
-            structure_json=structure_json,
-            domains_json=domains_json)
+            layer_exchange_name = layer_exchange_name,
+            structure_json = structure_json,
+            domains_json = domains_json,
+            driver_name = driver_name)
         self.layer_props = layer_props
         self.check_result_dict = {}
         self.check_result_legacy = {}
         self.layer_id = layer_id
         self.layer_props['related_layer_id'] = layer_id
         self.Task = task
+        self.driver_name = driver_name
+        
+        self.parse_bench = Benchmark()
         if self.Task is not None:        
             self.Task.setProgress(3)
 
@@ -528,8 +562,12 @@ class EDRA_exchange_layer_checker:
         
         errors_field_type_dict = {}
         for x in self.fields_check_results_list:
+            
             if x['check_field_type_result'] == False and x['check_field_name_result'] == True:
-                errors_field_type_dict[x['current_field_name']] = [x['current_field_type'], x['required_field_type']]
+                if self.driver_name == "GeoJSON" and x['current_field_type'] in [ogr.GetFieldTypeName(ogr_index) for ogr_index in self.layer_EDRA_valid_class.qt_and_ogr_data_types['text']['ogr_codes']] and x['current_field_name'] not in self.layer_EDRA_valid_class.get_required_fields_names() and self.layer_EDRA_valid_class.check_null_attribute(x['current_field_name']):
+                    pass
+                else:
+                    errors_field_type_dict[x['current_field_name']] = [x['current_field_type'], x['required_field_type']]
             else: pass
         
         return errors_field_type_dict    
@@ -575,13 +613,14 @@ class EDRA_exchange_layer_checker:
         return result_dict
     
     def write_features_check_result(self):
-        features_dict_legacy = {}
+        # features_dict_legacy = {}
         
         # features_fids = {}
         # if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
         #     for feature in self.layer_EDRA_valid_class.layer:
         #         features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
-                
+
+        self.main_features_check_bench = Benchmark()
 
         container_features = None
         container_features = {}
@@ -589,9 +628,12 @@ class EDRA_exchange_layer_checker:
         container_features['item_name'] = "Об'єкти шару"
         container_features['subitems'] = []
         
+        self.main_features_check_bench.start("start_check_all_objects")
         
+        self.check_feature_bench = Benchmark()
         
         for feature in self.layer_EDRA_valid_class.layer:
+            
             if self.Task is not None:
                 if self.Task.isCanceled(): return 
                 progress = self.Task.progress()
@@ -613,16 +655,27 @@ class EDRA_exchange_layer_checker:
             container_features_attribute_errors['type'] = 'container'
             container_features_attribute_errors['item_name'] = "Перевірка на наявність помилок в атрибутах об'єктів (features) об'єкту"
             container_features_attribute_errors['subitems'] = []
-        
+
+            
+            self.check_feature_bench.start('check_required_fields_is_empty')
+            
             required_fields_is_empty_list = self.check_required_fields_is_empty_or_null(feature, 'empty')
             
+            self.check_feature_bench.stop()
+            
+            self.check_feature_bench.start('check_required_fields_is_null')
+            
             required_fields_is_null_list = self.check_required_fields_is_empty_or_null(feature, 'null')
+            
+            self.check_feature_bench.stop()
             
             container_required_fields_is_empty_or_null = None
             container_required_fields_is_empty_or_null = {}
             container_required_fields_is_empty_or_null['type'] = 'container'
             container_required_fields_is_empty_or_null['item_name'] = "Перевірка на заповненість обов'язкових (атрибутів) об'єкту"
             container_required_fields_is_empty_or_null['subitems'] = []
+            
+            self.check_feature_bench.start('write_dict_check_required_fields')
             
             if len(required_fields_is_empty_list) > 0:
                 #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
@@ -667,19 +720,31 @@ class EDRA_exchange_layer_checker:
                 del insception_dict_field_not_emprty_or_null
                 
             container_features_attribute_errors['subitems'].append(container_required_fields_is_empty_or_null)
+            
+            self.check_feature_bench.stop()
+            
+            self.check_feature_bench.start('delete_objects_after_created_dict_check_required_fields')
+            
             del container_required_fields_is_empty_or_null
             
             del required_fields_is_empty_list
             del required_fields_is_null_list
             
+            self.check_feature_bench.stop()
+            
+            self.check_feature_bench.start('check_attr_value_in_domain')
             
             attribute_values_unclassified_dict = self.check_attr_value_in_domain(feature)
+            
+            self.check_feature_bench.stop()
             
             container_attributes_values_unclassified = None
             container_attributes_values_unclassified = {}
             container_attributes_values_unclassified['type'] = 'container'
             container_attributes_values_unclassified['item_name'] = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам"
             container_attributes_values_unclassified['subitems'] = []
+            
+            self.check_feature_bench.start('wtite_unclassified_dict')
             
             if len(attribute_values_unclassified_dict.keys()) > 0:
                 #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
@@ -710,14 +775,24 @@ class EDRA_exchange_layer_checker:
                 )
                 container_attributes_values_unclassified['subitems'].append(insception_classified_value)
                 del insception_classified_value
-                
+            
+            self.check_feature_bench.stop()
+            
+            self.check_feature_bench.start('delete_objects_after_created_unclassified_dict')
+            
             container_features_attribute_errors['subitems'].append(container_attributes_values_unclassified)
             del container_attributes_values_unclassified
             del attribute_values_unclassified_dict
             
+            self.check_feature_bench.stop()
             
+            self.check_feature_bench.start('check_attributes_length_exceed')
             
             attributes_length_exceed_dict = self.layer_EDRA_valid_class.check_feature_attribute_length_exceed(feature)
+            
+            self.check_feature_bench.stop()
+            
+            self.check_feature_bench.start('wtite_attributes_length_exceed_dict')
             
             container_attributes_values_length = None
             container_attributes_values_length = {}
@@ -753,10 +828,14 @@ class EDRA_exchange_layer_checker:
                 
             container_features_attribute_errors['subitems'].append(container_attributes_values_length)
             
+            self.check_feature_bench.stop()
+            
+            self.check_feature_bench.start('delete_objects_after_attributes_length_exceed_dict')
+            
             del attributes_length_exceed_dict
             del container_attributes_values_length
             
-            
+            self.check_feature_bench.stop()
             # duplicated_guid_list = self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids)
             
             
@@ -794,12 +873,19 @@ class EDRA_exchange_layer_checker:
                 
             # container_features_attribute_errors['subitems'].append(container_duplicated_guid)
             
+            self.check_feature_bench.start('wtite_container_features_attribute_errors_dict')
             
             feature_dict_result['subitems'].append(container_features_attribute_errors)
             del container_features_attribute_errors
             
+            self.check_feature_bench.stop()
+            
+            self.check_feature_bench.start('wtite_general_feature_dict')
+            
             container_features['subitems'].append(feature_dict_result)
             del feature_dict_result
+            
+            self.check_feature_bench.stop()
             
             # features_dict_legacy[feature.GetFID()] = {
             #     "required_attribute_empty": required_fields_is_empty_list,
@@ -819,312 +905,367 @@ class EDRA_exchange_layer_checker:
             
         
         #print(features_dict)
+        
+        
+        
+        self.main_features_check_bench.stop()
+        
+        self.main_features_check_bench.join(self.check_feature_bench)
+        
+        print("Check features..... Done")
+        print(self.main_features_check_bench.get_report())
+        print("end")
+        
         return container_features
             
     def write_result_dict(self):
+        
+        self.write_result_dict_bench = Benchmark()
+        
+        if self.layer_EDRA_valid_class.required_geometry_type != None:
             
-            if self.layer_EDRA_valid_class.required_geometry_type != None:
-                
-                result_check_crs_layer = self.check_crs_is_equal_required()
-                # print(result_check_crs_layer)
-                inspection_dict_layer_wrong_crs = None
-                
-                if result_check_crs_layer != []:
-                    layer_crs = result_check_crs_layer[0]
-                    required_crs_str = result_check_crs_layer[1]
-                    inspection_dict_layer_wrong_crs = self.create_inspection_dict(                    
-                        inspection_type_name = 'Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Невідповідна СК шару: «{layer_crs}», очікується: «{required_crs_str}»", 
-                        item_tool_tip = f"Невідповідна СК шару", 
-                        criticity = 2, 
-                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                    )
-                    
-                elif result_check_crs_layer == []:
-                    inspection_dict_layer_wrong_crs = self.create_inspection_dict(                    
-                        inspection_type_name = 'Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Система координат шару правильна", 
-                        item_tool_tip = f"Невідповідна СК шару", 
-                        criticity = 0, 
-                        help_url = None
-                    )
-
-                self.check_result_dict['subitems'].append(inspection_dict_layer_wrong_crs)
-                del inspection_dict_layer_wrong_crs
-                del result_check_crs_layer
-                
-                # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_layer_CRS'] = result_check_crs_layer
-                
-                result_check_wrong_layer_geometry_type = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
-                
-                insception_dict_wrong_layer_geometry_type = None
-                
-                if result_check_wrong_layer_geometry_type != []:
-                    current_layer_geometry_type = result_check_wrong_layer_geometry_type[0]
-                    required_geometry_type = result_check_wrong_layer_geometry_type[1]
-                    insception_dict_wrong_layer_geometry_type = self.create_inspection_dict(                    
-                        inspection_type_name = 'Перевірка типу геометрії шару', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Невідповідний геометричний тип класу: «{current_layer_geometry_type}», вимагається: «{required_geometry_type}»", 
-                        item_tool_tip = f"Невідповідний геометричний тип класу", 
-                        criticity = 2, 
-                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                    )
-                    
-                elif result_check_wrong_layer_geometry_type == []:
-                    insception_dict_wrong_layer_geometry_type = self.create_inspection_dict(                    
-                        inspection_type_name = 'Перевірка типу геометрії шару', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Геометричний тип класу правильний", 
-                        item_tool_tip = f"Геометричний тип класу правильний", 
-                        criticity = 0, 
-                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                    )
-                
-                self.check_result_dict['subitems'].append(insception_dict_wrong_layer_geometry_type)
-                
-                del insception_dict_wrong_layer_geometry_type
-                del result_check_wrong_layer_geometry_type
-                
-                # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_geometry_type'] = result_check_wrong_layer_geometry_type
-                
-            # if 'layer_name_errors' not in self.check_result_legacy[self.layer_props['related_layer_id']].keys():
-            #     self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = {}
+            self.write_result_dict_bench.start('check_crs_is_equal_required')
+            result_check_crs_layer = self.check_crs_is_equal_required()
+            # print(result_check_crs_layer)
+            inspection_dict_layer_wrong_crs = None
             
-            self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
+            self.write_result_dict_bench.stop()
             
-            container_layer_field_errors = None
-            container_layer_field_errors = {}
-            container_layer_field_errors['type'] = 'container'
-            container_layer_field_errors['item_name'] = "Перевірка на наявність помилок в полях (атрибутах) шару"
-            container_layer_field_errors['subitems'] = []
-            
-            missing_required_fields_list = self.check_missing_required_fields()
-            
-            container_missing_required_fields = None
-            container_missing_required_fields = {}
-            container_missing_required_fields['type'] = 'container'
-            container_missing_required_fields['item_name'] = "Перевірка на наявність обов\'язкових полів (атрибутів) шару"
-            container_missing_required_fields['subitems'] = []
-            
-            if len(missing_required_fields_list) > 0:
-                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
-                for missing_required_field in missing_required_fields_list:
-                    insception_missing_required_field_error = None
-                    insception_missing_required_field_error = self.create_inspection_dict(
-                        inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
-                        item_tool_tip = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
-                        criticity = 2, 
-                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                    )
-                    container_missing_required_fields['subitems'].append(insception_missing_required_field_error)
-                    
-            elif len(missing_required_fields_list) == 0:
-                insception_dict_layer_missing_required_fields = None
-                insception_dict_layer_missing_required_fields = self.create_inspection_dict(                    
-                    inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                    item_name = f"Всі обов'язкові атрибути класу наявні", 
-                    item_tool_tip = f"Всі обов'язкові атрибути класу наявні", 
-                    criticity = 0, 
-                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                )
-                container_missing_required_fields['subitems'].append(insception_dict_layer_missing_required_fields)
-                
-            container_layer_field_errors['subitems'].append(container_missing_required_fields)
-            
-            del missing_required_fields_list
-            del container_missing_required_fields
-            
-            
-            missing_fields_list = self.check_missing_fields()
-            
-            container_missing_fields = None
-            container_missing_fields = {}
-            container_missing_fields['type'] = 'container'
-            container_missing_fields['item_name'] = "Перевірка на наявність всіх полів (атрибутів) шару"
-            container_missing_fields['subitems'] = []
-            
-            if len(missing_fields_list) > 0:
-                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
-                for missing_field in missing_fields_list:
-                    insception_missing_field_error = None
-                    insception_missing_field_error = self.create_inspection_dict(
-                        inspection_type_name = 'Перевірка на наявність полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Відсутній атрибут «{missing_field}»", 
-                        item_tool_tip = f"Відсутній атрибут «{missing_field}»", 
-                        criticity = 2, 
-                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                    )
-                    container_missing_fields['subitems'].append(insception_missing_field_error)
-                    
-            elif len(missing_fields_list) == 0:
-                insception_dict_layer_missing_fields = None
-                insception_dict_layer_missing_fields = self.create_inspection_dict(                    
-                    inspection_type_name = 'Перевірка на наявність всіх полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                    item_name = f"Всі поля (атрибути) класу наявні", 
-                    item_tool_tip = f"Всі поля (атрибути) класу наявні", 
-                    criticity = 0, 
-                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                )
-                container_missing_fields['subitems'].append(insception_dict_layer_missing_fields)
-                
-            container_layer_field_errors['subitems'].append(container_missing_fields)
-            del missing_fields_list
-            del container_missing_fields
-            
-            
-            wrong_fields_types_list = self.check_wrong_fields_types()
-            
-            container_wrong_fields_types_errors = None
-            container_wrong_fields_types_errors = {}
-            container_wrong_fields_types_errors['type'] = 'container'
-            container_wrong_fields_types_errors['item_name'] = "Перевірка типів даних полів (атрибутів) шару"
-            container_wrong_fields_types_errors['subitems'] = []
-            
-            if len(wrong_fields_types_list.keys()) > 0:
-                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
-                for error_field in wrong_fields_types_list:
-                    insception_wrong_field_type_error = None
-                    insception_wrong_field_type_error = self.create_inspection_dict(
-                        inspection_type_name = 'Перевірка типу поля (атрибуту) шару', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Атрибут «{error_field}» має тип:«{wrong_fields_types_list[error_field][0]}», вимагається: «{wrong_fields_types_list[error_field][1]}»", 
-                        item_tool_tip = f"Атрибут «{error_field}» має некоректний тип даних", 
-                        criticity = 2, 
-                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                    )
-                    container_wrong_fields_types_errors['subitems'].append(insception_wrong_field_type_error)
-                    
-            elif len(wrong_fields_types_list) == 0:
-                insception_no_wrong_field_type_error = None
-                insception_no_wrong_field_type_error = self.create_inspection_dict(
-                    inspection_type_name = 'Перевірка типів даних полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
-                    item_name = f"Всі поля (атрибути) мають коректний тип даних", 
-                    item_tool_tip = f"Всі поля (атрибути) мають коректний тип даних", 
-                    criticity = 0, 
-                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-                )
-                container_wrong_fields_types_errors['subitems'].append(insception_no_wrong_field_type_error)
-                
-            container_layer_field_errors['subitems'].append(container_wrong_fields_types_errors)
-            
-            del wrong_fields_types_list
-            del container_wrong_fields_types_errors
-            
-            container_wrong_fields_names_errors = None
-            container_wrong_fields_names_errors = {}
-            container_wrong_fields_names_errors['type'] = 'container'
-            container_wrong_fields_names_errors['item_name'] = "Перевірка назви полів (атрибутів) шару"
-            container_wrong_fields_names_errors['subitems'] = []
-            
-            wrong_layer_fields_names_list = self.layer_EDRA_valid_class.check_fields_names()
-            
-            if len(wrong_layer_fields_names_list) > 0:
-                # print(wrong_layer_fields_names_list)
-                for wrong_field_name in wrong_layer_fields_names_list:
-                    # print(wrong_field_name)
-                    container_wrong_field_name_errors = None
-                    container_wrong_field_name_errors = {}
-                    container_wrong_field_name_errors['type'] = 'container'
-                    container_wrong_field_name_errors['item_name'] = f"Перевірка назви поля (атрибута) «{wrong_field_name}»"
-                    container_wrong_field_name_errors['subitems'] = []
-                    if len(wrong_layer_fields_names_list[wrong_field_name].keys()) > 0:
-                        
-                        for x in wrong_layer_fields_names_list[wrong_field_name]:
-                            
-                            if [x] == "general":
-                                insception_dict_field_error_name_general = None
-                                insception_dict_field_error_name_general = self.create_inspection_dict(                    
-                                    inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
-                                    item_name = f"Назва поля (атрибута) «{wrong_field_name}» не відповідає структурі", 
-                                    item_tool_tip = f"Назва поля (атрибута) не відповідає структурі", 
-                                    criticity = 2, 
-                                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-                                )
-                                container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_general)
-                            
-                            if [x] == "used_alias":
-                                insception_dict_field_error_name_used_alias = None
-                                insception_dict_field_error_name_used_alias = self.create_inspection_dict(                    
-                                    inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
-                                    item_name = f"Замість назви поля (атрибута) використано псевдонім «{wrong_field_name}», вимагається «{wrong_layer_fields_names_list[wrong_field_name]['result_dict']['valid_name']}»", 
-                                    item_tool_tip = f"Замість назви поля (атрибута) використано псевдонім»", 
-                                    criticity = 2, 
-                                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-                                )
-                                container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_used_alias)
-                            
-                            if [x] == "spaces_used":
-                                insception_dict_field_error_name_spaces_used = None
-                                insception_dict_field_error_name_spaces_used = self.create_inspection_dict(                    
-                                    inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
-                                    item_name = f"В назві поля (атрибута) «{wrong_field_name}» наявні пробіли", 
-                                    item_tool_tip = f"В назві поля (атрибута) наявні пробіли", 
-                                    criticity = 2, 
-                                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-                                )
-                                container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_spaces_used)
-                            
-                            if [x] == "used_cyrillic":
-                                insception_dict_field_error_name_used_cyrillic = None
-                                insception_dict_field_error_name_used_cyrillic = self.create_inspection_dict(                    
-                                    inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
-                                    item_name = f"В назві поля (атрибута) «{wrong_field_name}» наявні кириличні літери", 
-                                    item_tool_tip = f"В назві поля (атрибута) наявні кириличні літери", 
-                                    criticity = 2, 
-                                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-                                )
-                                container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_used_cyrillic)
-                                
-                        
-                    elif len(wrong_layer_fields_names_list[wrong_field_name].keys()) == 0:
-                        insception_dict_field_no_error_name = None
-                        insception_dict_field_no_error_name = self.create_inspection_dict(                    
-                            inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
-                            item_name = f"Поле «{wrong_field_name}» має коректну назву", 
-                            item_tool_tip = f"Поле має коректну назву", 
-                            criticity = 0, 
-                            help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
-                        )
-                        container_wrong_field_name_errors['subitems'].append(insception_dict_field_no_error_name)
-                    
-                    container_wrong_fields_names_errors['subitems'].append(container_wrong_field_name_errors)
-                        
-            elif len(wrong_layer_fields_names_list) == 0:            
-                insception_dict_fields_no_error_name = None
-                insception_dict_fields_no_error_name = self.create_inspection_dict(                    
-                    inspection_type_name = 'Перевірка назви атрибутів', #Підтягувати перевірку з файлу структури з помилками
-                    item_name = f"У шарі «{self.layer_props['layer_real_name']}» відсутні атрибути", 
-                    item_tool_tip = f"У шарі  відсутні атрибути", 
+            if result_check_crs_layer != []:
+                layer_crs = result_check_crs_layer[0]
+                required_crs_str = result_check_crs_layer[1]
+                inspection_dict_layer_wrong_crs = self.create_inspection_dict(                    
+                    inspection_type_name = 'Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Невідповідна СК шару: «{layer_crs}», очікується: «{required_crs_str}»", 
+                    item_tool_tip = f"Невідповідна СК шару", 
                     criticity = 2, 
-                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                 )
-                container_wrong_fields_names_errors['subitems'].append(insception_dict_fields_no_error_name)
-                del insception_dict_fields_no_error_name
-            
-            del wrong_layer_fields_names_list
-            
                 
-            container_layer_field_errors['subitems'].append(container_wrong_fields_names_errors)
-            del container_wrong_fields_names_errors
-            
-            self.check_result_dict['subitems'].append(container_layer_field_errors)
-            
-            del container_layer_field_errors
-            
-            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors'] = {}
-            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_required_fields'] = missing_required_fields_list
-            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_fields'] = missing_fields_list
-            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['wrong_field_type'] = wrong_fields_types_list
-            
-            # self.check_result_legacy[self.layer_props['related_layer_id']]['field_name_errors'] = wrong_layer_fields_names_list
-            # 'field_name_errors'
-            
-            #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
+            elif result_check_crs_layer == []:
+                inspection_dict_layer_wrong_crs = self.create_inspection_dict(                    
+                    inspection_type_name = 'Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Система координат шару правильна", 
+                    item_tool_tip = f"Невідповідна СК шару", 
+                    criticity = 0, 
+                    help_url = None
+                )
+
+            self.check_result_dict['subitems'].append(inspection_dict_layer_wrong_crs)
+            del inspection_dict_layer_wrong_crs
+            del result_check_crs_layer
             
             
-            #### НЕ ЗАБУТИ РОЗКОМЕНТУВАТИ
-            features_check_results = self.write_features_check_result() #повертається список, перший об'єкт це легасі словник, другий це контейнер для нової структури
-            self.check_result_dict['subitems'].append(features_check_results)
-            del features_check_results
+            
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_layer_CRS'] = result_check_crs_layer
+            self.write_result_dict_bench.start('check_wrong_object_geometry_type')
+            
+            result_check_wrong_layer_geometry_type = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
+            
+            insception_dict_wrong_layer_geometry_type = None
+            
+            if result_check_wrong_layer_geometry_type != []:
+                current_layer_geometry_type = result_check_wrong_layer_geometry_type[0]
+                required_geometry_type = result_check_wrong_layer_geometry_type[1]
+                insception_dict_wrong_layer_geometry_type = self.create_inspection_dict(                    
+                    inspection_type_name = 'Перевірка типу геометрії шару', #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Невідповідний геометричний тип класу: «{current_layer_geometry_type}», вимагається: «{required_geometry_type}»", 
+                    item_tool_tip = f"Невідповідний геометричний тип класу", 
+                    criticity = 2, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                
+            elif result_check_wrong_layer_geometry_type == []:
+                insception_dict_wrong_layer_geometry_type = self.create_inspection_dict(                    
+                    inspection_type_name = 'Перевірка типу геометрії шару', #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Геометричний тип класу правильний", 
+                    item_tool_tip = f"Геометричний тип класу правильний", 
+                    criticity = 0, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+            
+            self.check_result_dict['subitems'].append(insception_dict_wrong_layer_geometry_type)
+            
+            del insception_dict_wrong_layer_geometry_type
+            del result_check_wrong_layer_geometry_type
+            
+            self.write_result_dict_bench.stop()
+            # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_geometry_type'] = result_check_wrong_layer_geometry_type
+            
+        # if 'layer_name_errors' not in self.check_result_legacy[self.layer_props['related_layer_id']].keys():
+        #     self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = {}
+        
+        self.write_result_dict_bench.start('check_fields_type_and_names')
+        
+        self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
+        
+        self.write_result_dict_bench.stop()
+        
+        container_layer_field_errors = None
+        container_layer_field_errors = {}
+        container_layer_field_errors['type'] = 'container'
+        container_layer_field_errors['item_name'] = "Перевірка на наявність помилок в полях (атрибутах) шару"
+        container_layer_field_errors['subitems'] = []
+        
+        self.write_result_dict_bench.start('check_missing_required_fields')
+        
+        missing_required_fields_list = self.check_missing_required_fields()
+        
+        
+        
+        container_missing_required_fields = None
+        container_missing_required_fields = {}
+        container_missing_required_fields['type'] = 'container'
+        container_missing_required_fields['item_name'] = "Перевірка на наявність обов\'язкових полів (атрибутів) шару"
+        container_missing_required_fields['subitems'] = []
+        
+        if len(missing_required_fields_list) > 0:
+            #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+            for missing_required_field in missing_required_fields_list:
+                insception_missing_required_field_error = None
+                insception_missing_required_field_error = self.create_inspection_dict(
+                    inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
+                    item_tool_tip = f"Відсутній обов'язковий атрибут «{missing_required_field}»", 
+                    criticity = 2, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                container_missing_required_fields['subitems'].append(insception_missing_required_field_error)
+                
+        elif len(missing_required_fields_list) == 0:
+            insception_dict_layer_missing_required_fields = None
+            insception_dict_layer_missing_required_fields = self.create_inspection_dict(                    
+                inspection_type_name = 'Перевірка на наявність обов\'язкових полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
+                item_name = f"Всі обов'язкові атрибути класу наявні", 
+                item_tool_tip = f"Всі обов'язкові атрибути класу наявні", 
+                criticity = 0, 
+                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+            )
+            container_missing_required_fields['subitems'].append(insception_dict_layer_missing_required_fields)
+            
+        container_layer_field_errors['subitems'].append(container_missing_required_fields)
+        
+        del missing_required_fields_list
+        del container_missing_required_fields
+        
+        self.write_result_dict_bench.stop()
+        
+        self.write_result_dict_bench.start('check_missing_fields')
+        
+        missing_fields_list = self.check_missing_fields()
+        
+        container_missing_fields = None
+        container_missing_fields = {}
+        container_missing_fields['type'] = 'container'
+        container_missing_fields['item_name'] = "Перевірка на наявність всіх полів (атрибутів) шару"
+        container_missing_fields['subitems'] = []
+        
+        if len(missing_fields_list) > 0:
+            #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+            for missing_field in missing_fields_list:
+                insception_missing_field_error = None
+                insception_missing_field_error = self.create_inspection_dict(
+                    inspection_type_name = 'Перевірка на наявність полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Відсутній атрибут «{missing_field}»", 
+                    item_tool_tip = f"Відсутній атрибут «{missing_field}»", 
+                    criticity = 2, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                container_missing_fields['subitems'].append(insception_missing_field_error)
+                
+        elif len(missing_fields_list) == 0:
+            insception_dict_layer_missing_fields = None
+            insception_dict_layer_missing_fields = self.create_inspection_dict(                    
+                inspection_type_name = 'Перевірка на наявність всіх полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
+                item_name = f"Всі поля (атрибути) класу наявні", 
+                item_tool_tip = f"Всі поля (атрибути) класу наявні", 
+                criticity = 0, 
+                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+            )
+            container_missing_fields['subitems'].append(insception_dict_layer_missing_fields)
+            
+        container_layer_field_errors['subitems'].append(container_missing_fields)
+        del missing_fields_list
+        del container_missing_fields
+        
+        self.write_result_dict_bench.stop()
+        
+        self.write_result_dict_bench.start('check_missing_fields')
+        
+        wrong_fields_types_list = self.check_wrong_fields_types()
+        
+        container_wrong_fields_types_errors = None
+        container_wrong_fields_types_errors = {}
+        container_wrong_fields_types_errors['type'] = 'container'
+        container_wrong_fields_types_errors['item_name'] = "Перевірка типів даних полів (атрибутів) шару"
+        container_wrong_fields_types_errors['subitems'] = []
+        
+        if len(wrong_fields_types_list.keys()) > 0:
+            #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+            for error_field in wrong_fields_types_list:
+                insception_wrong_field_type_error = None
+                insception_wrong_field_type_error = self.create_inspection_dict(
+                    inspection_type_name = 'Перевірка типу поля (атрибуту) шару', #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Атрибут «{error_field}» має тип:«{wrong_fields_types_list[error_field][0]}», вимагається: «{wrong_fields_types_list[error_field][1]}»", 
+                    item_tool_tip = f"Атрибут «{error_field}» має некоректний тип даних", 
+                    criticity = 2, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                container_wrong_fields_types_errors['subitems'].append(insception_wrong_field_type_error)
+                
+        elif len(wrong_fields_types_list) == 0:
+            insception_no_wrong_field_type_error = None
+            insception_no_wrong_field_type_error = self.create_inspection_dict(
+                inspection_type_name = 'Перевірка типів даних полів (атрибутів) шару', #Підтягувати перевірку з файлу структури з помилками
+                item_name = f"Всі поля (атрибути) мають коректний тип даних", 
+                item_tool_tip = f"Всі поля (атрибути) мають коректний тип даних", 
+                criticity = 0, 
+                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+            )
+            container_wrong_fields_types_errors['subitems'].append(insception_no_wrong_field_type_error)
+            
+        container_layer_field_errors['subitems'].append(container_wrong_fields_types_errors)
+        
+        del wrong_fields_types_list
+        del container_wrong_fields_types_errors
+        
+        self.write_result_dict_bench.stop()
+        
+        container_wrong_fields_names_errors = None
+        container_wrong_fields_names_errors = {}
+        container_wrong_fields_names_errors['type'] = 'container'
+        container_wrong_fields_names_errors['item_name'] = "Перевірка назви полів (атрибутів) шару"
+        container_wrong_fields_names_errors['subitems'] = []
+        
+        self.write_result_dict_bench.start('check_fields_names')
+        
+        wrong_layer_fields_names_list = self.layer_EDRA_valid_class.check_fields_names()
+        
+        if len(wrong_layer_fields_names_list) > 0:
+            # print(wrong_layer_fields_names_list)
+            for wrong_field_name in wrong_layer_fields_names_list:
+                # print(wrong_field_name)
+                container_wrong_field_name_errors = None
+                container_wrong_field_name_errors = {}
+                container_wrong_field_name_errors['type'] = 'container'
+                container_wrong_field_name_errors['item_name'] = f"Перевірка назви поля (атрибута) «{wrong_field_name}»"
+                container_wrong_field_name_errors['subitems'] = []
+                if len(wrong_layer_fields_names_list[wrong_field_name].keys()) > 0:
+                    
+                    for x in wrong_layer_fields_names_list[wrong_field_name]:
+                        
+                        if [x] == "general":
+                            insception_dict_field_error_name_general = None
+                            insception_dict_field_error_name_general = self.create_inspection_dict(                    
+                                inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
+                                item_name = f"Назва поля (атрибута) «{wrong_field_name}» не відповідає структурі", 
+                                item_tool_tip = f"Назва поля (атрибута) не відповідає структурі", 
+                                criticity = 2, 
+                                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                            )
+                            container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_general)
+                        
+                        if [x] == "used_alias":
+                            insception_dict_field_error_name_used_alias = None
+                            insception_dict_field_error_name_used_alias = self.create_inspection_dict(                    
+                                inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
+                                item_name = f"Замість назви поля (атрибута) використано псевдонім «{wrong_field_name}», вимагається «{wrong_layer_fields_names_list[wrong_field_name]['result_dict']['valid_name']}»", 
+                                item_tool_tip = f"Замість назви поля (атрибута) використано псевдонім»", 
+                                criticity = 2, 
+                                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                            )
+                            container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_used_alias)
+                        
+                        if [x] == "spaces_used":
+                            insception_dict_field_error_name_spaces_used = None
+                            insception_dict_field_error_name_spaces_used = self.create_inspection_dict(                    
+                                inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
+                                item_name = f"В назві поля (атрибута) «{wrong_field_name}» наявні пробіли", 
+                                item_tool_tip = f"В назві поля (атрибута) наявні пробіли", 
+                                criticity = 2, 
+                                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                            )
+                            container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_spaces_used)
+                        
+                        if [x] == "used_cyrillic":
+                            insception_dict_field_error_name_used_cyrillic = None
+                            insception_dict_field_error_name_used_cyrillic = self.create_inspection_dict(                    
+                                inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
+                                item_name = f"В назві поля (атрибута) «{wrong_field_name}» наявні кириличні літери", 
+                                item_tool_tip = f"В назві поля (атрибута) наявні кириличні літери", 
+                                criticity = 2, 
+                                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                            )
+                            container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_used_cyrillic)
+                            
+                    
+                elif len(wrong_layer_fields_names_list[wrong_field_name].keys()) == 0:
+                    insception_dict_field_no_error_name = None
+                    insception_dict_field_no_error_name = self.create_inspection_dict(                    
+                        inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Поле «{wrong_field_name}» має коректну назву", 
+                        item_tool_tip = f"Поле має коректну назву", 
+                        criticity = 0, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+                    )
+                    container_wrong_field_name_errors['subitems'].append(insception_dict_field_no_error_name)
+                
+                container_wrong_fields_names_errors['subitems'].append(container_wrong_field_name_errors)
+                    
+        elif len(wrong_layer_fields_names_list) == 0:            
+            insception_dict_fields_no_error_name = None
+            insception_dict_fields_no_error_name = self.create_inspection_dict(                    
+                inspection_type_name = 'Перевірка назви атрибутів', #Підтягувати перевірку з файлу структури з помилками
+                item_name = f"У шарі «{self.layer_props['layer_real_name']}» відсутні атрибути", 
+                item_tool_tip = f"У шарі  відсутні атрибути", 
+                criticity = 2, 
+                help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
+            )
+            container_wrong_fields_names_errors['subitems'].append(insception_dict_fields_no_error_name)
+            del insception_dict_fields_no_error_name
+        
+        del wrong_layer_fields_names_list
+        
+            
+        container_layer_field_errors['subitems'].append(container_wrong_fields_names_errors)
+        del container_wrong_fields_names_errors
+        
+        self.check_result_dict['subitems'].append(container_layer_field_errors)
+        
+        del container_layer_field_errors
+        
+        self.write_result_dict_bench.stop()
+        
+        # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors'] = {}
+        # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_required_fields'] = missing_required_fields_list
+        # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['missing_fields'] = missing_fields_list
+        # self.check_result_legacy[self.layer_props['related_layer_id']]['field_errors']['wrong_field_type'] = wrong_fields_types_list
+        
+        # self.check_result_legacy[self.layer_props['related_layer_id']]['field_name_errors'] = wrong_layer_fields_names_list
+        # 'field_name_errors'
+        
+        #self.check_result_dict[layer_EDRA_valid_class.layer.name()] ['wrong_layer_CRS'] = []
+        
+        
+        #### НЕ ЗАБУТИ РОЗКОМЕНТУВАТИ
+        
+        self.write_result_dict_bench.start('write_features_check_result')
+        
+        features_check_results = self.write_features_check_result() #повертається список, перший об'єкт це легасі словник, другий це контейнер для нової структури
+        self.check_result_dict['subitems'].append(features_check_results)
+        del features_check_results
+        
+        self.write_result_dict_bench.stop()
+        
+        
+        if self.main_features_check_bench is not None:
+            self.write_result_dict_bench.join(self.main_features_check_bench)
+            
+        
+        print("Check layer..... Done")
+        print(self.write_result_dict_bench.get_report())
+        print("end")
+            
             
             # self.check_result_legacy[self.layer_props['related_layer_id']]['features'] = features_check_results[0]      
     
@@ -1138,8 +1279,12 @@ class EDRA_exchange_layer_checker:
         self.check_result_dict['type'] = 'layer'
         self.check_result_dict['subitems'] = []
         
-
+        
+        
         if self.layer_EDRA_valid_class.layer is not None:
+            
+            self.parse_bench.start('check_layer_is_empty')
+            
             insception_layer_is_empty = None
             layer_is_empty =self.layer_EDRA_valid_class.get_is_layer_empty()
             if layer_is_empty:    
@@ -1158,13 +1303,16 @@ class EDRA_exchange_layer_checker:
                         criticity = 0, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll
                     )
-
+        
             self.check_result_dict['subitems'].append(insception_layer_is_empty)
             
+            self.parse_bench.stop()
             # self.check_result_legacy[self.layer_props['related_layer_id']] = {}
             # self.check_result_legacy[self.layer_props['related_layer_id']]["is_empty"] = layer_is_empty
             
             if self.layer_EDRA_valid_class.nameError:
+                self.parse_bench.start('check_layer_nameError')
+                
                 layer_name_errors_check_result = self.layer_EDRA_valid_class.check_text_in_objects_list(self.layer_EDRA_valid_class.layer_exchange_name, 'layer')
 
                 if layer_name_errors_check_result['any_similar_name']:
@@ -1242,10 +1390,20 @@ class EDRA_exchange_layer_checker:
                     self.check_result_dict['subitems'].append(container_layer_error_name)
                     del container_layer_error_name
                     
+                    self.parse_bench.stop()
+                    
+                    
+                    self.parse_bench.start('reinit_class')
                     self.layer_EDRA_valid_class = EDRA_validator(self.layer_EDRA_valid_class.layer, layer_name_errors_check_result['result_dict']['valid_name'], self.layer_EDRA_valid_class.structure_json, self.layer_EDRA_valid_class.domains_json)
                     # self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
+                    self.parse_bench.stop()
+                    
+                    
+                    self.parse_bench.start('write_result_dict_error_name')
                     
                     self.write_result_dict()
+                    
+                    self.parse_bench.stop()
                 else: 
                     insception_dict_layer_error_name_else = None
                     insception_dict_layer_error_name_else = self.create_inspection_dict(                    
@@ -1265,12 +1423,18 @@ class EDRA_exchange_layer_checker:
                 
             else:
                 
+                self.parse_bench.start('write_result_dict_without_error_name')
+                
                 self.write_result_dict()
+                
+                self.parse_bench.stop()
             
             
             
         
         else:
+            self.parse_bench.start('layer_invalid')
+            
             insception_layer_valid_dict = None
             insception_layer_valid_dict = self.create_inspection_dict(                    
                 inspection_type_name = 'Перевірка валідності шару', #Підтягувати перевірку з файлу структури з помилками
@@ -1283,9 +1447,23 @@ class EDRA_exchange_layer_checker:
             #Альтернативне посилання https://www.youtube.com/watch?v=asjQNZn7vng #Гендальф
             self.check_result_dict['subitems'].append(insception_layer_valid_dict)
             del insception_layer_valid_dict
+            
+            self.parse_bench.stop()
             # self.check_result_legacy[self.layer_props['layer_name']]['layer_invalid'] = True
         
+        self.parse_bench.start('del_self_layer_EDRA_valid_class')
+        
         del self.layer_EDRA_valid_class 
+        
+        self.parse_bench.stop()
+        
+        if self.write_result_dict_bench is not None:
+            self.parse_bench.join(self.write_result_dict_bench)
+        
+
+        print(f"Завершення перевірки шару {self.layer_props['layer_name']}..... Done")
+        print(self.parse_bench.get_report())
+        print("end")
 
         return self.check_result_dict
 
