@@ -1460,7 +1460,7 @@ class EDRA_exchange_layer_checker:
         
         self.parse_bench.stop()
         
-        if self.write_result_dict_bench is not None:
+        if hasattr(self, 'write_result_dict_bench') and self.write_result_dict_bench is not None:
             self.parse_bench.join(self.write_result_dict_bench)
         
 
