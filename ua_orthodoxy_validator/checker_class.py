@@ -304,7 +304,10 @@ class EDRA_validator:
         
         for field_name in self.layer_field_names:
             if field_name not in self.structure_field_names:
-                extra_field_names_list.append(field_name)
+                if self.driver_name == 'GeoJSON' and field_name.lower() in ['fid', 'objectid', 'shape_area', 'shape_length']:
+                    pass
+                else:
+                    extra_field_names_list.append(field_name)
             else: pass
         return extra_field_names_list
     
