@@ -20,11 +20,13 @@ from qgis.core import (
     QgsFeature, QgsPointXY, QgsFeature)
 from qgis.utils import iface
 
+from .benchmark import Benchmark
+
 from datetime import date
 
 import os, urllib.parse
 
-from .result_window_widgets import SwitchWidget, FilterWidget
+from .result_window_widgets import SwitchWidget, FilterWidget, statusWidget, CheckboxesGroup
 
 def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
     """
@@ -102,78 +104,6 @@ def get_index(list_v: list, index: int) -> Union[str, None]:
     else:
         return None    
 
-class CheckboxesGroup(QWidget):
-    checked_values_changed = pyqtSignal(list)
-    
-    def __init__(self, options: dict = None):
-        super().__init__()
-        self.options = options
-        self.checkboxes = {}
-        self.checked_values = []
-
-        self.create_checkboxes()
-
-    def create_checkboxes(self):
-        layout = QVBoxLayout()
-        if self.options is not None:
-            options = self.options
-        else:
-            options = {
-                0: "Всі перевірки", 
-                1: "Тільки неуспішні",
-                2: "Тільки критичні"
-            }
-
-        for k, v in options.items():
-            checkbox = QCheckBox(v)
-            layout.addWidget(checkbox)
-            self.checkboxes[k] = checkbox
-
-        button = QPushButton("Відфільтрувати")
-        button.clicked.connect(self.get_checked_values)
-        layout.addWidget(button)
-
-        self.setLayout(layout)
-
-    def get_checked_values(self):
-        self.checked_values = []
-        for k, checkbox in self.checkboxes.items():
-            if checkbox.isChecked():
-                self.checked_values.append(k)
-        #print(self.checked_values)
-        
-        self.checked_values_changed.emit(self.checked_values)
-        
-        return self.checked_values
-
-class statusWidget(QLabel):
-    def __init__(self, model, parent=None):
-        super().__init__(parent)
-        
-        total_inspections = model.inspection_QTY
-        warning_qty = model.warning_QTY
-        critical_qty = model.critical_QTY
-        errors_qty = warning_qty + critical_qty
-
-        
-        self.setAlignment(Qt.AlignCenter)
-        self.setMaximumHeight(101)
-        self.setMinimumHeight(100)
-        font = QFont()
-        font.setPointSize(16)
-        self.setFont(font)
-        if errors_qty == 0:
-            self.setStyleSheet("background-color: green; color: white;")
-            self.setText(f'Проведено {total_inspections} перевірок. \r\nПомилок не виявлено.')
-        else:
-            self.setStyleSheet("background-color: red; color: white;")
-            self.setText(
-                f'Проведено {total_inspections} перевірок. \r\nЗ них було виявлено помилки в {errors_qty} перевірках.\r\n({critical_qty} критичних, {warning_qty} важливих).')
-        
-        
-        
-        
-
 class InspectionItem(QStandardItem):
     '''Клас-контейнер для елементів дерева помилок.
     
@@ -210,7 +140,8 @@ class InspectionItem(QStandardItem):
 
         self.setIcon(icon)
         self.colorIndex = criticity
-        
+
+    def parent(self): return cast(InspectionItem, super().parent())
     
     def set_parent_color(self, criticity = None):
         if criticity is None:
@@ -308,6 +239,10 @@ class InspectionItem(QStandardItem):
         
         return get_layer_by_id(layer_id)
 
+    def relatedFeatureID(self):
+        """Отримує ідентифікатор відповідного об'єкта."""
+        return self.getData(self.RELATED_FEATURE_ID)
+
     def relatedFeature(self) -> Union[QgsFeature, None]:
         """Отримує відповідний об'єкт."""
         feature_id = self.getData(self.RELATED_FEATURE_ID)
@@ -330,10 +265,11 @@ class CustomItemModel(QStandardItemModel):
         self.critical_QTY = 0
         self.warning_QTY = 0
 
+        self.parse_bench = Benchmark("Item benchmark")
+
         super().__init__(parent)
         if structure is not None: 
             self.fill_model(structure)
-        
 
     def parse_dict(self, IDict, parent_item: InspectionItem = None, PIDict = None):
         def copy_key_if_absent(IDict, PIDict, keys:list):
@@ -341,22 +277,30 @@ class CustomItemModel(QStandardItemModel):
                 if key not in IDict and key in PIDict:
                     IDict[key] = PIDict[key]
 
-        if PIDict is not None:
-            copy_key_if_absent(IDict, PIDict,
-                ['item_tooltip',
-                'help_url', 
-                'related_file_path', 
-                'related_layer_id', 
-                'real_layer_name', 
-                'visible_layer_name', 
-                'related_feature_id', 
-                'inspetcion_type_name'] )
+        #if PIDict is not None:
+            # self.parse_bench.start('copy_key_if_absent')
+            # copy_key_if_absent(IDict, PIDict,
+            #     ['item_tooltip',
+            #     'help_url', 
+            #     'related_file_path', 
+            #     'related_layer_id', 
+            #     'real_layer_name', 
+            #     'visible_layer_name', 
+            #     'related_feature_id', 
+            #     'inspetcion_type_name'] )
+            # self.parse_bench.stop()
         
+        self.parse_bench.start('Create inspection item')
         item = InspectionItem(IDict)
+        self.parse_bench.stop()
+
+        self.parse_bench.start('parsing 1')
         children = IDict.get('subitems',[])
         name = IDict.get('item_name')
+        self.parse_bench.stop()
 
         if len(children) > 0:
+            
             if type(name) is list and len(name) > 0:
                 raise Exception(f"Елемент {name} має дочірні елементи, і не має мати спискової назви.")
             
@@ -365,15 +309,25 @@ class CustomItemModel(QStandardItemModel):
         
         elif type(name) is list and len(name) > 0:
             #print(json.dumps(IDict, indent=4, ensure_ascii=False))
+            self.parse_bench.start('filling false children')
             for n in name:
                 IDict_n = IDict.copy()
                 IDict_n['item_name'] = n
                 child = InspectionItem(IDict_n)
+                self.parse_bench.join(child.parse_bench)
+                del(child.parse_bench)
+                
                 item.appendRow(child)
-
+            self.parse_bench.stop()
+        
+        self.parse_bench.start('append father')       
         if parent_item is not None:
             parent_item.appendRow(item)
+            self.parse_bench.stop()
+            #print(self.parse_bench.get_report())
         else:
+            self.parse_bench.stop()
+            #print(self.parse_bench.get_report())
             return(item)
 
     def get_root_element(self):
@@ -381,11 +335,25 @@ class CustomItemModel(QStandardItemModel):
         return self.invisibleRootItem()
 
     def fill_model(self, structure: list):
+        benchi_f = Benchmark("Fill model")
+        
+        benchi_f.start('fill_model')
         for element in structure:
-            self.invisibleRootItem().appendRow(self.parse_dict(element))
+            root_children = self.parse_dict(element)
+            self.invisibleRootItem().appendRow(root_children)
+        benchi_f.stop()
 
+        benchi_f.start('update_colors')
         self.update_colors()
+        benchi_f.stop()
+
+        benchi_f.start('get_inspections')
         self.get_inspections()
+        benchi_f.stop()
+
+        benchi_f.join(self.parse_bench)
+        
+        print(benchi_f.get_report())
 
     def get_inspections(self):
         def iterate_model(parent: InspectionItem):
@@ -427,15 +395,19 @@ class CustomItemModel(QStandardItemModel):
                     items += iterate_model(child)
             else:
                 items.append(parent)
-            
-            
             return items
         
-        
-        for item in iterate_model(self.invisibleRootItem()):
-            item.set_parent_color()
+        items  = iterate_model(self.invisibleRootItem())
+        if len(items) == 0:
+            return
+
+        for item in items:
+            if type(item) is InspectionItem:
+                item.set_parent_color()
 
     def get_filtration_dict(self):
+        #f_bench = Benchmark("Filtration dict benchmark")
+        #f_bench.start('for all item')
         filtration_dict = {'files': {}, 'layers': {}, 'errors': {}}
         for item in self.get_all_elements():
             item_file = item.getData(InspectionItem.RELATED_FILE_PATH)
@@ -450,7 +422,8 @@ class CustomItemModel(QStandardItemModel):
             item_error = item.getData(InspectionItem.INSPECTION_TYPE_NAME)
             if item_error is not None and item_error != '':
                 filtration_dict['errors'][item_error] = item_error
-
+        #f_bench.stop()
+        #print(f_bench.get_report())
         return filtration_dict
     
 class FilterProxyModel(QSortFilterProxyModel):
@@ -521,22 +494,28 @@ class CustomTreeView(QTreeView):
         super().__init__(parent)
         self.setHeaderHidden(True)
 
-
-
 class ResultWindow(QDialog):
     def __init__(self, errors_table:dict, parent=None):
         super().__init__(parent)
-        
+        self.benchi = Benchmark("Бенчмарк вікна")
         #print(json.dumps(errors_table, indent=4, ensure_ascii=False))
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
         self.errors_table = errors_table
-
         #ініціалізація моделі
-        self.model = CustomItemModel(self.errors_table, parent=self)        
-        self.proxyModel = FilterProxyModel(self)
-        self.proxyModel.setSourceModel(self.model)
+        self.benchi.start('fill_custom_model')
+        self.model = CustomItemModel(self.errors_table, parent=self)
         
+        
+        self.benchi.start('create_proxy_model')
+        self.proxyModel = FilterProxyModel(self)
+        
+        
+        self.benchi.start('set_proxy_model')
+        self.proxyModel.setSourceModel(self.model)
+
+
+        self.benchi.start('interface1')
         # Налаштування основного вікна
         self.setWindowTitle("Результати перевірки")
         
@@ -556,16 +535,28 @@ class ResultWindow(QDialog):
         self.criticity_radio.changed_signal.connect(self.proxyModel.filterByCriticity)
         main_layout.addWidget(self.criticity_radio)
         
-        
+        self.benchi.stop()
+
+        self.benchi.start('create_tree_widget')
         #дерево помилок
         self.tree_widget = CustomTreeView(self)
-        self.tree_widget.setModel(self.proxyModel)
-        main_layout.addWidget(self.tree_widget)
+        self.benchi.stop()
 
+        self.benchi.start('set_model_to widget')
+        self.tree_widget.setModel(self.proxyModel)
+        self.benchi.stop()
+        self.benchi.start('interface2')
+        main_layout.addWidget(self.tree_widget)
+        
+        self.benchi.stop()
 
         # Поле результату перевірки
+        self.benchi.start('create_status_widget')
         self.result_text_field = statusWidget(self.model, self)
         main_layout.addWidget(self.result_text_field)
+        self.benchi.stop()
+
+        self.benchi.start('interface3')
 
         # Кнопки управління
         button_layout = QHBoxLayout()
@@ -581,14 +572,22 @@ class ResultWindow(QDialog):
         
         filters_layout = QHBoxLayout()
         sidebar_layout.addLayout(filters_layout)
+        self.benchi.stop()
 
         # Фільтрація
-        filters_widget = FilterWidget(parent = self, filtration_dict = self.make_filter_dict())
+        self.benchi.start('create_filter_dict')
+        filtration_dict  = self.make_filter_dict()
+        self.benchi.stop()
+        self.benchi.start('Create filter widget')
+        filters_widget = FilterWidget(parent = self, filtration_dict = filtration_dict)
+        #self.benchi.join(filters_widget.widget_bench)
         filters_layout.addWidget(filters_widget)
         filters_widget.file_filtered_signal.connect(self.proxyModel.filterByFile)
         filters_widget.layer_filtered_signal.connect(self.proxyModel.filterByLayer)
         filters_widget.inspection_name_filtered_signal.connect(self.proxyModel.filterByInspectionType)
+        self.benchi.stop()
 
+        print(self.benchi.get_report())
         # Підключення контекстного меню до багатошарового списку
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_context_menu)
@@ -597,10 +596,44 @@ class ResultWindow(QDialog):
         return self.model.get_filtration_dict()
 
     def closeEvent(self, event):
+        print('triggered close event')
         self.deleteLater()
         event.accept()
 
-    def show_context_menu(self, position):
+    def ondelete(self):
+        print('triggered delete event')
+        self.deleteLater()
+
+    def show_context_menu(self, position):        
+        # знайти батьківські атрибути
+        def check_attr(item: InspectionItem, attr: str):
+            '''Перевіряє, чи є у елемента батьківського атрибуту attr, і якщо є, то повертає його'''
+            if type(item) != InspectionItem:
+                return None
+            
+            if attr == 'path':
+                if item.realtedPath() is not None:
+                    return item.realtedPath()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            
+            elif attr == 'layer':
+                if item.relatedLayer() is not None:
+                    return item.relatedLayer()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            
+            elif attr == 'feature':
+                if item.relatedFeatureID() is not None:
+                    return item.relatedFeatureID()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            else:
+                return None
+
         #Задонатити на ЗСУ
         def donate():
             url = QUrl("https://send.monobank.ua/jar/6v8t4TNdaX")
@@ -615,106 +648,90 @@ class ResultWindow(QDialog):
             folder_path = os.path.dirname(file_path)
             os.startfile(folder_path)
 
+        #виділити та наблизити до об'єкта
+        def highlight_and_zoom(layer, feature):
+            canvas = iface.mapCanvas()
+            layer.selectByIds([feature.id()])
+            canvas.zoomToSelected()
+        
+        #наблизити до не виділеного об'єкту за ід об'єкту та шаром
+        def zoom_to_feature(layer, feature):
+            canvas = iface.mapCanvas()
+            canvas.zoomToFeatureIds(layer, [feature.id()])
+        #відкрити форму об''єкта
+        def open_feature_form(layer, feature):
+            featureForm = iface.getFeatureForm(related_layer, related_feature)
+            featureForm.show()
 
         canvas = iface.mapCanvas()
         proxy_index = self.tree_widget.selectedIndexes()
         
-        if proxy_index:
-            proxy_model = self.tree_widget.model()
-            proxy_model = cast(FilterProxyModel, proxy_model)
-            
-            main_model = proxy_model.sourceModel()
-            main_model = cast(CustomItemModel, main_model)
+        if proxy_index is None:
+            return
+        
+        proxy_model = self.tree_widget.model()
+        proxy_model = cast(FilterProxyModel, proxy_model)
+        
+        main_model = proxy_model.sourceModel()
+        main_model = cast(CustomItemModel, main_model)
 
-            main_index = proxy_model.mapToSource(proxy_index[0])
+        main_index = proxy_model.mapToSource(proxy_index[0])
+        
+        selected_item = cast(InspectionItem, main_model.itemFromIndex(main_index))
             
-            selected_item = main_model.itemFromIndex(main_index)
-            
-            selected_item = cast(InspectionItem, selected_item)
+        if selected_item is None:
+            return
+        
+        related_path = check_attr(selected_item, 'path')
+        related_layer = check_attr(selected_item, 'layer')
+        related_feature = check_attr(selected_item, 'feature')
+
+        if related_layer is not None and related_feature is not None:
+            related_feature = related_layer.getFeature(related_feature)
         else:
-            print("No item selected")
-            return    
+            related_feature = None
 
-        if selected_item is not None:
-            menu = QMenu(self)
-            
-            menu.addAction("Задонатити на ЗСУ")
+        menu = QMenu(self)
+        
+        menu.addAction("Задонатити на ЗСУ")
+        menu.addSeparator()
+
+        if related_path is not None:
+            menu.addAction("Відкрити файл")
+            menu.addAction("Відкрити папку")
             menu.addSeparator()
 
-            if selected_item.realtedPath() is not None:
-                related_file = selected_item.realtedPath()
-                menu.addAction("Відкрити файл")
-                menu.addAction("Відкрити папку")
-                menu.addSeparator()
+        if related_layer is not None:
+            menu.addAction("Виділити шар")
+            menu.addAction("Перейти в налаштування шару")
+            menu.addAction("Переглянуи таблицю атрибутів шару")
+            menu.addSeparator()
+        
+        if related_feature is not None and related_layer is not None:
+            menu.addAction("Відкрити форму об'єкту")            
+            menu.addAction("Наблизити до об'єкту")
+            menu.addAction("Виділити об'єкт")
+            menu.addAction("Виділити та наблизити до об'єкту")
 
-            if selected_item.relatedLayer() is not None:
-                related_layer = selected_item.relatedLayer()
-                menu.addAction("Виділити шар")
-                menu.addAction("Перейти в налаштування шару")
-                menu.addAction("Переглянуи таблицю атрибутів шару")
-                menu.addSeparator()
-            
-            if selected_item.relatedFeature() is not None:
-                related_feature = selected_item.relatedFeature()
-                if selected_item.relatedLayer() is not None:
-                    menu.addAction("Виділити об'єкт")
-                    menu.addAction("Виділити та наблизити до об'єкту")
-                    menu.addAction("Відкрити форму об'єкту")
-                
-                menu.addAction("Наблизити до об'єкту")
-            
+        if menu.isEmpty():
+            return
+        
+        selected_action = menu.exec_(self.mapToGlobal(position))
 
-            
+        actions = {
+            "Задонатити на ЗСУ": donate,
+            "Відкрити файл": lambda: open_file(related_path),
+            "Відкрити папку": lambda: open_folder(related_path),
+            "Виділити шар": lambda: iface.setActiveLayer(related_layer),
+            "Перейти в налаштування шару": lambda: iface.showLayerProperties(related_layer),
+            "Переглянуи таблицю атрибутів шару": lambda: iface.showAttributeTable(related_layer),
+            "Відкрити форму об'єкту": lambda: open_feature_form(related_layer, related_feature),
+            "Наблизити до об'єкту": lambda: zoom_to_feature(related_layer, related_feature),
+            "Виділити об'єкт": lambda: related_layer.selectByIds([related_feature.id()]),
+            "Виділити та наблизити до об'єкту": lambda: highlight_and_zoom(related_layer, related_feature)
+        }
 
-            if menu.isEmpty():
-                return
-            
-            selected_action = menu.exec_(self.mapToGlobal(position))
-
-            actions = {
-                "Задонатити на ЗСУ": donate,
-                "Відкрити файл": lambda: open_file(related_file),
-                "Відкрити папку": lambda: open_folder(related_file),
-                "Виділити шар": lambda: iface.setActiveLayer(related_layer),
-                "Перейти в налаштування шару": lambda: iface.showLayerProperties(related_layer),
-                "Переглянуи таблицю атрибутів шару": lambda: iface.showAttributeTable(related_layer),
-                "Виділити об'єкт": lambda: related_layer.selectByIds([related_feature.id()]),
-                "Виділити та наблизити до об'єкту": lambda: related_layer.selectByIds([related_feature.id()]),
-                "Відкрити форму об'єкту": lambda: iface.showAttributeEditor(related_layer, related_feature),
-                "Наблизити до об'єкту": lambda: canvas.zoomToSelected(related_layer)
-            }
-
-            if selected_action:
-
-                print(f"Вибрано дію: {selected_action.text()}")
-                actions[selected_action.text()]()
-                return
-
-                if selected_action.text() == "Виділити шар":
-                    iface.setActiveLayer(related_layer)
-                
-                elif selected_action.text() == "Перейти в налаштування шару":
-                    iface.showLayerProperties(related_layer)
-                
-                elif selected_action.text() == "Переглянуи таблицю атрибутів шару":
-                    if related_feature is not None:
-                        atTable = iface.showAttributeTable(related_layer)
-                        atTable.filterSelectedFeatures(True)
-                    else:
-                        iface.showAttributeTable(related_layer)
-                    
-                elif selected_action.text() == "Виділити об'єкт":
-                    related_layer.selectByIds([related_feature.id()])
-
-                elif selected_action.text() == "Виділити та наблизити до об'єкту":
-                    related_layer.selectByIds([related_feature.id()])
-
-                    canvas.zoomToSelected(related_layer)
-
-                elif selected_action.text() == "Наблизити до об'єкту":
-                    canvas.zoomToFeatureIds(related_layer, [related_feature.id()])
-
-                elif selected_action.text() == "Відкрити форму об'єкту":
-                    featureForm = iface.getFeatureForm(related_layer, related_feature)
-                    featureForm.show()
+        if selected_action:
+            actions[selected_action.text()]()
+            return
 
