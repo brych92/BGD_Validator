@@ -1,8 +1,8 @@
 from qgis.PyQt.QtWidgets import (
-    QWidget, QHBoxLayout, QVBoxLayout, 
+    QWidget, QHBoxLayout, QVBoxLayout, QLabel,
     QRadioButton, QTabWidget, QCheckBox, QPushButton, QScrollArea
 )
-from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtGui import QIcon, QFont
 from qgis.PyQt.QtCore import Qt, pyqtSignal
 
 class CheckboxFilterWidget(QWidget):
@@ -87,13 +87,15 @@ class FilterWidget(QWidget):
         
         self.tabs.setTabPosition(QTabWidget.East)
         self.widgets = {}
-        self.widgets[0] = CheckboxFilterWidget(filtration_dict['files'])  # Replace with your actual widget for files
-        self.widgets[1] = CheckboxFilterWidget(filtration_dict['layers'])  # Replace with your actual widget for layers
-        self.widgets[2] = CheckboxFilterWidget(filtration_dict['errors'])  # Replace with your actual widget for errors
+        self.widgets[0] = CheckboxFilterWidget(filtration_dict['files'], self) 
+
+        self.widgets[1] = CheckboxFilterWidget(filtration_dict['layers'], self)  
+        
+        self.widgets[2] = CheckboxFilterWidget(filtration_dict['errors'], self)  
 
         self.add_tab("📄Файли", self.widgets[0])
         self.add_tab("🗂️Шари", self.widgets[1])
-        self.add_tab("⚠️Помилки", self.widgets[2])
+        self.add_tab("⚠️Перевірки", self.widgets[2])
 
         self.main_layout = QHBoxLayout()
         self.main_layout.addWidget(self.tabs)
@@ -169,3 +171,71 @@ class SwitchWidget(QWidget):
             return [1,2]
         elif self.critical_button.isChecked():
             return [2]
+
+class CheckboxesGroup(QWidget):
+    checked_values_changed = pyqtSignal(list)
+    
+    def __init__(self, options: dict = None):
+        super().__init__()
+        self.options = options
+        self.checkboxes = {}
+        self.checked_values = []
+
+        self.create_checkboxes()
+
+    def create_checkboxes(self):
+        layout = QVBoxLayout()
+        if self.options is not None:
+            options = self.options
+        else:
+            options = {
+                0: "Всі перевірки", 
+                1: "Тільки неуспішні",
+                2: "Тільки критичні"
+            }
+
+        for k, v in options.items():
+            checkbox = QCheckBox(v)
+            layout.addWidget(checkbox)
+            self.checkboxes[k] = checkbox
+
+        button = QPushButton("Відфільтрувати")
+        button.clicked.connect(self.get_checked_values)
+        layout.addWidget(button)
+
+        self.setLayout(layout)
+
+    def get_checked_values(self):
+        self.checked_values = []
+        for k, checkbox in self.checkboxes.items():
+            if checkbox.isChecked():
+                self.checked_values.append(k)
+        #print(self.checked_values)
+        
+        self.checked_values_changed.emit(self.checked_values)
+        
+        return self.checked_values
+
+class statusWidget(QLabel):
+    def __init__(self, model, parent=None):
+        super().__init__(parent)
+        
+        total_inspections = model.inspection_QTY
+        warning_qty = model.warning_QTY
+        critical_qty = model.critical_QTY
+        errors_qty = warning_qty + critical_qty
+
+        
+        self.setAlignment(Qt.AlignCenter)
+        self.setMaximumHeight(101)
+        self.setMinimumHeight(100)
+        font = QFont()
+        font.setPointSize(16)
+        self.setFont(font)
+        if errors_qty == 0:
+            self.setStyleSheet("background-color: green; color: white;")
+            self.setText(f'Проведено {total_inspections} перевірок. \r\nПомилок не виявлено.')
+        else:
+            self.setStyleSheet("background-color: red; color: white;")
+            self.setText(
+                f'Проведено {total_inspections} перевірок. \r\nЗ них було виявлено помилки в {errors_qty} перевірках.\r\n({critical_qty} критичних, {warning_qty} важливих).')
