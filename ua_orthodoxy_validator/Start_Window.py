@@ -17,6 +17,7 @@ import json
 
 from .csv_to_json_structure_converter import Csv_to_json_structure_converter
 
+from .benchmark import Benchmark
 
 from .result_windows import ResultWindow, CustomTreeView, CustomItemModel
 
@@ -31,9 +32,6 @@ logging = True
 def log(text: str) -> None:
     if logging:
         print(text)
-
-
-
 
 def get_real_layer_name(layer: QgsVectorLayer) -> str:
     """
@@ -64,8 +62,20 @@ def get_real_layer_name(layer: QgsVectorLayer) -> str:
         
     return source_layer_name
 
-def run_validator(task:QgsTask, input_list:list):
-    
+def run_validator(task:QgsTask = None, input_list:list = None):
+    def validate_file_format(path: str, reuired_format: str) -> bool:
+        """
+        Перевіряє, чи файл має заданий формат.
+
+        Args:
+            path (str): Шлях до фаєлу.
+            reuired_format (str): Формат, який потрібно перевірити.
+
+        Returns:
+            bool: True, якщо фаєл має заданий формат, інакше False.
+        """
+        file_extension = os.path.splitext(path)[1]
+        return file_extension in reuired_format
     """
     Запустити валідатор для шарів.
 
@@ -86,7 +96,6 @@ def run_validator(task:QgsTask, input_list:list):
     """
     layers = input_list[0]
     structure_folder = input_list[1]
-
     output = []
     all_layers_check_result_dict = {}
     all_layers_check_result_dict['layers'] = {}
@@ -96,19 +105,37 @@ def run_validator(task:QgsTask, input_list:list):
     temp_files_dict = {}
 
     global_guid_dict = {}
+    damaged_files_list = []
 
+    print('start run_validator.................')
     for id in layers:
-        dataSource = ogr.Open(layers[id]['path'], 0) # 0 means read-only. 1 means writeable.
         file_path = layers[id]['path']
+        if file_path in damaged_files_list: #відпрацювання скіпу перевірки якшо файл вже перевірявся і він битий
+            continue
+
+        dataSource = ogr.Open(layers[id]['path'], 0)
+        
+        if dataSource is None: #відпрацювання скіпу перевірки якшо файл битий
+            temp_files_dict[file_path] = {
+                'type' : 'inspection',
+                'item_name' :  f"Помилка завантаження файлу «{os.path.basename(file_path)}»",
+                'related_file_path' : file_path,
+                'item_tooltip' : file_path,
+                'criticity' : 2
+            }
+            damaged_files_list.append(file_path)
+            continue
+
         if not file_path in temp_files_dict: 
             temp_files_dict[file_path] = {
                 'type' : 'file',
                 'item_name' :  f"Файл: «{os.path.basename(file_path)}»",
                 'related_file_path' : file_path,
-                'item_tooltip' : file_path, #те що буде виводитися в першому рядку підказки, опціонально
+                'item_tooltip' : file_path,
                 'help_url' : "www.google.com",
                 'subitems' : []
             }
+        
         if dataSource.GetDriver().GetName() in ['OpenFileGDB', 'GPKG']:
             layer = dataSource.GetLayerByName(layers[id]['layer_name'])
         else:
@@ -116,16 +143,47 @@ def run_validator(task:QgsTask, input_list:list):
         
         layer_real_name = layers[id]['layer_real_name']
         
+            
+        if layer is None:
+            temp_files_dict[file_path]['subitems'].append = {
+                'type' : 'inspection',
+                'item_name' :  f"Помилка завантаження шару «{layers[id]['layer_name']}»",
+                'related_file_path' : file_path,
+                'item_tooltip' : file_path,
+                'criticity' : 2
+            }
+            continue
+            raise AttributeError(f'Не вдалося відкрити шар {layers[id]["path"]}')
+
         converter = Csv_to_json_structure_converter(structure_folder)
 
         structure = converter.create_structure_json()
         domains = converter.create_domain_json()
         
-            
-        if layer is None:
-            raise AttributeError(f'Не вдалося відкрити шар {layers[id]["path"]}')
-        
-        
+        if not validate_file_format(layers[id]['path'], layers[id]['exchange_format']):            
+            file_format = os.path.splitext(layers[id]['path'])[1]
+            required_format = layers[id]['exchange_format']
+            if temp_files_dict[layers[id]['path']]['subitems'] == [] or not f"Формат файлу '{file_format}' не відповідає '{required_format}', що вимагаються структурою" in temp_files_dict[layers[id]['path']]['subitems'][0].values():
+                inspection = {
+                    'type' : 'inspection',
+                    'item_name' :  f"Формат файлу '{file_format}' не відповідає '{required_format}', що вимагаються структурою",
+                    'related_file_path' : file_path,
+                    'item_tooltip' : file_path,
+                    'criticity' : 1
+                }
+                temp_files_dict[file_path]['subitems'].append(inspection)
+        else:
+            file_format = os.path.splitext(layers[id]['path'])[1]
+            required_format = layers[id]['exchange_format']
+            if temp_files_dict[layers[id]['path']]['subitems'] == [] or not f"Формат файлу '{file_format}' відповідає '{required_format}', що вимагаються структурою" in temp_files_dict[layers[id]['path']]['subitems'][0].values():
+                inspection = {
+                    'type' : 'inspection',
+                    'item_name' :  f"Формат файлу '{file_format}' відповідає '{required_format}', що вимагаються структурою",
+                    'related_file_path' : file_path,
+                    'item_tooltip' : file_path,
+                    'criticity' : 0
+                }
+                temp_files_dict[file_path]['subitems'].append(inspection)
         
         validate_checker = EDRA_exchange_layer_checker(
             layer = layer,
@@ -134,17 +192,21 @@ def run_validator(task:QgsTask, input_list:list):
             domains_json=domains,
             layer_props = layers[id],
             layer_id = id,
-            task = task)
-        
+            task = task,
+            driver_name = dataSource.GetDriver().GetName())
+
         validate_result = validate_checker.run()
         
+
         temp_files_dict[layers[id]['path']]['subitems'].append(validate_result)
         del validate_result
         del validate_checker
         del layer
     
     for k, v in temp_files_dict.items():
-        output.append(v)    
+        output.append(v)
+    
+    
     return output
 
 class customlayerListWidget(QTreeWidget):
@@ -331,6 +393,8 @@ class MainWindow(QDialog):
             return temp_strcut
 
     def __init__(self, parent=None):
+        self.bench = Benchmark("Головне вікно")
+        self.bench.start('init')
         def update_version_combo_box():
             if self.BGD_type_combo_box.currentText() != '':
                 self.BGD_version_combo_box.clear()
@@ -356,6 +420,8 @@ class MainWindow(QDialog):
         
         super().__init__(parent)        
         
+        self.validator_result = []
+
         self.validator_task = ''
         
         self.setWindowTitle("Налаштуйте параметри перевірки")
@@ -408,8 +474,6 @@ class MainWindow(QDialog):
         self.plugin_dir = os.path.dirname(__file__)
         self.path_to_structures = os.path.join(self.plugin_dir, 'stuctures')
         self.strutures = self.parse_structures(self.path_to_structures)
-        #print(self.strutures)
-        #print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
         
         self.BGD_type_combo_box = QComboBox()
         self.BGD_type_combo_box.addItems(self.strutures.keys())
@@ -419,22 +483,13 @@ class MainWindow(QDialog):
 
         self.BGD_version_combo_box = QComboBox()
         update_version_combo_box()
-        # self.BGD_version_combo_box.addItems(self.strutures[self.BGD_type_combo_box.currentText()].keys())
         
         self.crs_combo_box = QComboBox()
         update_crs_combo_box()
-        # self.crs_combo_box.addItems([key for key in self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'].keys()])
-        # if self.crs_combo_box.count() == 1:
-        #     self.crs_combo_box.hide()
-            
         
         self.BGD_type_combo_box.currentIndexChanged.connect(update_version_combo_box)
         self.BGD_version_combo_box.currentIndexChanged.connect(update_crs_combo_box)
-        # print(json.dumps(obj=self.strutures, indent=4, ensure_ascii=False))
 
-        self.printLayerDataButton = QPushButton("Вивести дані шару")
-        self.printLayerDataButton.clicked.connect(self.printSelectedLayerData)
-        layerslayout.addWidget(self.printLayerDataButton)
         layerslayout.addWidget(self.BGD_type_combo_box)
         layerslayout.addWidget(self.BGD_version_combo_box)
         layerslayout.addWidget(self.crs_combo_box)
@@ -442,40 +497,59 @@ class MainWindow(QDialog):
         self.runButton.clicked.connect(self.run)
         layerslayout.addWidget(self.runButton)
         self.setLayout(layerslayout)
-
+        self.bench.stop()
+    
     def run(self):
         def обробник(помилка, результат = None):
+            print('обробник')
             if помилка is None:
+                print('помилка is None')
                 if результат is None:
+                    print('результат is None')
                     pass
                 else:
-                    print('Запускаю вікно')
+                    #self.validator_result = результат
+                    print('Запускаю вікно результату')
                     window = ResultWindow(результат, parent=self)
+                    print("Вікно результату запущено")
                     window.show()
             else:
                 print(помилка)
                 raise помилка
-        
         layers_dict = {}
+        structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path']
+        #print(json.dumps(self.strutures, indent=4, ensure_ascii=False))
+        self.bench.start('run')
+        
         for i in range(self.layer_list_widget.topLevelItemCount()):
             layer = self.layer_list_widget.topLevelItem(i)
             layer = cast(layerItem, layer)
             crs_text = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'][self.crs_combo_box.currentText()]
             crs_list = crs_text.replace(' ', '').replace('\r', '').replace('\n', '').replace('\t', '').replace(';', ',').split(',')
-            
+            required_file_format = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['format']
+            #print(required_file_format)
+
             layers_dict[layer.getID()] = {
                 'layer_name': layer.getRealName(),
                 'path': layer.getPath(),
                 'layer_real_name': layer.getRealName(),
-                'required_crs_list': crs_list
+                'required_crs_list': crs_list,
+                'exchange_format': required_file_format
                 }
-        layers = layers_dict
-        structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path']
-        input = [layers, structure_folder]
+            
+        input = [layers_dict, structure_folder]
+        self.bench.start('run_validator')
+        result_list = run_validator(None, input)
+        self.bench.start('result_window')
+        window = ResultWindow(result_list, parent=self)        
+        self.bench.start('show_window')
+        window.show()
+        self.bench.stop()
+        self.bench.print_report()
 
-        self.validator_task = QgsTask.fromFunction('Валідую валідую, та не вивалідую', run_validator, on_finished = обробник, input_list = input)
-        tm = QgsApplication.taskManager()
-        tm.addTask(self.validator_task)
+        # self.validator_task = QgsTask.fromFunction('Валідую валідую, та не вивалідую', run_validator, on_finished = обробник, input_list = input)
+        # tm = QgsApplication.taskManager()
+        # tm.addTask(self.validator_task)
         
         # result_structure = run_validator(
         #     layers = layers_dict,
@@ -483,10 +557,6 @@ class MainWindow(QDialog):
         
         # window = ResultWindow(result_structure, parent=self)#iface.mainWindow())
         # window.show()
-
-    def printSelectedLayerData(self):
-        for item in self.layer_list_widget.selectedItems():
-            print(item.get_layer_vlaue())
 
     def openFiles(self, addLayers:bool = False):
         def random_id(layerName):
@@ -511,7 +581,6 @@ class MainWindow(QDialog):
         
         self.folder_path=os.path.dirname(pathArr[0])
         file_type = pathArr[0].split('.')[-1]
-
 
         layersList = []
 
