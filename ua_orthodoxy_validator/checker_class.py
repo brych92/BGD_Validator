@@ -436,11 +436,17 @@ class EDRA_validator:
         
         return check_feature_unique_attrs_is_unique
 
-    def get_list_duplicated_fid(self, feature, layer_id, feature_fids):
+    def get_list_duplicated_fid(self, feature, layer_id, feature_fids, max_len_list_number):
             duplicated_id_list = []
             for id, fid in feature_fids.items():
+                
                 if fid == feature[self.id_field] and id != feature.GetFID():
-                    duplicated_id_list.append([id, layer_id])
+                    # max_len_list_number + 1 ставиться для того щоб перевірити чи дублікатів більше заданої кількості чи ні
+                    if len(duplicated_id_list) < max_len_list_number + 1:
+                        duplicated_id_list.append([id, layer_id])
+                    else:
+                        return duplicated_id_list
+                else: pass
             return duplicated_id_list
         
     
@@ -454,8 +460,60 @@ class EDRA_validator:
             else: 
                 domain_codes.append(x)
         # print(f'DOMAIN {domain_codes} {type()}')
+        
+        check_result = None
+        criticity = None
+        note = ''
+        
+        if self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text':
             
-        return feature[field_name] in domain_codes
+            # print("self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text'")
+            # print(field_name, feature[field_name])
+            
+            if feature[field_name] in domain_codes:
+                check_result = True
+                criticity = 0
+                note = ''
+                
+            elif int(feature[field_name])  in domain_codes:
+                check_result = False
+                criticity = 1
+                note = 'Фактичне значення відповідає домену, але ймовірно тип атрибуту не відповідає структурі'
+            
+            else:
+                check_result = False
+                criticity = 2
+                note = 'Значення не відповідає домену'
+                # return {'check_result': check_result, "criticity": 1}
+        
+        elif not self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text':
+            # print("not self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text'")
+            if feature[field_name] in domain_codes:
+                check_result = True
+                criticity = 0
+                note = ''
+            
+                
+                
+            elif ' ' in feature[field_name] and int(feature[field_name].replace(' ', '')) in domain_codes:
+                check_result = False
+                criticity = 1
+                note = 'Фактичне значення відповідає домену, але в значенні міститься пробіл та тип атрибуту не відповідає структурі'
+                
+            else:
+                check_result = False
+                criticity = 2
+                note = 'Значення не відповідає домену'
+                
+        
+        else:
+            # print('else')
+            check_result = False
+            criticity = 2
+            note = 'Значення не відповідає домену'
+            # return {'check_result': feature[field_name] in domain_codes, "criticity": 2}
+            
+        return {'check_result': check_result, "criticity": criticity, "note": note}
     
     def get_layer_crs(self):
         
@@ -600,10 +658,10 @@ class EDRA_exchange_layer_checker:
                 if self.layer_EDRA_valid_class.fields_structure_json[field_name]['domain'] != '' and self.layer_EDRA_valid_class.fields_structure_json[field_name]['domain'] != None:
                     
                     if self.layer_EDRA_valid_class.fields_structure_json[field_name]['attribute_required'] == True or feature[field_name] != None:
-                        check_is_value_in_domain = self.layer_EDRA_valid_class.check_attr_value_in_domain(feature, field_name) 
+                        check_is_value_in_domain_dict = self.layer_EDRA_valid_class.check_attr_value_in_domain(feature, field_name) 
                     
-                        if not check_is_value_in_domain:
-                            result_dict[field_name] =  [feature[field_name], 'Посилання до домену']
+                        if not check_is_value_in_domain_dict['check_result']:
+                            result_dict[field_name] =  {"value": feature[field_name], "link": 'Посилання до домену', "criticity": check_is_value_in_domain_dict['criticity'], 'note': check_is_value_in_domain_dict['note']}
                         else: pass
                     else:
                         pass   
@@ -618,10 +676,10 @@ class EDRA_exchange_layer_checker:
     def write_features_check_result(self):
         # features_dict_legacy = {}
         
-        # features_fids = {}
-        # if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
-        #     for feature in self.layer_EDRA_valid_class.layer:
-        #         features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
+        features_fids = {}
+        if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
+            for feature in self.layer_EDRA_valid_class.layer:
+                features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
 
         self.main_features_check_bench = Benchmark()
 
@@ -759,9 +817,9 @@ class EDRA_exchange_layer_checker:
                     insception_unclassified_value_error = None
                     insception_unclassified_value_error = self.create_inspection_dict(
                         inspection_type_name = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Атрибут: '{field_name}' має значення '{attribute_values_unclassified_dict[field_name][0]}', що не відповідає домену (див. опис поля)", 
-                        item_tool_tip = f"Значення атрибуту '{field_name}' не відповідає домену", 
-                        criticity = 2, 
+                        item_name = f"Атрибут: '{field_name}' має значення '{attribute_values_unclassified_dict[field_name]['value']}', що не відповідає домену (див. опис поля). {attribute_values_unclassified_dict[field_name]['note']}", 
+                        item_tool_tip = f"Значення атрибуту '{field_name}' не відповідає домену. {attribute_values_unclassified_dict[field_name]['note']}", 
+                        criticity = attribute_values_unclassified_dict[field_name]['criticity'], 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     container_attributes_values_unclassified['subitems'].append(insception_unclassified_value_error)
@@ -839,42 +897,55 @@ class EDRA_exchange_layer_checker:
             del container_attributes_values_length
             
             self.check_feature_bench.stop()
-            # duplicated_guid_list = self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids)
+            
+            max_len_list_number = 5
+            duplicated_guid_list = self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids, max_len_list_number)
             
             
-            # # Розкоментувати код і дописати контейнер для дуплікейтед гуід
-            # container_duplicated_guid = None
-            # container_duplicated_guid = {}
-            # container_duplicated_guid['type'] = 'container'
-            # container_duplicated_guid['item_name'] = "Перевірка на унікальність ID"
-            # container_duplicated_guid['subitems'] = []
+            # Розкоментувати код і дописати контейнер для дуплікейтед гуід
+            container_duplicated_guid = None
+            container_duplicated_guid = {}
+            container_duplicated_guid['type'] = 'container'
+            container_duplicated_guid['item_name'] = "Перевірка на унікальність ID"
+            container_duplicated_guid['subitems'] = []
             
-            # if len(duplicated_guid_list) > 0:
-            #     #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
-            #     for duplicate_item in duplicated_guid_list:
+            insception_feature_id_is_unique = None
+            
+            if len(duplicated_guid_list) > 0:
+                #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
+                # for duplicate_item in duplicated_guid_list:
                     
-            #         insception_feature_id_is_not_unique = None
-            #         insception_feature_id_is_not_unique = self.create_inspection_dict(
-            #             inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
-            #             item_name = f"Об'єкт ({feature.GetFID()}) має не унікальний ідентифікатор. Дублюючий елемент, ID: {[duplicate_item][0]}", 
-            #             item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
-            #             criticity = 2, 
-            #             help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-            #         )
-            #         container_duplicated_guid['subitems'].append(insception_feature_id_is_not_unique)
+                if len(duplicated_guid_list) > max_len_list_number:
+                    insception_feature_id_is_unique = self.create_inspection_dict(
+                        inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Об'єкт ({feature.GetFID()}) має більше {len(duplicated_guid_list)} дублюючих елементів, ID: {[duplicated_guid_list[:5]]}, інші.", 
+                        item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
+                        criticity = 2, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
+                else:
+                    insception_feature_id_is_unique = self.create_inspection_dict(
+                        inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
+                        item_name = f"Об'єкт ({feature.GetFID()}) має {len(duplicated_guid_list)} дублюючих елементів, ID: {[duplicated_guid_list]}.", 
+                        item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
+                        criticity = 2, 
+                        help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                    )
                     
-            # elif len(duplicated_guid_list) == 0 :
-            #     insception_feature_id_is_unique = None
-            #     insception_feature_id_is_unique = self.create_inspection_dict(                    
-            #         inspection_type_name = "Перевірка на унікальність ID", #Підтягувати перевірку з файлу структури з помилками
-            #         item_name = f"Ідентифікатор об'єкта унікальний", 
-            #         item_tool_tip = f"Ідентифікатор об'єкта унікальний", 
-            #         criticity = 0, 
-            #         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
-            #     )
-            #     container_duplicated_guid['subitems'].append(insception_feature_id_is_unique)
-                
-            # container_features_attribute_errors['subitems'].append(container_duplicated_guid)
+                    
+            elif len(duplicated_guid_list) == 0 :
+                # insception_feature_id_is_unique = None
+                insception_feature_id_is_unique = self.create_inspection_dict(                    
+                    inspection_type_name = "Перевірка на унікальність ID", #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Ідентифікатор об'єкта унікальний", 
+                    item_tool_tip = f"Ідентифікатор об'єкта унікальний", 
+                    criticity = 0, 
+                    help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
+                )
+                # container_duplicated_guid['subitems'].append(insception_feature_id_is_unique)
+            container_duplicated_guid['subitems'].append(insception_feature_id_is_unique)
+            
+            container_features_attribute_errors['subitems'].append(container_duplicated_guid)
             
             self.check_feature_bench.start('wtite_container_features_attribute_errors_dict')
             
@@ -1460,7 +1531,7 @@ class EDRA_exchange_layer_checker:
         
         self.parse_bench.stop()
         
-        if hasattr(self, 'write_result_dict_bench') and self.write_result_dict_bench is not None:
+        if self.write_result_dict_bench is not None:
             self.parse_bench.join(self.write_result_dict_bench)
         
 
@@ -1469,11 +1540,3 @@ class EDRA_exchange_layer_checker:
         print("end")
 
         return self.check_result_dict
-
-        
-
-
-
-
-
-
