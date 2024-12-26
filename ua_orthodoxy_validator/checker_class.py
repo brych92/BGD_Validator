@@ -1,6 +1,8 @@
 from osgeo import ogr
 from qgis.core import QgsTask
 
+import json
+
 from .benchmark import Benchmark
 
 # Можливі помилки
@@ -682,11 +684,11 @@ class EDRA_exchange_layer_checker:
         max_len_list_number = 5
         if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
             for feature in self.layer_EDRA_valid_class.layer:
-                if feature.GetFID() not in features_fids.keys():
-                    features_fids[feature.GetFID()] = [feature[self.layer_EDRA_valid_class.id_field]]
-                elif len(features_fids) <= max_len_list_number+1:
-                    features_fids[feature.GetFID()].append(feature[self.layer_EDRA_valid_class.id_field])
-
+                if feature[self.layer_EDRA_valid_class.id_field] not in features_fids.keys():
+                    features_fids[feature[self.layer_EDRA_valid_class.id_field]] = [feature.GetFID()]
+                elif len(features_fids[feature[self.layer_EDRA_valid_class.id_field]]) <= max_len_list_number+1:
+                    features_fids[feature[self.layer_EDRA_valid_class.id_field]].append(feature.GetFID())
+        
         self.main_features_check_bench.stop()
 
 
@@ -908,8 +910,11 @@ class EDRA_exchange_layer_checker:
             self.check_feature_bench.start('Перевірка GUID на унікальність')
             
             #max_len_list_number = 5
-            duplicated_feature_id_list = features_fids[feature.GetFID()] #self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids, max_len_list_number)
-            
+            duplicated_feature_id_list = features_fids[feature[self.layer_EDRA_valid_class.id_field]][:] #self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids, max_len_list_number)
+            #print(f"{feature[self.layer_EDRA_valid_class.id_field]} - {feature.GetFID()} - {duplicated_feature_id_list}({features_fids[feature[self.layer_EDRA_valid_class.id_field]]})")
+
+            if feature.GetFID() in duplicated_feature_id_list:
+                duplicated_feature_id_list.remove(feature.GetFID())
             
             # Розкоментувати код і дописати контейнер для дуплікейтед гуід
             container_duplicated_guid = None
