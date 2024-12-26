@@ -675,13 +675,22 @@ class EDRA_exchange_layer_checker:
     
     def write_features_check_result(self):
         # features_dict_legacy = {}
-        
+        self.main_features_check_bench = Benchmark()
+
+        self.main_features_check_bench.start("Збір дублікатів FID")
         features_fids = {}
+        max_len_list_number = 5
         if self.layer_EDRA_valid_class.id_field in self.layer_EDRA_valid_class.layer_field_names:
             for feature in self.layer_EDRA_valid_class.layer:
-                features_fids[feature.GetFID()] = feature[self.layer_EDRA_valid_class.id_field]
+                if feature.GetFID() not in features_fids.keys():
+                    features_fids[feature.GetFID()] = [feature[self.layer_EDRA_valid_class.id_field]]
+                elif len(features_fids) <= max_len_list_number+1:
+                    features_fids[feature.GetFID()].append(feature[self.layer_EDRA_valid_class.id_field])
 
-        self.main_features_check_bench = Benchmark()
+        self.main_features_check_bench.stop()
+
+
+        
 
         container_features = None
         container_features = {}
@@ -896,10 +905,10 @@ class EDRA_exchange_layer_checker:
             del attributes_length_exceed_dict
             del container_attributes_values_length
             
-            self.check_feature_bench.stop()
+            self.check_feature_bench.start('Перевірка GUID на унікальність')
             
-            max_len_list_number = 5
-            duplicated_guid_list = self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids, max_len_list_number)
+            #max_len_list_number = 5
+            duplicated_feature_id_list = features_fids[feature.GetFID()] #self.layer_EDRA_valid_class.get_list_duplicated_fid(feature, self.layer_props['related_layer_id'], features_fids, max_len_list_number)
             
             
             # Розкоментувати код і дописати контейнер для дуплікейтед гуід
@@ -911,14 +920,14 @@ class EDRA_exchange_layer_checker:
             
             insception_feature_id_is_unique = None
             
-            if len(duplicated_guid_list) > 0:
+            if len(duplicated_feature_id_list) > 0:
                 #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
                 # for duplicate_item in duplicated_guid_list:
                     
-                if len(duplicated_guid_list) > max_len_list_number:
+                if len(duplicated_feature_id_list) > max_len_list_number:
                     insception_feature_id_is_unique = self.create_inspection_dict(
                         inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Об'єкт ({feature.GetFID()}) має більше {len(duplicated_guid_list)} дублюючих елементів, ID: {[duplicated_guid_list[:5]]}, інші.", 
+                        item_name = f"Об'єкт ({feature.GetFID()}) має більше {len(duplicated_feature_id_list)} дублюючих елементів, ID: {[duplicated_feature_id_list[:5]]}, інші.", 
                         item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
                         criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
@@ -926,14 +935,14 @@ class EDRA_exchange_layer_checker:
                 else:
                     insception_feature_id_is_unique = self.create_inspection_dict(
                         inspection_type_name = 'Перевірка на унікальність ID', #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Об'єкт ({feature.GetFID()}) має {len(duplicated_guid_list)} дублюючих елементів, ID: {[duplicated_guid_list]}.", 
+                        item_name = f"Об'єкт ({feature.GetFID()}) має {len(duplicated_feature_id_list)} дублюючих елементів, ID: {[duplicated_feature_id_list]}.", 
                         item_tool_tip = f"Об'єкт має не унікальний ідентифікатор", 
                         criticity = 2, 
                         help_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D' #Rickroll)
                     )
                     
                     
-            elif len(duplicated_guid_list) == 0 :
+            elif len(duplicated_feature_id_list) == 0 :
                 # insception_feature_id_is_unique = None
                 insception_feature_id_is_unique = self.create_inspection_dict(                    
                     inspection_type_name = "Перевірка на унікальність ID", #Підтягувати перевірку з файлу структури з помилками
@@ -1531,7 +1540,7 @@ class EDRA_exchange_layer_checker:
         
         self.parse_bench.stop()
         
-        if self.write_result_dict_bench is not None:
+        if hasattr(self, 'write_result_dict_bench') and self.write_result_dict_bench is not None:
             self.parse_bench.join(self.write_result_dict_bench)
         
 
