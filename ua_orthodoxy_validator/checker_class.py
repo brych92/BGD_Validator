@@ -467,7 +467,7 @@ class EDRA_validator:
         criticity = None
         note = ''
         
-        if self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text':
+        if self.is_integer(feature[field_name]) and not isinstance(feature[field_name], str) and self.fields_structure_json[field_name]['attribute_type'] != 'text':
             
             # print("self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text'")
             # print(field_name, feature[field_name])
@@ -477,7 +477,7 @@ class EDRA_validator:
                 criticity = 0
                 note = ''
                 
-            elif int(feature[field_name])  in domain_codes:
+            elif float(feature[field_name])  in domain_codes:
                 check_result = False
                 criticity = 1
                 note = 'Фактичне значення відповідає домену, але ймовірно тип атрибуту не відповідає структурі'
@@ -488,7 +488,7 @@ class EDRA_validator:
                 note = 'Значення не відповідає домену'
                 # return {'check_result': check_result, "criticity": 1}
         
-        elif not self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text':
+        elif not self.is_integer(feature[field_name]) and isinstance(feature[field_name], str) and self.fields_structure_json[field_name]['attribute_type'] != 'text':
             # print("not self.is_integer(feature[field_name]) and self.fields_structure_json[field_name]['attribute_type'] != 'text'")
             if feature[field_name] in domain_codes:
                 check_result = True
@@ -497,17 +497,26 @@ class EDRA_validator:
             
                 
                 
-            elif ' ' in feature[field_name] and int(feature[field_name].replace(' ', '')) in domain_codes:
-                check_result = False
-                criticity = 1
-                note = 'Фактичне значення відповідає домену, але в значенні міститься пробіл та тип атрибуту не відповідає структурі'
-                
+            elif ' ' in feature[field_name] and self.is_integer(feature[field_name].replace(' ', '')):
+                if float(feature[field_name].replace(' ', '')) in domain_codes:
+                    check_result = False
+                    criticity = 1
+                    note = 'Фактичне значення відповідає домену, але в значенні міститься пробіл та тип атрибуту не відповідає структурі'
+                else:
+                    check_result = False
+                    criticity = 2
+                    note = 'Значення не відповідає домену'
+            
             else:
                 check_result = False
                 criticity = 2
                 note = 'Значення не відповідає домену'
                 
-        
+        elif feature[field_name] in domain_codes:
+            check_result = True
+            criticity = 0
+            note = ''
+            
         else:
             # print('else')
             check_result = False
