@@ -638,6 +638,8 @@ class EDRA_exchange_layer_checker:
             if x['check_field_type_result'] == False and x['check_field_name_result'] == True:
                 if self.driver_name == "GeoJSON" and x['current_field_type'] in [ogr.GetFieldTypeName(ogr_index) for ogr_index in self.layer_EDRA_valid_class.qt_and_ogr_data_types['text']['ogr_codes']] and x['current_field_name'] not in self.layer_EDRA_valid_class.get_required_fields_names() and self.layer_EDRA_valid_class.check_null_attribute(x['current_field_name']):
                     pass
+                elif self.driver_name == "GeoJSON" and x['current_field_type'] in [ogr.GetFieldTypeName(ogr_index) for ogr_index in self.layer_EDRA_valid_class.qt_and_ogr_data_types['integer']['ogr_codes']] and  x['required_field_type'] in ['integer', 'double']:
+                    pass
                 else:
                     errors_field_type_dict[x['current_field_name']] = [x['current_field_type'], x['required_field_type']]
             else: pass
@@ -1491,7 +1493,7 @@ class EDRA_exchange_layer_checker:
                     
                     
                     self.parse_bench.start('reinit_class')
-                    self.layer_EDRA_valid_class = EDRA_validator(self.layer_EDRA_valid_class.layer, layer_name_errors_check_result['result_dict']['valid_name'], self.layer_EDRA_valid_class.structure_json, self.layer_EDRA_valid_class.domains_json)
+                    self.layer_EDRA_valid_class = EDRA_validator(self.layer_EDRA_valid_class.layer, layer_name_errors_check_result['result_dict']['valid_name'], self.layer_EDRA_valid_class.structure_json, self.layer_EDRA_valid_class.domains_json, driver_name = self.driver_name)
                     # self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = layer_name_errors_check_result['result_dict']
                     self.parse_bench.stop()
                     
