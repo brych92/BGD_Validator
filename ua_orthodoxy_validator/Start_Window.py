@@ -80,6 +80,8 @@ def run_validator(task:QgsTask = None, input_list:list = None):
     Запустити валідатор для шарів.
 
     Args:
+        task (QgsTask, optional): Об'єкт QgsTask для валідатора. Дефолтне значення None.
+
         layers (dict): Словник шарів. Кожен шар - це словник з ключами:
             - layer_crs (str): Система координат шару.
             - layer_name (str): Ім'я шару.
@@ -187,14 +189,16 @@ def run_validator(task:QgsTask = None, input_list:list = None):
         
         validate_checker = EDRA_exchange_layer_checker(
             layer = layer,
-            layer_exchange_name=layer_real_name,
-            structure_json=structure,
-            domains_json=domains,
+            layer_exchange_name = layer_real_name,
+            structure_json = structure,
+            domains_json = domains,
             layer_props = layers[id],
             layer_id = id,
             task = task,
             driver_name = dataSource.GetDriver().GetName())
-
+        
+        #print(f"Driver name: {dataSource.GetDriver().GetName()}")
+        
         validate_result = validate_checker.run()
         
 
@@ -444,11 +448,16 @@ class MainWindow(QDialog):
         layersTopButtonsLayout.addLayout(layertreeWidgetbuttonslayout1)
         layersTopButtonsLayout.addLayout(layertreeWidgetbuttonslayout2)
         
-        update_layers_button = QPushButton("🔄 З виділених")
+        
+        update_layers_button = QPushButton("🔄 Очистити список")
         update_layers_button.setToolTip("Очистити список та заповнити виділеними шарами")
         update_layers_button.clicked.connect(self.update_layers)
+        update_layers_button.setEnabled(True)
+        update_layers_button.setMenu(QMenu())
+        update_layers_button.menu().addAction("Тільки з обє'єктами", self.update_layers_with_objects)
+        update_layers_button.menu().addAction("Всі виділені шари", self.update_layers_with_objects)
         layertreeWidgetbuttonslayout1.addWidget(update_layers_button)
-        
+
         add_layers_button = QPushButton("➕ Додати виділені")
         add_layers_button.setToolTip("Додати в кінець списку виділені шари")
         add_layers_button.clicked.connect(self.add_selected_layers)
@@ -539,7 +548,7 @@ class MainWindow(QDialog):
             
         input = [layers_dict, structure_folder]
         self.bench.start('run_validator')
-        result_list = run_validator(None, input)
+        result_list = run_validator(task = None, input_list = input)
         self.bench.start('result_window')
         window = ResultWindow(result_list, parent=self)        
         self.bench.start('show_window')
@@ -661,7 +670,13 @@ class MainWindow(QDialog):
         for layer in iface.layerTreeView().selectedLayersRecursive():
             if layer.type() == QgsMapLayerType.VectorLayer:
                 self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
-    
+        
+    def update_layers_with_objects(self):
+        self.layer_list_widget.clear()
+        for layer in iface.layerTreeView().selectedLayersRecursive():
+            if layer.type() == QgsMapLayerType.VectorLayer and layer.featureCount() > 0:
+                self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
+
     def add_selected_layers(self):
         for layer in iface.layerTreeView().selectedLayersRecursive():
             if layer.type() == QgsMapLayerType.VectorLayer:
