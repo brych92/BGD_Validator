@@ -120,6 +120,7 @@ class InspectionItem(QStandardItem):
     
     '''
     DEFALUT_LEN = 50
+    
 
     TYPE = Qt.UserRole
     HELP_URL = Qt.UserRole + 1

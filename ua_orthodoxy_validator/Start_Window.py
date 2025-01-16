@@ -422,6 +422,7 @@ class MainWindow(QDialog):
                 else:
                     self.crs_combo_box.show()
         
+        
         super().__init__(parent)        
         
         self.validator_result = []
