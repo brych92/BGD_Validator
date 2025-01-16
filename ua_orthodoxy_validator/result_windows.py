@@ -119,7 +119,8 @@ class InspectionItem(QStandardItem):
         - критичність помилки (CRITICITY).
     
     '''
-    
+    DEFALUT_LEN = 50
+
     TYPE = Qt.UserRole
     HELP_URL = Qt.UserRole + 1
     RELATED_FILE_PATH = Qt.UserRole + 2
@@ -164,6 +165,15 @@ class InspectionItem(QStandardItem):
         if item_name is None:
             raise AttributeError("Немає значення 'item_name' у даних елемента.")
         
+        if len(item_name) > self.DEFALUT_LEN:
+            idx = item_name.rfind(' ', 0, self.DEFALUT_LEN)
+            if idx != -1:
+                item_name = item_name[0:idx] + '\n' + item_name[idx+1:]
+            else:
+                idx = item_name.lfind(' ', 0, self.DEFALUT_LEN)
+                if idx != -1:
+                    item_name = item_name[0:idx] + '\n' + item_name[idx+1:]
+
         super().__init__(item_name)  # Викликаємо конструктор батьківського класу
         self.set_color(IDict.get('criticity', 0))
         
