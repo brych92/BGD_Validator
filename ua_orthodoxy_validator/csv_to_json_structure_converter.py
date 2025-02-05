@@ -74,7 +74,7 @@ class Csv_to_json_structure_converter:
                 
                 if x['layer_name_en'] not in layers_structure_dict:
                     layers_structure_dict[x['layer_name_en']] = {}
-                layers_structure_dict[x['layer_name_en']]['layer_name_ua'] = x['layer_name_ua']
+                layers_structure_dict[x['layer_name_en']]['alias'] = x['layer_name_ua']
                 x['geometry_type'] = x['geometry_type'].replace(', ', ',')
                 layers_structure_dict[x['layer_name_en']]['geometry_type'] = x['geometry_type'].split(',')
                 layers_structure_dict[x['layer_name_en']]['class'] = x['class']
@@ -82,7 +82,7 @@ class Csv_to_json_structure_converter:
                 if 'attributes' not in layers_structure_dict[x['layer_name_en']]:
                     layers_structure_dict[x['layer_name_en']]['attributes'] = {}
                 layers_structure_dict[x['layer_name_en']]['attributes'][x['attribute_name_en']] = {
-                                        'attribute_name_ua': x['attribute_name_ua'],
+                                        'alias': x['attribute_name_ua'],
                                         "attribute_type": x['attribute_type'],
                                         "attribute_required": x['attribute_required'],
                                         "attribute_len": x['attribute_len'],
