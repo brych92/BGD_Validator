@@ -10,7 +10,7 @@ from numpy import isin, union1d
 from qgis.PyQt.QtWidgets import (
     QLabel, QVBoxLayout, QTabWidget, QTreeWidget, QHBoxLayout,
     QPushButton, QApplication, QMenu, QTreeWidgetItem, QDialog, 
-    QTextEdit, QWidget, QTreeView, QCheckBox, QSplitter
+    QTextEdit, QWidget, QTreeView, QCheckBox, QSplitter, QFileDialog, QMessageBox
 )
 from qgis.PyQt.QtCore import Qt, QSortFilterProxyModel, QModelIndex, pyqtSignal, pyqtSlot, QUrl, QTimer
 from qgis.PyQt.QtGui import QFont, QColor, QPixmap, QIcon, QStandardItemModel, QStandardItem, QDesktopServices
@@ -505,13 +505,32 @@ class CustomTreeView(QTreeView):
         self.setHeaderHidden(True)
 
 class ResultWindow(QDialog):
+    def save_to_json(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setWindowTitle("Зберегти як")
+        file_dialog.setAcceptMode(QFileDialog.AcceptSave)
+        file_dialog.setNameFilters(["JSON files (*.json)"])
+        
+        if file_dialog.exec_():
+            selected_file = file_dialog.selectedFiles()[0]
+            try:
+                with open(selected_file, 'w', encoding='utf-8') as outfile:
+                    json.dump(self.errors_table, outfile, ensure_ascii=False, indent=4)
+            except IOError as e:
+                QMessageBox.critical(self, "Помилка", f"Не вдалося зберегти файл: {e}")
+            
+    
+    
     def __init__(self, errors_table:dict, parent=None):
         super().__init__(parent)
+
         self.benchi = Benchmark("Бенчмарк вікна")
         #print(json.dumps(errors_table, indent=4, ensure_ascii=False))
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
         self.errors_table = errors_table
+        with open(os.path.join(r'C:\Users\brych\OneDrive\Рабочий стол', 'errors_table.json'), 'w', encoding='utf-8') as f:
+            json.dump(self.errors_table, f, ensure_ascii=False, indent=4)
         #ініціалізація моделі
         self.benchi.start('fill_custom_model')
         self.model = CustomItemModel(self.errors_table, parent=self)
@@ -570,11 +589,12 @@ class ResultWindow(QDialog):
 
         # Кнопки управління
         button_layout = QHBoxLayout()
-        go_to_error_button = QPushButton("Заглушка", self)
+        save_as_bt = QPushButton("Зберегти помилки", self)
+        save_as_bt.clicked.connect(self.save_to_json)
         mark_as_fixed_button = QPushButton("Заглушка", self)
         close_button = QPushButton("Заглушка", self)
 
-        button_layout.addWidget(go_to_error_button)
+        button_layout.addWidget(save_as_bt)
         button_layout.addWidget(mark_as_fixed_button)
         button_layout.addWidget(close_button)
 
