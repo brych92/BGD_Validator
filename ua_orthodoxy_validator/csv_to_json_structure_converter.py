@@ -81,9 +81,11 @@ class Csv_to_json_structure_converter:
                 
                 if 'attributes' not in layers_structure_dict[x['layer_name_en']]:
                     layers_structure_dict[x['layer_name_en']]['attributes'] = {}
+                
+                x['attribute_type'] = x['attribute_type'].replace(', ', ',')
                 layers_structure_dict[x['layer_name_en']]['attributes'][x['attribute_name_en']] = {
                                         'alias': x['attribute_name_ua'],
-                                        "attribute_type": x['attribute_type'],
+                                        "attribute_type": x['attribute_type'].split(','),
                                         "attribute_required": x['attribute_required'],
                                         "attribute_len": x['attribute_len'],
                                         "attribute_default_value": x['attribute_default_value'],
