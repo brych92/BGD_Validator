@@ -2,13 +2,13 @@ from re import split
 import re
 from typing import Union, cast 
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox
+    QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox, QAbstractItemView
 from PyQt5.QtCore import Qt, QMimeData, QSize
 from PyQt5.QtGui import QCursor
 from numpy import unicode_
 from qgis.core import (
     QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsTask, QgsApplication,
-    QgsLayerTree, QgsProviderRegistry, QgsVectorLayer, QgsMapLayerType)
+    QgsLayerTree, QgsProviderRegistry, QgsVectorLayer, QgsMapLayerType, QgsMessageLog, Qgis)
 from qgis.utils import iface
 from qgis.gui import QgsLayerTreeView
 import sys, os, string, random
@@ -26,12 +26,8 @@ from .checker_class import EDRA_exchange_layer_checker, EDRA_validator
 
 import gc
 
-logging = True
+from .sidefunctions import log
 
-
-def log(text: str) -> None:
-    if logging:
-        print(text)
 
 def get_real_layer_name(layer: QgsVectorLayer) -> str:
     """
@@ -63,19 +59,6 @@ def get_real_layer_name(layer: QgsVectorLayer) -> str:
     return source_layer_name
 
 def run_validator(task:QgsTask = None, input_list:list = None):
-    def validate_file_format(path: str, reuired_format: str) -> bool:
-        """
-        Перевіряє, чи файл має заданий формат.
-
-        Args:
-            path (str): Шлях до фаєлу.
-            reuired_format (str): Формат, який потрібно перевірити.
-
-        Returns:
-            bool: True, якщо фаєл має заданий формат, інакше False.
-        """
-        file_extension = os.path.splitext(path)[1]
-        return file_extension in reuired_format
     """
     Запустити валідатор для шарів.
 
@@ -96,13 +79,27 @@ def run_validator(task:QgsTask = None, input_list:list = None):
             - exchange_format_error (list): Список шарів з помилками формату обміну.
             - missing_layers (list): Список відсутніх шарів.
     """
+    def validate_file_format(path: str, reuired_format: str) -> bool:
+        """
+        Перевіряє, чи файл має заданий формат.
+
+        Args:
+            path (str): Шлях до фаєлу.
+            reuired_format (str): Формат, який потрібно перевірити.
+
+        Returns:
+            bool: True, якщо фаєл має заданий формат, інакше False.
+        """
+        file_extension = os.path.splitext(path)[1]
+        return file_extension in reuired_format
+    
     layers = input_list[0]
     structure_folder = input_list[1]
     output = []
-    all_layers_check_result_dict = {}
-    all_layers_check_result_dict['layers'] = {}
-    all_layers_check_result_dict['exchange_format_error'] = []
-    all_layers_check_result_dict['missing_layers'] = []
+    all_layers_check_result_dict = {
+        'layers': {}, 
+        'exchange_format_error': [], 
+        'missing_layers': []}
 
     temp_files_dict = {}
 
@@ -122,7 +119,7 @@ def run_validator(task:QgsTask = None, input_list:list = None):
                 'type' : 'inspection',
                 'item_name' :  f"Помилка завантаження файлу «{os.path.basename(file_path)}»",
                 'related_file_path' : file_path,
-                'item_tooltip' : file_path,
+                'item_tooltip' : f"(Запоровся на шарі {layers[id]['layer_name']}){file_path}",
                 'criticity' : 2
             }
             damaged_files_list.append(file_path)
@@ -139,7 +136,7 @@ def run_validator(task:QgsTask = None, input_list:list = None):
             }
         
         if dataSource.GetDriver().GetName() in ['OpenFileGDB', 'GPKG']:
-            layer = dataSource.GetLayerByName(layers[id]['layer_name'])
+            layer = dataSource.GetLayerByName(layers[id]['layer_real_name'])
         else:
             layer = dataSource.GetLayer()
         
@@ -226,6 +223,8 @@ class customlayerListWidget(QTreeWidget):
         self.setDropIndicatorShown(True)
 
         self.setDragDropMode(QTreeWidget.DragDrop)
+
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
     
     def addTopLevelItem(self, newItem:QTreeWidgetItem):
         newItem = cast(layerItem, newItem)
@@ -233,6 +232,7 @@ class customlayerListWidget(QTreeWidget):
         for i in range(self.topLevelItemCount()):
             item = cast(layerItem, self.topLevelItem(i))
             if newItem.get_layer_value() == item.get_layer_value():
+                log(f"Шар {newItem.get_layer_name()} вже був доданий", level = Qgis.Warning)
                 return
         
         super().addTopLevelItem(newItem)
@@ -274,7 +274,6 @@ class layerItem(QTreeWidgetItem):
 
         self.setToolTip(0, tootip)
             
-    
     def get_layer_value(self):
         return {'id':self.__layerID__, 'name':self.__layerVisibleName__, 'path':self.__layerPath__, 'real_name':self.__layerRealName__}
     
@@ -369,32 +368,48 @@ class layerSelectionDialog(QDialog):
 
 class MainWindow(QDialog):
     def parse_structures(self, directory:str) -> dict:
-            temp_strcut = {}
-            for root, struct_dirs, _ in os.walk(directory):
-                for struct_dir in struct_dirs:
-                    structure_path = os.path.join(root, struct_dir)
-                    for _, version_dirs, _ in os.walk(structure_path):
-                        for sub_dir in version_dirs:
-                            version_path = os.path.join(structure_path, sub_dir)
-                            
-                            converter = Csv_to_json_structure_converter(version_path)
-                            temp_metadata = converter.create_metadata_json()
-                            temp_csr = converter.create_crs_json()
-                            temp_branch = {
-                                'path': version_path, #треба буде доробити в плагіні
-                                'structure_name': temp_metadata["structure_name"],
-                                'structure_date': temp_metadata["structure_date"],
-                                'author': temp_metadata["author"],
-                                'description': temp_metadata["description"],
-                                'format': temp_metadata["format"],
-                                'crs': temp_csr
-                            }
-                            
-                            if temp_metadata["short_structure_name"] not in temp_strcut:
-                                temp_strcut[temp_metadata["short_structure_name"]] = {}
-                            temp_strcut[temp_metadata["short_structure_name"]][temp_metadata["structure_version"]] = temp_branch
-                    
-            return temp_strcut
+        """Парсить структури з директорії, повертаючи словник з наступною структурою:
+        {
+            коротка назва структури: {
+                версія: {
+                    'path': шлях до версії,
+                    'structure_name': Повна назва структури,  
+                    'structure_date': Дата створення структури,
+                    'author': Автор,
+                    'description': Опис структури,
+                    'format': Формат структури(json, gdb, geojson...),
+                    'crs': Система координат
+                }
+            }
+        }
+        """
+
+        temp_strcut = {}
+        for root, struct_dirs, _ in os.walk(directory):
+            for struct_dir in struct_dirs:
+                structure_path = os.path.join(root, struct_dir)
+                for _, version_dirs, _ in os.walk(structure_path):
+                    for sub_dir in version_dirs:
+                        version_path = os.path.join(structure_path, sub_dir)
+                        
+                        converter = Csv_to_json_structure_converter(version_path)
+                        temp_metadata = converter.create_metadata_json()
+                        temp_csr = converter.create_crs_json()
+                        temp_branch = {
+                            'path': version_path, #треба буде доробити в плагіні
+                            'structure_name': temp_metadata["structure_name"],
+                            'structure_date': temp_metadata["structure_date"],
+                            'author': temp_metadata["author"],
+                            'description': temp_metadata["description"],
+                            'format': temp_metadata["format"],
+                            'crs': temp_csr
+                        }
+                        
+                        if temp_metadata["short_structure_name"] not in temp_strcut:
+                            temp_strcut[temp_metadata["short_structure_name"]] = {}
+                        temp_strcut[temp_metadata["short_structure_name"]][temp_metadata["structure_version"]] = temp_branch
+                
+        return temp_strcut
 
     def __init__(self, parent=None):
         self.bench = Benchmark("Головне вікно")
@@ -508,6 +523,18 @@ class MainWindow(QDialog):
         self.setLayout(layerslayout)
         self.bench.stop()
     
+    def get_BGD_type(self):
+        """Повертає тип МБД вибраний в комбобоксі"""
+        return self.BGD_type_combo_box.currentText()
+    
+    def get_BGD_version(self):
+        """Повертає версію МБД вибраний в комбобоксі"""
+        return self.BGD_version_combo_box.currentText()
+    
+    def get_crs(self):
+        """Повертає систему координат вибрану в комбобоксі"""
+        return self.crs_combo_box.currentText()
+
     def run(self):
         def обробник(помилка, результат = None):
             print('обробник')
@@ -525,17 +552,21 @@ class MainWindow(QDialog):
             else:
                 print(помилка)
                 raise помилка
+        
+        log(f"Запуск перевірки: {self.get_BGD_type()}({self.get_BGD_version()}){self.get_crs()[:10].rstrip()}", level = Qgis.Info)
         layers_dict = {}
-        structure_folder = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['path']
+        structure_folder = self.strutures[self.get_BGD_type()][self.get_BGD_version()]['path']
         #print(json.dumps(self.strutures, indent=4, ensure_ascii=False))
         self.bench.start('run')
         
         for i in range(self.layer_list_widget.topLevelItemCount()):
             layer = self.layer_list_widget.topLevelItem(i)
             layer = cast(layerItem, layer)
-            crs_text = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['crs'][self.crs_combo_box.currentText()]
+            
+            crs_text = self.strutures[self.get_BGD_type()][self.get_BGD_version()]['crs'][self.get_crs()]
             crs_list = crs_text.replace(' ', '').replace('\r', '').replace('\n', '').replace('\t', '').replace(';', ',').split(',')
-            required_file_format = self.strutures[self.BGD_type_combo_box.currentText()][self.BGD_version_combo_box.currentText()]['format']
+            
+            required_file_format = self.strutures[self.get_BGD_type()][self.get_BGD_version()]['format']
             #print(required_file_format)
 
             layers_dict[layer.getID()] = {
@@ -546,15 +577,17 @@ class MainWindow(QDialog):
                 'exchange_format': required_file_format
                 }
             
+            log(f"\t{layer.getID()} - {layer.getRealName()}({os.path.basename(layer.getPath())})", level = Qgis.Info)
+
         input = [layers_dict, structure_folder]
-        self.bench.start('run_validator')
+        #self.bench.start('run_validator')
         result_list = run_validator(task = None, input_list = input)
-        self.bench.start('result_window')
-        window = ResultWindow(result_list, parent=self)        
-        self.bench.start('show_window')
+        #self.bench.start('result_window')
+        window = ResultWindow(result_list, parent=self)
+        #self.bench.start('show_window')
         window.show()
-        self.bench.stop()
-        self.bench.print_report()
+        #self.bench.stop()
+        #self.bench.print_report()
 
         # self.validator_task = QgsTask.fromFunction('Валідую валідую, та не вивалідую', run_validator, on_finished = обробник, input_list = input)
         # tm = QgsApplication.taskManager()
@@ -584,12 +617,13 @@ class MainWindow(QDialog):
         if file_dialog.exec_():
             pathArr = file_dialog.selectedFiles()
             self.filter = file_dialog.selectedNameFilter()
-        else:
-            print('Нічого не вибрано!')
+        else:            
+            log(f"OpenFile: Нічого не вибрано")
             return
         
         self.folder_path=os.path.dirname(pathArr[0])
         file_type = pathArr[0].split('.')[-1]
+        log(f"OpenFile: Вибрано {len(pathArr)} файл(ів) з типом {file_type}")
 
         layersList = []
 
@@ -598,8 +632,9 @@ class MainWindow(QDialog):
                 #print(path)
                 ds  = ogr.Open(path, 0)
                 if ds is None:
-                    print('Could not open %s' % (path))
+                    log(f"OpenFile: Неможливо відкрити файл {path}", Qgis.Warning)
                     continue
+                
                 layer = ds.GetLayer()
                 
                 if file_type in ['geojson', 'json']:
@@ -662,7 +697,12 @@ class MainWindow(QDialog):
         layerRealName = get_real_layer_name(layer)
         layerPath = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())['path']
         features_qty = layer.featureCount()
-        layer_item = layerItem(id = layerID, visible_name=layerVisibleName, real_name= layerRealName, path = layerPath, features_qty = features_qty)
+        layer_item = layerItem(
+            id = layerID, 
+            visible_name = layerVisibleName, 
+            real_name = layerRealName, 
+            path = layerPath, 
+            features_qty = features_qty)
         return layer_item
 
     def update_layers(self):
@@ -686,40 +726,41 @@ class MainWindow(QDialog):
         if self.layer_list_widget.selectedItems() == []:
             return
         
-        selected_item = self.layer_list_widget.selectedItems()[0]
-        selected_item = cast(layerItem, selected_item)
+        selected_items = self.layer_list_widget.selectedItems()
 
-        if selected_item is not None:
+        if len(selected_items) >0:
             menu = QMenu(self)
-            if selected_item.isConnected():
-                layer = QgsProject.instance().mapLayer(selected_item.__layerID__)
-                if layer:
-                    related_layer = layer
+            
+            layers = [QgsProject.instance().mapLayer(selected_item.__layerID__) for selected_item in selected_items if selected_item.isConnected()]
+            
+            if len(layers) < 0:
+                if len(layers) == 1:
                     menu.addAction("Виділити шар")
                     menu.addAction("Перейти в налаштування шару")
                     menu.addAction("Переглянуи таблицю атрибутів шару")
-                    menu.addSeparator()
                 else:
-                    related_layer =  None
+                    menu.addAction("Виділити шари")
+                menu.addSeparator()
                 
-            menu.addAction("Видалити шар")
-            
-            if menu.isEmpty():
-                return
-            
+            if len(layers) == 1: 
+                menu.addAction("Видалити шар")
+            else:
+                menu.addAction("Видалити шари")
+
             selected_action = menu.exec_(QCursor.pos())
 
             if selected_action:
-                if selected_action.text() == "Виділити шар":
-                    iface.setActiveLayer(related_layer)
+                if selected_action.text() == "Виділити шар" or selected_action.text() == "Виділити шари":
+                    iface.layerTreeView().setSelectedLayers(layers)
                 
                 elif selected_action.text() == "Перейти в налаштування шару":
-                    iface.showLayerProperties(related_layer)
+                    iface.showLayerProperties(layers[0])
                 
                 elif selected_action.text() == "Переглянуи таблицю атрибутів шару":
-                        iface.showAttributeTable(related_layer)
+                    iface.showAttributeTable(layers[0])
                     
-                elif selected_action.text() == "Видалити шар":
-                    selected_index = self.layer_list_widget.indexOfTopLevelItem(selected_item)
-                    self.layer_list_widget.takeTopLevelItem(selected_index)
+                elif selected_action.text() == "Видалити шар" or selected_action.text() == "Видалити шари":
+                    for item in selected_items:
+                        selected_index = self.layer_list_widget.indexOfTopLevelItem(item)
+                        self.layer_list_widget.takeTopLevelItem(selected_index)
 
