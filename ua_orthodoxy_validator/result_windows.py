@@ -529,8 +529,7 @@ class ResultWindow(QDialog):
         #ініціалізація глобальних змінних
         #словник з результатом перевірки
         self.errors_table = errors_table
-        with open(os.path.join(r'C:\Users\brych\OneDrive\Рабочий стол', 'errors_table.json'), 'w', encoding='utf-8') as f:
-            json.dump(self.errors_table, f, ensure_ascii=False, indent=4)
+        
         #ініціалізація моделі
         self.benchi.start('fill_custom_model')
         self.model = CustomItemModel(self.errors_table, parent=self)
