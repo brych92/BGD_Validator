@@ -65,13 +65,13 @@ class EDRA_validator:
             'boolean': {'ogr_codes': [0], 'qt_codes': [1]},    # OFTInteger (немає окремого типу для булевих)
             'double': {'ogr_codes': [2], 'qt_codes': [6]},     # OFTReal
             'text': {'ogr_codes': [4], 'qt_codes': [10]},      # OFTString
-            'Date': {'ogr_codes': [9], 'qt_codes': [14]},      # OFTDate
-            'Time': {'ogr_codes': [10], 'qt_codes': [15]},      # OFTTime
-            'DateTime': {'ogr_codes': [11], 'qt_codes': [16]}, # OFTDateTime
-            'Binary': {'ogr_codes': [8], 'qt_codes': [None]},  # OFTBinary
-            'IntegerList': {'ogr_codes': [1, 13], 'qt_codes': [None]}, # OFTIntegerList, OFTInteger64List
-            'RealList': {'ogr_codes': [3], 'qt_codes': [None]},        # OFTRealList
-            'StringList': {'ogr_codes': [5], 'qt_codes': [0]}          # OFTStringList
+            'date': {'ogr_codes': [9], 'qt_codes': [14]},      # OFTDate
+            'time': {'ogr_codes': [10], 'qt_codes': [15]},      # OFTTime
+            'datetime': {'ogr_codes': [11], 'qt_codes': [16]}, # OFTDateTime
+            'binary': {'ogr_codes': [8], 'qt_codes': [None]},  # OFTBinary
+            'integerlist': {'ogr_codes': [1, 13], 'qt_codes': [None]}, # OFTIntegerList, OFTInteger64List
+            'reallist': {'ogr_codes': [3], 'qt_codes': [None]},        # OFTRealList
+            'stringlist': {'ogr_codes': [5], 'qt_codes': [0]}          # OFTStringList
         }
         self.id_field = self.get_id_field()                    
         self.nameError = False
@@ -502,14 +502,21 @@ class EDRA_validator:
 
             if valid_field_name in self.fields_structure_json:
                 required_field_type_name = self.fields_structure_json[valid_field_name]['attribute_type']
-                required_field_type_number_list = self.qt_and_ogr_data_types[required_field_type_name]['ogr_codes']
-                required_field_type_names_list = [ogr.GetFieldTypeName(ogr_index) for ogr_index in required_field_type_number_list]
+                required_field_type_number_list = []
+                for x in required_field_type_name:
+                    required_field_type_number_list += self.qt_and_ogr_data_types[x.lower()]['ogr_codes']
+                print(f"required_field_type_number_list: {required_field_type_number_list}")
+                
+                print(f"current_field_type_name: {current_field_type_name}")#required_field_type_number_list)
+                required_field_type_names_list = [ogr.GetFieldTypeName(ogr_index).lower() for ogr_index in required_field_type_number_list]
+                print(f"required_field_type_names_list: {required_field_type_names_list}")
                 check_field_name_result = valid_field_name in self.fields_structure_json#structure_field_names
                 
-                #костиль під текстові поля geojson
-                if self.driver_name == 'GeoJSON' and required_field_type_name in ['Time', 'Date', 'DateTime'] and current_field_type_name == 'text':
-                    check_field_type_result = True                
-                else: check_field_type_result = current_field_type_name in required_field_type_names_list
+                # костиль під текстові поля geojson
+                # if self.driver_name == 'GeoJSON' and required_field_type_name in ['Time', 'Date', 'DateTime'] and current_field_type_name == 'text':
+                #     check_field_type_result = True                
+                # else: 
+                check_field_type_result = current_field_type_name.lower() in required_field_type_names_list
                 
                 #print(self.structure_field_meta_types[self.fields_structure_json[field_name]['attribute_type']])
                 list_check_fields.append({"current_field_name": current_field_name, "check_field_type_result": check_field_type_result,
@@ -629,11 +636,12 @@ class EDRA_validator:
                     errors_template = {
                         'used_cyrillic': 'наявна кирилиця',
                         'used_spaces': 'наявні пробіли',
-                        'capital_letters': 'наявне неспівпадіння регістру'
+                        'capital_letters': 'наявне неспівпадіння регістру',
+                        'used_alias': 'використано псевдонім'
                     }
-                    result_dict['criticity'] = 0
+                    result_dict['criticity'] = 1
                     errors = ', '.join([f'{errors_template[x]}' for x in regex_result[["errors"]]])
-                    result_dict['note'] = f'Значення відповідає вимогам формату структури, але {errors}'
+                    result_dict['note'] = f'Значення не відповідає вимогам формату структури, знайдено наступні помилки: {errors}'
                 
                 return result_dict
 
