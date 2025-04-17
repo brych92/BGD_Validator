@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/plugins/ua_orthodoxy_validator" >
-        <file>icon.png</file>
-    </qresource>
-</RCC>
