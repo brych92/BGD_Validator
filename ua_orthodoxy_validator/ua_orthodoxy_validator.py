@@ -32,7 +32,6 @@ from qgis.gui import QgisInterface
 # Initialize Qt resources from file resources.py
 from .resources import *
 # Import the code for the dialog
-from .ua_orthodoxy_validator_dialog import UA_orthodoxy_validatorDialog
 from .Start_Window import MainWindow
 import os.path
 
