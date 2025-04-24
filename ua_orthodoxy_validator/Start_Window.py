@@ -4,7 +4,7 @@ from typing import Union, cast
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox, QAbstractItemView
 from PyQt5.QtCore import Qt, QMimeData, QSize
-from PyQt5.QtGui import QCursor
+from PyQt5.QtGui import QCursor, QIcon
 from numpy import unicode_
 from qgis.core import (
     QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsTask, QgsApplication,
@@ -519,7 +519,16 @@ class MainWindow(QDialog):
         layerslayout.addWidget(self.crs_combo_box)
         self.runButton = QPushButton("Запустити перевірку")
         self.runButton.clicked.connect(self.run)
-        layerslayout.addWidget(self.runButton)
+        self.openJsonButton = QPushButton("")
+        self.openJsonButton.setIcon(QIcon(os.path.join(self.plugin_dir, 'resources', 'load_file.png')))
+        self.openJsonButton.setToolTip("Відкрити результат перевірки")
+        self.openJsonButton.setFixedSize(self.openJsonButton.sizeHint())
+
+        self.openJsonButton.clicked.connect(self.open_json)
+        self.runLayout = QHBoxLayout()
+        self.runLayout.addWidget(self.runButton)
+        self.runLayout.addWidget(self.openJsonButton)
+        layerslayout.addLayout(self.runLayout)
         self.setLayout(layerslayout)
         self.bench.stop()
     
@@ -534,6 +543,22 @@ class MainWindow(QDialog):
     def get_crs(self):
         """Повертає систему координат вибрану в комбобоксі"""
         return self.crs_combo_box.currentText()
+
+    def open_json(self):
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
+        file_dialog.setWindowTitle("Виберіть файл з результатом перевірки")
+        file_dialog.setNameFilter("JSON files (*.json)")
+        file_dialog.setDirectory(self.folder_path)
+        if file_dialog.exec_():
+            path = file_dialog.selectedFiles()[0]
+            self.folder_path = os.path.dirname(path)
+            with open(path, 'r', encoding='utf-8') as f:
+                result_list = json.load(f)
+            if result_list:
+                self.folder_path=os.path.dirname(path)
+                window = ResultWindow(result_list, parent=self)
+                window.show()
 
     def run(self):
         def обробник(помилка, результат = None):
@@ -570,7 +595,7 @@ class MainWindow(QDialog):
             #print(required_file_format)
 
             layers_dict[layer.getID()] = {
-                'layer_name': layer.getRealName(),
+                'layer_name': layer.getVisibleName() or layer.getRealName(),
                 'path': layer.getPath(),
                 'layer_real_name': layer.getRealName(),
                 'required_crs_list': crs_list,

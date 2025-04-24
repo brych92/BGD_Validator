@@ -15,7 +15,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.PyQt.QtCore import Qt, QSortFilterProxyModel, QModelIndex, pyqtSignal, pyqtSlot, QUrl, QTimer
 from qgis.PyQt.QtGui import QFont, QColor, QPixmap, QIcon, QStandardItemModel, QStandardItem, QDesktopServices
 
-from qgis.core import (
+from qgis.core import (Qgis,
     QgsProject, QgsProviderRegistry, QgsVectorLayer, 
     QgsFeature, QgsPointXY, QgsFeature)
 from qgis.utils import iface
@@ -28,48 +28,62 @@ import os, urllib.parse
 
 from .result_window_widgets import SwitchWidget, FilterWidget, statusWidget, CheckboxesGroup
 
-def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
-    """
-    Отримує шар за його ID.
-
-    Аргументи:
-        layer_id (str): ID шару.
-
-    Повертає:
-        QgsVectorLayer: Шар.
-
-    Звикання:
-        ValueError: Якщо шар не знайдено.
-    """
-    layer = QgsProject.instance().mapLayer(layer_id)
+# def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
+#     """
+#     Отримує шар за його ID.
+#     * При відсутності шару з заданим ID - виводить повідомлення про помилку.
+#     * Якщо шар не векторний - виводить повідомлення про помилку.
+#     Args:
+#         layer_id (str): ID шару.
+#     Return:
+#         QgsVectorLayer: Шар.
+#     """
+#     layer = QgsProject.instance().mapLayer(layer_id)
     
-    if not isinstance(layer, QgsVectorLayer):
-        raise TypeError("Помилка отримання шару. Шар має бути обєктом 'QgsVectorLayer'.")
+#     if layer is None:
+#         iface.messageBar().pushWarning("Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.") #iface.messageBox().critical(None, "Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.")
+#         return None
     
-    return layer
-
-def get_feature_by_id(layer: QgsVectorLayer, feature_id: int) -> QgsFeature:
-    """
-    Отримує елемент з шару за його ID.
-
-    Аргументи:
-        layer (QgsVectorLayer): Шар, який містить елемент.
-        feature_id (int): ID елемента.
-
-    Повертає:
-        QgsFeature: Елемент з шару.
-
-    Звикання:
-        ValueError: Якщо елемент з шару не знайдено.
-    """
-    if not isinstance(layer, QgsVectorLayer):
-        raise TypeError("Помилка отримання елемента. Шар має бути обєктом 'QgsVectorLayer'.")
+#     if not isinstance(layer, QgsVectorLayer):
+#         iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()} з ID {layer_id} не є векторним, можливо цільовий шар відсутній в проекті.")
+#         #raise TypeError("Помилка отримання шару. Шар має бути обєктом 'QgsVectorLayer'.")
+#         return None
     
-    feature = layer.getFeature(feature_id)
-    if feature.id() != feature_id:
-        raise AttributeError(f"Неправильно задано значення ID: {feature_id}, шару {layer.name()}")
+#     return layer
 
-    return feature
+# def get_feature_by_id(layer: QgsVectorLayer, feature_id: int) -> QgsFeature:
+#     """
+#     Отримує елемент з шару за його ID.
+#     * При відсутності елемента з заданим ID - виводить повідомлення про помилку.
+#     * Якщо шар не векторний - виводить повідомлення про помилку.
+#     * Якщо елемент не знайдено - виводить повідомлення про помилку.
+
+#     Аргументи:
+#         layer (QgsVectorLayer): Шар, який містить елемент.
+#         feature_id (int): ID елемента.
+
+#     Повертає:
+#         QgsFeature: Елемент з шару.
+
+#     Звикання:
+#         ValueError: Якщо елемент з шару не знайдено.
+#     """
+#     if layer is None:
+#         iface.messageBar().pushWarning("Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.")
+#         return None
+    
+#     if not isinstance(layer, QgsVectorLayer):
+#         #raise TypeError("Помилка отримання елемента. Шар має бути обєктом 'QgsVectorLayer'.")
+#         iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()} з ID {layer_id} не є векторним, можливо цільовий шар відсутній в проекті.")
+#         return None
+    
+#     feature = layer.getFeature(feature_id)
+#     if feature is None or feature.id() != feature_id:
+#         iface.messageBox().critical(None, "Помилка", f"Неправильно задано значення ID: {feature_id}, шару {layer.name()}")
+#         #raise AttributeError(f"Неправильно задано значення ID: {feature_id}, шару {layer.name()}")
+#         return None
+    
+#     return feature
 
 def get_feature_display_name(layer: QgsVectorLayer, feature: QgsFeature) -> str:
     """
@@ -154,7 +168,21 @@ class InspectionItem(QStandardItem):
                 parent.set_parent_color(criticity)
 
     def __init__(self, IDict: dict):
-        '''Конструктор класу InspectionItem.'''
+        '''Конструктор класу InspectionItem.        
+        Аргументи:
+            IDict (dict): Словник з даними елемента(згідно файлу Опис структури.txt).
+                type 'container'/'file'/'layer'/'feature'/'inspection'
+                item_name -назва рядку у вікні- * #назва яка буде відображатися
+                item_tooltip -підказка- #те що буде виводитися в першому рядку підказки, опціонально
+                inspection_type_name назва перевірки
+                criticity 0/1/2/-1 * # тип int критичність помилки, від 0 - не помилка до 2 -критична помилка, -1 - невдала перевірка - буде відображатися окремим значком    'item_name': -назва рядку у вікні- * (якшо оцю штуку зробити списком для помилкок, то воно виведе назву типу помилки: і окремі піделементи)
+                help_url посилання на документацію
+                related_file_path #задається тільки для типу file, якшо створити в якомусь з дочірніх елементів - цей елемент та всі його дочірні елементи будуть мати оцей новий шлях
+                related_layer_id #задається тільки для типу layer
+                real_layer_name #назва шару, якшо створити в якомусь з дочірніх елементів - цей елемент та всі його дочірні елементи будуть мати оцей новий шлях
+                visible_layer_name #назва шару, якшо створити в якомусь з дочірніх елементів - цей елемент та всі його дочірні елементи будуть мати оцей новий шлях, може бути пустим
+                related_feature_id #задається тільки для типу feature
+        '''
         self.colorIndex = 0
 
         item_name = IDict.get('item_name')
@@ -180,6 +208,7 @@ class InspectionItem(QStandardItem):
         item_type = IDict.get('type')
         if item_type is None:
             raise AttributeError("Немає значення 'type' у даних елемента.")
+        
         self.setData(item_name, Qt.DisplayRole)
         self.setData(item_type, self.TYPE)  # Зберігаємо тип елемента
         self.setData(IDict.get('item_tooltip'), Qt.ToolTipRole)
@@ -239,31 +268,126 @@ class InspectionItem(QStandardItem):
 
     def realtedPath(self):
         """Отримує повний шлях до файлу."""
+        if self.getData(self.RELATED_FILE_PATH) is None:
+            if self.parent() is not None:
+                return self.parent().realtedPath()
+            else:
+                return None
+            
         return self.getData(self.RELATED_FILE_PATH)
     
     def relatedLayer(self):
         """Отримує відповідний шар."""
+        def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
+            """
+            Отримує шар за його ID.
+            * При відсутності шару з заданим ID - виводить повідомлення про помилку.
+            * Якщо шар не векторний - виводить повідомлення про помилку.
+            Args:
+                layer_id (str): ID шару.
+            Return:
+                QgsVectorLayer: Шар.
+            """
+            layer = QgsProject.instance().mapLayer(layer_id)
+            
+            if layer is None:
+                name = self.getData(self.VISIBLE_LAYER_NAME) or self.getData(self.REAL_LAYER_NAME) or layer_id
+                
+                iface.messageBar().pushWarning("Помилка", f"Шар {name}, який який був підключений до елементу не знайдено в проєкті.") #iface.messageBox().critical(None, "Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.")
+                return None
+            
+            if not isinstance(layer, QgsVectorLayer):
+                iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()}, який який був підключений до елементу не є векторним, можливо цільовий шар відсутній в проекті.")
+                #raise TypeError("Помилка отримання шару. Шар має бути обєктом 'QgsVectorLayer'.")
+                return None
+            
+            return layer
+
         layer_id = self.getData(self.RELATED_LAYER_ID)
+        if layer_id is None:
+            if self.parent() is not None:
+                return self.parent().relatedLayer()
+            else:
+                return None
+            
         if type(layer_id) is not str or layer_id.startswith('⁂'):
             return None
         
-        return get_layer_by_id(layer_id)
+        layer = get_layer_by_id(layer_id)
+        if layer is None:
+            self.setData(None, self.RELATED_LAYER_ID)
+            return None
+
+        return layer
 
     def relatedFeatureID(self):
         """Отримує ідентифікатор відповідного об'єкта."""
+        if self.getData(self.RELATED_FEATURE_ID) is None:
+            if self.parent() is not None:
+                return self.parent().relatedFeatureID()
+            else:
+                return None
+            
         return self.getData(self.RELATED_FEATURE_ID)
 
     def relatedFeature(self) -> Union[QgsFeature, None]:
         """Отримує відповідний об'єкт."""
+        def get_feature_by_id(layer: QgsVectorLayer, feature_id: int) -> QgsFeature:
+            """
+            Отримує елемент з шару за його ID.
+            * При відсутності елемента з заданим ID - виводить повідомлення про помилку.
+            * Якщо шар не векторний - виводить повідомлення про помилку.
+            * Якщо елемент не знайдено - виводить повідомлення про помилку.
+
+            Аргументи:
+                layer (QgsVectorLayer): Шар, який містить елемент.
+                feature_id (int): ID елемента.
+
+            Повертає:
+                QgsFeature: Елемент з шару.
+
+            Звикання:
+                ValueError: Якщо елемент з шару не знайдено.
+            """
+            if layer is None:
+                name = self.getData(self.VISIBLE_LAYER_NAME) or self.getData(self.REAL_LAYER_NAME) or self.getData(self.RELATED_LAYER_ID)
+                iface.messageBar().pushWarning("Помилка", f"Шар {name}, який який був підключений до елементу не знайдено в проєкті.")
+                return None
+            
+            if not isinstance(layer, QgsVectorLayer):
+                #raise TypeError("Помилка отримання елемента. Шар має бути обєктом 'QgsVectorLayer'.")
+                iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()}, який який був підключений до елементу не є векторним, можливо цільовий шар відсутній в проекті.")
+                return None
+            
+            feature = layer.getFeature(feature_id)
+            
+            if feature is None or feature.id() != feature_id:
+                iface.messageBar().pushWarning("Помилка", f"Об'єкт з ID '{feature_id}', відсутній в шарі '{layer.name()}'.")
+                #raise AttributeError(f"Неправильно задано значення ID: {feature_id}, шару {layer.name()}")
+                return None
+            
+            return feature
+        
         feature_id = self.getData(self.RELATED_FEATURE_ID)
-        if feature_id is None or type(feature_id) is not int or feature_id < 0:
+        if feature_id is None:
+            if self.parent() is not None:
+                return self.parent().relatedFeatureID()
+            else:
+                return None
+            
+        if feature_id is None or type(feature_id) is not int or feature_id < 0:            
             return None
         
         layer = self.relatedLayer()
         if layer is None:
             return None
         
-        return get_feature_by_id(layer, feature_id)
+        feature = get_feature_by_id(layer, feature_id)
+        if feature is None:
+            self.setData(None, self.RELATED_FEATURE_ID)
+            return None
+
+        return feature
     
     def __repr__(self):
         """Отримує текстову репрезентацію елемента."""
@@ -654,9 +778,16 @@ class ResultWindow(QDialog):
                     return None
                 return check_attr(item.parent(), attr)
             
-            elif attr == 'feature':
+            elif attr == 'feature_id':
                 if item.relatedFeatureID() is not None:
                     return item.relatedFeatureID()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            
+            elif attr == 'feature':
+                if item.relatedFeature() is not None:
+                    return item.relatedFeature()
                 elif item.parent() is None:
                     return None
                 return check_attr(item.parent(), attr)
@@ -670,25 +801,48 @@ class ResultWindow(QDialog):
 
         #відкрити файл
         def open_file(file_path):
+            if not os.path.exists(file_path):
+                iface.messageBar().pushWarning("Помилка", f"Файл '{file_path}' не знайдено...")
+                return
+            
             os.startfile(file_path)
         
         #відкрити папку
         def open_folder(file_path):
-            folder_path = os.path.dirname(file_path)
+            folder_path = os.path.dirname(file_path)            
+            
+            if not os.path.exists(folder_path):
+                iface.messageBar().pushWarning("Помилка", f"Папку '{folder_path}' не знайдена...")
+                return
+
             os.startfile(folder_path)
 
         #виділити та наблизити до об'єкта
         def highlight_and_zoom(layer, feature):
             canvas = iface.mapCanvas()
             layer.selectByIds([feature.id()])
-            canvas.zoomToSelected()
+            canvas.zoomToFeatureIds(layer, [feature.id()])
+            #canvas.zoomToSelected()
         
         #наблизити до не виділеного об'єкту за ід об'єкту та шаром
         def zoom_to_feature(layer, feature):
             canvas = iface.mapCanvas()
             canvas.zoomToFeatureIds(layer, [feature.id()])
+        
         #відкрити форму об''єкта
         def open_feature_form(layer, feature):
+            """
+            Відкриває форму об'єкта
+            """
+            related_layer = iface.mapCanvas().mapSettings().layerTreeRoot().findLayer(layer)
+
+            if related_layer is None:
+                return
+            
+            related_feature = next((f for f in related_layer.getFeatures() if f.id() == check_attr(self.tree_widget.currentItem(), 'feature')), None)
+            if related_feature is None:
+                return
+            
             featureForm = iface.getFeatureForm(related_layer, related_feature)
             featureForm.show()
 
@@ -711,14 +865,17 @@ class ResultWindow(QDialog):
         if selected_item is None:
             return
         
-        related_path = check_attr(selected_item, 'path')
-        related_layer = check_attr(selected_item, 'layer')
-        related_feature = check_attr(selected_item, 'feature')
+        related_path = selected_item.realtedPath()
+        #check_attr(selected_item, 'path')
+        related_layer = selected_item.relatedLayer() #check_attr(selected_item, 'layer')
+        related_feature_id = selected_item.relatedFeatureID() #check_attr(selected_item, 'feature_id')
+        related_feature = selected_item.relatedFeature() #check_attr(selected_item, 'feature')
 
-        if related_layer is not None and related_feature is not None:
-            related_feature = related_layer.getFeature(related_feature)
-        else:
-            related_feature = None
+        # if related_layer is not None and related_feature is not None:
+        #     related_feature = related_layer.getFeature(related_feature)
+        # else:
+        #     related_feature = None
+            
 
         menu = QMenu(self)
         
@@ -756,7 +913,7 @@ class ResultWindow(QDialog):
             "Переглянуи таблицю атрибутів шару": lambda: iface.showAttributeTable(related_layer),
             "Відкрити форму об'єкту": lambda: open_feature_form(related_layer, related_feature),
             "Наблизити до об'єкту": lambda: zoom_to_feature(related_layer, related_feature),
-            "Виділити об'єкт": lambda: related_layer.selectByIds([related_feature.id()]),
+            "Виділити об'єкт": lambda: related_layer.selectByIds([related_feature_id]),
             "Виділити та наблизити до об'єкту": lambda: highlight_and_zoom(related_layer, related_feature)
         }
 
