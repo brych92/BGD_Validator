@@ -211,9 +211,10 @@ class InspectionItem(QStandardItem):
         
         self.setData(item_name, Qt.DisplayRole)
         self.setData(item_type, self.TYPE)  # Зберігаємо тип елемента
+
         self.setData(IDict.get('item_tooltip'), Qt.ToolTipRole)
 
-        self.setData(IDict.get('help_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&pp=ygURcmlja3JvbGwgMTAgaG91cnM%3D'), self.HELP_URL)
+        self.setData(IDict.get('help_url'), self.HELP_URL)
 
         self.setData(IDict.get('related_file_path'), self.RELATED_FILE_PATH)
 
@@ -266,6 +267,16 @@ class InspectionItem(QStandardItem):
         """Встановлює дані елемента для зазначеної ролі."""
         super().setData(value, role)
 
+    
+
+    def realLayerName(self):
+        """Отримує реальну назву шару."""
+        if self.getData(self.REAL_LAYER_NAME) is None:
+            if self.parent() is not None:
+                return self.parent().realtedPath()
+            else:
+                return None
+
     def realtedPath(self):
         """Отримує повний шлях до файлу."""
         if self.getData(self.RELATED_FILE_PATH) is None:
@@ -275,7 +286,7 @@ class InspectionItem(QStandardItem):
                 return None
             
         return self.getData(self.RELATED_FILE_PATH)
-    
+
     def relatedLayer(self):
         """Отримує відповідний шар."""
         def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
@@ -389,6 +400,15 @@ class InspectionItem(QStandardItem):
 
         return feature
     
+    def related_help_url(self):
+        if self.getData(self.HELP_URL) is None:
+            if self.parent() is not None:
+                return self.parent().related_help_url()
+            else:
+                return None
+            
+        return self.getData(self.HELP_URL)
+
     def __repr__(self):
         """Отримує текстову репрезентацію елемента."""
         return f"InspectionItem('{self.getData(0)}', type={self.getData(self.TYPE)}, criticity={self.getData(self.CRITICITY)})"
@@ -799,6 +819,12 @@ class ResultWindow(QDialog):
             url = QUrl("https://send.monobank.ua/jar/6v8t4TNdaX")
             QDesktopServices.openUrl(url)
 
+        def add_layer_to_project(inspection_item: InspectionItem):            
+            print(inspection_item.relatedLayer())
+            print(inspection_item.realtedPath())
+            print(inspection_item.realLayerName())
+            pass
+            #QgsProject.instance().addMapLayer(layer)
         #відкрити файл
         def open_file(file_path):
             if not os.path.exists(file_path):
@@ -827,20 +853,22 @@ class ResultWindow(QDialog):
         #наблизити до не виділеного об'єкту за ід об'єкту та шаром
         def zoom_to_feature(layer, feature):
             canvas = iface.mapCanvas()
-            canvas.zoomToFeatureIds(layer, [feature.id()])
+            canvas.zoomToFeatureIds(related_layer, [feature.id()])
+            project.layerTreeRoot().findLayer(related_layer.id()).setItemVisibilityCheckedParentRecursive(True)
         
         #відкрити форму об''єкта
         def open_feature_form(layer, feature):
             """
             Відкриває форму об'єкта
             """
-            related_layer = iface.mapCanvas().mapSettings().layerTreeRoot().findLayer(layer)
-
+            related_layer = QgsProject.instance().mapLayer(layer.id())
             if related_layer is None:
+                iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()} не знайдено в проєкті")
                 return
             
-            related_feature = next((f for f in related_layer.getFeatures() if f.id() == check_attr(self.tree_widget.currentItem(), 'feature')), None)
+            related_feature = next((f for f in related_layer.getFeatures() if f.id() == feature.id()))
             if related_feature is None:
+                iface.messageBar().pushWarning("Помилка", f"Об'єкт {feature.id()} не знайдено в шарі {layer.name()}")
                 return
             
             featureForm = iface.getFeatureForm(related_layer, related_feature)
@@ -865,26 +893,36 @@ class ResultWindow(QDialog):
         if selected_item is None:
             return
         
-        related_path = selected_item.realtedPath()
-        #check_attr(selected_item, 'path')
-        related_layer = selected_item.relatedLayer() #check_attr(selected_item, 'layer')
-        related_feature_id = selected_item.relatedFeatureID() #check_attr(selected_item, 'feature_id')
-        related_feature = selected_item.relatedFeature() #check_attr(selected_item, 'feature')
+        project = QgsProject.instance()
 
-        # if related_layer is not None and related_feature is not None:
-        #     related_feature = related_layer.getFeature(related_feature)
-        # else:
-        #     related_feature = None
-            
+        related_path = selected_item.realtedPath()
+
+        related_layer = selected_item.relatedLayer()
+        if related_layer is not None: 
+            related_layer = project.mapLayer(related_layer.id())
+
+        related_feature = selected_item.relatedFeature()
+        if related_feature is not None: 
+            related_feature_id = selected_item.relatedFeatureID()
+        if related_feature is not None and related_layer is not None:
+            related_feature = next((f for f in related_layer.getFeatures() if f.id() == related_feature_id))
+        
+        related_help_url = selected_item.related_help_url()    
+        print(related_help_url)
 
         menu = QMenu(self)
         
         menu.addAction("Задонатити на ЗСУ")
         menu.addSeparator()
 
+        if related_help_url is not None:
+            menu.addAction("Переглянути сторінку допомоги")
+            menu.addSeparator()
+
         if related_path is not None:
             menu.addAction("Відкрити файл")
             menu.addAction("Відкрити папку")
+            #menu.addAction("Додати шар в проєкт")
             menu.addSeparator()
 
         if related_layer is not None:
@@ -893,6 +931,9 @@ class ResultWindow(QDialog):
             menu.addAction("Переглянуи таблицю атрибутів шару")
             menu.addSeparator()
         
+        if related_path and related_layer:
+            menu.addSeparator()
+
         if related_feature is not None and related_layer is not None:
             menu.addAction("Відкрити форму об'єкту")            
             menu.addAction("Наблизити до об'єкту")
@@ -906,9 +947,11 @@ class ResultWindow(QDialog):
 
         actions = {
             "Задонатити на ЗСУ": donate,
+            "Переглянути сторінку допомоги": lambda: QDesktopServices.openUrl(related_help_url),
             "Відкрити файл": lambda: open_file(related_path),
             "Відкрити папку": lambda: open_folder(related_path),
             "Виділити шар": lambda: iface.setActiveLayer(related_layer),
+            "Додати шар в проєкт": lambda: add_layer_to_project(selected_item),
             "Перейти в налаштування шару": lambda: iface.showLayerProperties(related_layer),
             "Переглянуи таблицю атрибутів шару": lambda: iface.showAttributeTable(related_layer),
             "Відкрити форму об'єкту": lambda: open_feature_form(related_layer, related_feature),

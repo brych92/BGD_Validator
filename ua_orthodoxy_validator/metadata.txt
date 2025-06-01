@@ -1,27 +1,17 @@
-# This file contains metadata for your plugin.
-
-# This file should be included when you package your plugin.# Mandatory items:
-
 [general]
-name=UA_orthodoxy_validator
+name=UA Orthodoxy validator
 qgisMinimumVersion=3.0
 description=УПВ (МП) - це перший український православний валідатор (можливі помилки)
-version=0.4.3
+version=0.4.5
 author=Bohdan2505, brych92
 email= 
 
 about=  УПВ (МП) - це перший український православний валідатор баз просторових даних. Використовуйте обачно! Ми не несемо відповідальності за результати роботи цього плагіну, а також вплив плагіну на вагітних дітей, годуючих фрезеровщиків, людей без гумору, і тих хто не може повністю прочитати текст.
 
-tracker=https://t.me/+eq7gtxjTXYBjZmUy
-repository=https://t.me/+eq7gtxjTXYBjZmUy
+tracker=https://github.com/brych92/BGD_Validator/issues
+repository=https://github.com/brych92/BGD_Validator
+
 # End of mandatory metadata
-
-# Recommended items:
-
-hasProcessingProvider=no
-# Uncomment the following line and add your changelog:
-# changelog=
-
 # Tags are comma separated with spaces allowed
 tags=python
 
@@ -31,26 +21,11 @@ icon=icon.png
 # experimental flag
 experimental=True
 
-# deprecated flag (applies to the whole plugin, not just a single version)
-deprecated=False
-
-# Since QGIS 3.8, a comma separated list of plugins to be installed
-# (or upgraded) can be specified.
-# Check the documentation for more information.
-# plugin_dependencies=
-
-Category of the plugin: Raster, Vector, Database or Web
-# category=
-
-# If the plugin can run on QGIS Server.
-server=False
-
 changelog=
  Version 0.2:
  Alfa 1
     Проблеми:
     - досі є проблеми з перевикористанням пам'яті
-   
     Базово реалізовано наступні перевірки:
     - Перевірка на наявність об'єктів в шарі
     - Перевірка системи координат шару
@@ -76,3 +51,7 @@ changelog=
  Version 0.4.3:
   - Додав функцію завантаження json з результатами перевірки
   - Виправив Виділити і наблизити в контекстному меню об'єкту
+ Version 0.4.4:
+  - Зняли попередження, при перевірці відповідності значення класифікатору, щодо пустого значення при відсутності обов'язковості заповнення атрибуту.
+ Version 0.4.5:
+  - Додав базову довідку по перевірках
