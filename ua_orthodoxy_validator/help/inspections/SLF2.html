@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SLF2 Перевірка типу даних атрибута | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SLF2 Перевірка типу даних атрибута</span>
+  </nav>
+</div>
+
+<h2>Перевірка типу даних атрибута</h2>
+
+<!-- <img class="help-gif" src="SLF2.gif" alt="demo gif">
+<div class="help-gif-caption">Невідповідність типу поля очікуваному формату</div> -->
+
+<p><b>Що означає:</b><br>Тип даних поля (атрибута) у шарі не відповідає типу, зазначеному в структурі. Наприклад, поле має тип <code>Text</code>, але згідно вимог має бути <code>Integer</code>.</p>
+
+<p><b>Чому це важливо:</b><br>Типи даних визначають, як з атрибутами можна працювати. Якщо тип вказано неправильно:
+  <ul>
+    <li>неможливо виконувати математичні операції або сортування;</li>
+    <li>збільшується ризик помилок при фільтрації, генерації звітів чи формуванні шарів-похідних;</li>
+    <li>при експорті в інші формати (наприклад, у базу даних або JSON) дані можуть бути некоректно оброблені.</li>
+  </ul>
+</p>
+
+<p><b>Як виправити:</b><br>У QGIS скористайтеся <i>Field Calculator</i> або <i>Refactor Fields</i> для створення нового поля з правильним типом, або ж перезапишіть існуюче. Після цього — видаліть старе поле або збережіть результат в окремий шар.</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  1. Зчитується тип поля з шару.<br>
+  2. Зіставляється з очікуваним типом, який задано у структурі.<br>
+  3. Якщо тип не збігається — фіксується помилка.<br>
+  4. Присвоюється <b>висока критичність (2)</b>, оскільки відхилення у типі може суттєво вплинути на подальше використання даних.
+</p>
+
+<div class="help-footer">
+  Оновлено: 2025-06-01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>

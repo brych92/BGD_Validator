@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SFA3 Перевірка формату значення атрибута | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SFA3 Перевірка формату значення атрибута</span>
+  </nav>
+</div>
+
+<h2>SFA3 Перевірка формату значення атрибута</h2>
+
+<!-- <img class="help-gif" src="SFA3.gif" alt="demo gif">
+<div class="help-gif-caption">Приклад невідповідного формату — ID з літерами замість цифр</div> -->
+
+<p><b>Що означає:</b><br>Значення в певному полі не має очікуваної форми. Наприклад, у полі <code>koatuu</code> має бути рівно 10 цифр, але зустрічається текст із літерами, пробілами або інша довжина. Перевірка дозволяє виявити такі відхилення, навіть якщо значення виглядає схоже на правильне.</p>
+
+<p><b>Чому це важливо:</b><br>Помилка формату може спричинити неможливість пошуку, агрегації, приєднання за полем або експорту до систем, які очікують суворо визначену структуру. Це впливає як на технічну обробку, так і на нормативну відповідність.</p>
+
+<p><b>Як виправити:</b><br>Перевірте поле за допомогою виразу або заздалегідь визначеного регулярного шаблону (наприклад, <code>^\d{10}$</code>). Для виправлення значень використовуйте фільтрацію, обчислення або пакетну заміну значень (через Field Calculator або Python).</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  1. Для кожного поля, де в структурі вказано <i>регулярний вираз</i>, зчитується відповідний шаблон.<br>
+  2. Кожне значення в полі порівнюється з шаблоном.<br>
+  3. Якщо значення не відповідає regex заданому в структурі — формується помилка з критичністю 2 (висока).<br>
+  4. Якщо всі значення коректні — критичність 0.</p>
+
+<div class="help-footer">
+  Оновлено: 2025-06-01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>

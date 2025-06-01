@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SLF1 Перевірка на помилки в іменах атрибутів | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SLF1 Перевірка на помилки в іменах атрибутів</span>
+  </nav>
+</div>
+
+<h2>Перевірка на помилки в іменах атрибутів</h2>
+<!-- 
+<img class="help-gif" src="SLF1.gif" alt="demo gif">
+<div class="help-gif-caption">Приклад автоматичного виявлення помилок у назвах полів</div> -->
+
+<p><b>Що означає:</b><br>Атрибути шару не відповідають очікуваним назвам, визначеним у структурі. Це може бути спричинено використанням неправильного регістру, зайвих пробілів або псевдонімів замість реальних імен полів.</p>
+
+<p><b>Чому це важливо:</b><br>Назви полів — це ключ до зчитування даних. Якщо атрибути названі некоректно, наступні перевірки можуть не виконатись або дати хибний результат. Крім того, такі поля можуть не відображатися в шаблонах звітів, не імпортуватись в БД або не оброблятись скриптами.</p>
+
+<p><b>Як виправити:</b><br>Перевірте справжні (технічні) назви полів через властивості шару. У разі потреби — перейменуйте атрибути згідно з вимогами структури вручну або за допомогою QGIS Processing Tool <i>Refactor Fields</i>.</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  1. Порівнюється список полів шару зі структурним списком.<br>
+  2. Якщо поле знайдено без змін — все гаразд (критичність 0).<br>
+  3. Якщо знайдено відхилення лише в регістрі — фіксується як низька критичність (1).<br>
+  4. Якщо знайдено зайві пробіли або використання псевдонімів — висока критичність (2).<br>
+  5. Якщо відповідник не знайдено зовсім — також висока критичність (2).</p>
+
+<div class="help-footer">
+  Оновлено: 2025-06-01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>

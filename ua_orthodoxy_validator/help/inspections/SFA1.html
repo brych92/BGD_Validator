@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SFA1 Перевірка на заповненість обов'язкових атрибутів | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SFA1 Перевірка на заповненість обов'язкових атрибутів</span>
+  </nav>
+</div>
+
+<h2>Перевірка на заповненість обов'язкових атрибутів</h2>
+
+<!-- <img class="help-gif" src="SFA1.gif" alt="demo gif">
+<div class="help-gif-caption">Приклад заповнення обов'язкових полів</div> -->
+
+<p><b>Що означає:</b><br>Деякі об'єкти шару мають незаповнені значення у полях, які структурою позначені як обов’язкові до заповнення. Це можуть бути <code>null</code>, порожні строки або відсутні значення.</p>
+
+<p><b>Чому це важливо:</b><br>Відсутність значень в обов’язкових полях унеможливлює використання даних для подальших розрахунків, фільтрації, побудови звітів, а також викликає помилки при завантаженні до офіційних систем, де заповнення є вимогою.</p>
+
+<p><b>Як виправити:</b><br>Використайте інструмент <b>"Фільтр за виразом"</b> у QGIS, щоб знайти об’єкти з порожніми значеннями (наприклад, <code>"назва" IS NULL</code> або <code>"назва" = ''</code>), та заповніть їх коректними даними. За потреби можна скористатися таблицею атрибутів або пакетною обробкою.</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  1. Витягується перелік обов’язкових для заповнення атрибутів даного шару згідно структури.<br>
+  2. Для кожного з них виконується перевірка на наявність значення цього атрибуту в кожному об'єкті шару.<br>
+  3. Якщо знайдено об'єкт з <code>null</code> або порожнім значенням атрибуту — генерується помилка.
+</p>
+
+<div class="help-footer">
+  Оновлено: 2025-06-01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>

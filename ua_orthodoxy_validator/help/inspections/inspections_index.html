@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>UA Orthodoxy Validator | Список перевірок</title>
+
+  <!-- === Стилі, запозичені з AF1 === -->
+  <style>
+  body{
+    background:#f5f8fc;margin:0;padding:0;
+    font-family:'Segoe UI',Arial,sans-serif;color:#22334a;
+  }
+  .help-card{
+    border:1.5px solid #bdd5ea;border-radius:14px;
+    padding:22px 28px 32px;max-width:980px;
+    margin:38px auto;background:#f7fbff;
+    box-shadow:0 2px 18px rgba(110,137,170,.09);
+  }
+  /* logo + breadcrumbs */
+  .logo-row{display:flex;align-items:center;gap:16px;margin-bottom:24px;}
+  .logo-row img{
+    width:48px;height:48px;object-fit:contain;
+    border-radius:10px;border:1px solid #dbeafe;
+    box-shadow:0 2px 8px rgba(40,90,190,.07);
+    background:#fff;
+  }
+  .breadcrumbs{
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+    padding:8px 18px;font-size:1.03em;border-radius:7px;
+    background:#e8f1ff;color:#7080a0;
+    box-shadow:0 1px 3px rgba(130,160,220,.07);
+    letter-spacing:.01em;
+  }
+  .breadcrumbs a{color:#3073d7;font-weight:500;text-decoration:none;}
+  .breadcrumbs a:hover{color:#1b5ba5;text-decoration:underline;}
+  .breadcrumbs .bc-sep{margin:0 2px;color:#a4b5c9;user-select:none;}
+  .breadcrumbs .current{color:#3265c7;font-weight:600;cursor:default;}
+
+  /* headings */
+  h1{text-align:center;margin:8px 0 24px;font-size:28px;}
+  h2{
+    margin:32px 0 12px;font-size:22px;
+    border-bottom:2px solid #bdd5ea;padding-bottom:4px;
+  }
+
+  /* lists */
+  ul{list-style:none;padding:0;margin:8px 0;}
+  li{line-height:1.35;padding:4px 0;}
+
+  /* simple list */
+  ul.check-list a{color:#3073d7;font-weight:500;text-decoration:none;}
+  ul.check-list a:hover{color:#1b5ba5;text-decoration:underline;}
+
+  /* tree list */
+  ul.tree>li{position:relative;padding-left:22px;font-weight:600;}
+  ul.tree>li::before{
+    content:\"▸\";position:absolute;left:0;top:4px;color:#6c8ab4;
+  }
+  ul.tree ul{
+    margin-left:24px;margin-top:4px;padding-left:12px;
+    border-left:1px dotted #bdd5ea;
+  }
+  ul.tree ul li{position:relative;font-weight:400;}
+  ul.tree ul li::before{
+    content:\"•\";position:absolute;left:-12px;color:#6c8ab4;
+  }
+  ul.tree a{color:#3073d7;font-weight:500;text-decoration:none;}
+  ul.tree a:hover{color:#1b5ba5;text-decoration:underline;}
+
+  /* footer */
+  .help-footer{
+    margin-top:32px;text-align:right;font-size:.89em;
+    color:#9cb2d8;letter-spacing:.02em;
+  }
+  .help-footer a{color:#3073d7;text-decoration:none;font-weight:500;}
+  .help-footer a:hover{color:#1b5ba5;text-decoration:underline;}
+
+  /* responsive */
+  @media(max-width:768px){
+    .help-card{padding:13px 4vw 24px;}
+    .logo-row img{width:32px;height:32px;}
+    .breadcrumbs{padding:6px 9px;font-size:.96em;}
+    h1{font-size:24px;}h2{font-size:20px;}
+  }
+  li.todo{color:#a4aebe;}
+  li.todo span, li.todo a{color:#a4aebe;cursor:default;text-decoration:none;}
+  li.todo a:hover{text-decoration:none;}
+  </style>
+</head>
+<body>
+
+<div class="help-card">
+
+  <!-- logo + breadcrumbs -->
+  <div class="logo-row">
+    <img src="../team_logo.png" alt="UA Validator Logo" />
+    <nav class="breadcrumbs" aria-label="Навігація по довідці">
+      <a href="../index.html">Головна довідки</a>
+      <span class="bc-sep">/</span>
+      <span class="current">Список перевірок</span>
+    </nav>
+  </div>
+
+  <h1>Список перевірок та помилок</h1>
+
+  <!-- === B — Загальні перевірки === -->
+  <h2 id="B">B — Загальні перевірки</h2>
+  <ul class="check-list">
+    <li class="todo"><span>B1</span> Перевірка на відсутність дублювання назв класів</li>
+    <li class="todo"><span>B2</span> Перевірка на співпадіння СК у всіх геометричних класах</li>
+    <li class="todo"><span>B3</span> Перевірка на наявність у списку класів однакової назви</li>
+  </ul>
+
+  <!-- === S — Семантичні перевірки (дерево) === -->
+  <h2 id="S">S — Семантичні перевірки</h2>
+
+  <ul class="tree">
+    <li>SF — Перевірки файлу
+      <ul>
+        <li><a href="SF1.html">SF1 Перевірка можливості відкриття файлу</a></li>
+        <li><a href="SF2.html">SF2 Перевірка формату файлу</a></li>
+        <li class="todo"><span>SF3</span> Перевірка кодування тексту файлу</li>
+      </ul>
+    </li>
+    <li>SL — Перевірки шару
+      <ul>
+        <li><a href="SL1.html">SL1 Перевірка на наявність об’єктів у шарі</a></li>
+        <li><a href="SL2.html">SL2 Перевірка на помилки в імені шару</a></li>
+        <li><a href="SL3.html">SL3 Перевірка системи координат шару</a></li>
+        <li><a href="SL4.html">SL4 Перевірка типу геометрії шару</a></li>
+        <li><a href="SL5.html">SL5 Перевірка унікальності значення атрибута</a></li>
+        <li class="todo"><span>SL6</span> Перевірка унікальності комбінованого ключа</li>
+      </ul>
+    </li>
+    <li>SLF — Перевірки полів шару
+      <ul>
+        <li><a href="SLF1.html">SLF1 Перевірка на помилки в іменах атрибутів</a></li>
+        <li><a href="SLF2.html">SLF2 Перевірка типу даних атрибута</a></li>
+        <li><a href="SLF3.html">SLF3 Перевірка наявності всіх атрибутів, заданих структурою</a></li>
+        <li><a href="SLF4.html">SLF4 Перевірка наявності всіх обов’язкових атрибутів</a></li>
+      </ul>
+    <li>SFA — Перевірки атрибутів об’єкту
+      <ul>
+        <li><a href="SFA1.html">SFA1 Перевірка на заповненість обов'язкових атрибутів</a></li>
+        <li><a href="SFA2.html">SFA2 Перевірка на відповідність доменам</a></li>
+        <li><a href="SFA3.html">SFA3 Перевірка формату значення атрибута</a></li>
+        <li><a href="SFA4.html">SFA4 Перевірка на дотримання максимальної довжини атрибуту</a></li>
+        <li class="todo"><span>SFA6</span> Перевірка на помилки в кодуванні тексту атрибуту</li>
+        <li class="todo"><span>SFA7</span> Перевірка на помилки в к-сті знаків у текстовому атрибуті</li>
+    </li>
+  </ul>
+
+  <!-- === R — Перевірки зв’язків === -->
+  <h2 id="R">R — Перевірки зв’язків</h2>
+  <ul class="check-list">
+    <li class="todo"><span>RL1</span> Перевірка зв’язку 1:1 та відсутності дублів</li>
+    <li class="todo"><span>RL2</span> Перевірка зв’язку 1:N</li>
+    <li class="todo"><span>RL3</span> Перевірка зв’язку N:M (конектор)</li>
+    <li class="todo"><span>RL4</span> Перевірка на відсутність «сиріт»</li>
+  </ul>
+
+  <!-- === G — Перевірки геометрії === -->
+  <h2 id="G">G — Перевірки геометрії</h2>
+  <ul class="check-list">
+    <li class="todo"><span>G1</span> Перевірка на наявність геометрії в об’єкті</li>
+    <li class="todo"><span>G2</span> Перевірка на непорожню геометрію</li>
+    <li class="todo"><span>G3</span> Перевірка на відсутність вершин із NULL-координатами</li>
+    <li class="todo"><span>G4</span> Перевірка меж координат відповідно до СК</li>
+    <li class="todo"><span>G5</span> Перевірка координат у межах екстенту</li>
+    <li class="todo"><span>G6</span> Перевірка відповідності типу геометрії</li>
+    <li class="todo"><span>G7</span> Перевірка на відсутність самоперетинів</li>
+    <li class="todo"><span>G8</span> Перевірка замкнутості полігона</li>
+    <li class="todo"><span>G9</span> Перевірка на ненульову довжину/площу</li>
+    <li class="todo"><span>G10</span> Перевірка правильної кількості частин мультигеометрії</li>
+    <li class="todo"><span>G11</span> Перевірка на відсутність дублікатів вершин</li>
+    <li class="todo"><span>G12</span> Перевірка на відсутність близьких послідовних точок</li>
+    <li class="todo"><span>G13</span> Перевірка на відсутність «шипів»</li>
+    <li class="todo"><span>G14</span> Перевірка на відсутність зламів</li>
+    <li class="todo"><span>G15</span> Перевірка на відсутність непотрібних точок на прямій</li>
+    <li class="todo"><span>G16</span> Перевірка порядку обходу вершин</li>
+  </ul>
+
+  <!-- === T — Перевірки топології === -->
+  <h2 id="T">T — Перевірки топології</h2>
+  <ul class="check-list">
+    <li class="todo"><span>T1</span> Перевірка наявності вузлів у місцях перетину</li>
+    <li class="todo"><span>T2</span> Перевірка на відсутність «висячих» кінців</li>
+    <li class="todo"><span>T3</span> Перевірка на відсутність перекривань усередині шару</li>
+    <li class="todo"><span>T4</span> Перевірка на відсутність прогалин між полігонами</li>
+    <li class="todo"><span>T5</span> Перевірка кільцевої топології мультиполігона</li>
+    <li class="todo"><span>T6</span> Перевірка розміщення полігона в межах контрольного полігона</li>
+    <li class="todo"><span>T7</span> Перевірка розміщення точки в полігоні</li>
+    <li class="todo"><span>T8</span> Перевірка відповідності лінії межам полігона</li>
+    <li class="todo"><span>T9</span> Перевірка на відсутність перекривань між різними класами</li>
+  </ul>
+
+  <!-- === Footer === -->
+  <div class="help-footer">
+    Оновлено: 01 Червня 2025&nbsp;р. | UA Orthodoxy Validator  •  <a href="https://github.com/brych92/BGD_Validator/issues" target=\"_blank\" rel=\"noopener\">Залишити issue на GitHub</a>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SL4 Перевірка типу геометрії шару | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SL4 Перевірка типу геометрії шару</span>
+  </nav>
+</div>
+
+<h2>SL4&nbsp;— Перевірка типу геометрії шару</h2>
+
+<!-- <img class="help-gif" src="SL4_demo.gif" alt="demo gif">
+<div class="help-gif-caption">Приклад сповіщення про невідповідний тип геометрії</div> -->
+
+<p><b>Що означає:</b><br>Геометричний тип об’єктів у шарі (наприклад, <code>LineString</code>, <code>Polygon</code>, <code>MultiPolygon</code>) не збігається з&nbsp;типом, указаним у структурі даних. Якщо в&nbsp;регламенті визначено <code>Polygon</code>, а&nbsp;шар містить <code>MultiPolygon</code>&nbsp;— фіксується помилка SL4.</p>
+
+<p><b>Чому це важливо:</b><br>Аналітичні скрипти, стилі відображення та інструменти геообробки очікують <i>однорідний</i> тип геометрії. Невідповідність призводить до:
+  <ul>
+    <li>помилок або падіння моделей просторового аналізу (наприклад, буферизації, топологічних перевірок);</li>
+    <li>некоректного експорту у формати, що підтримують лише певні типи геометрій;</li>
+    <li>невідтворення стилів (QGIS‑рендери, Mapbox GL, Web‑класи) — шар просто не відобразиться або «зальється» одним стилем;</li>
+    <li>зриву інтеграції з&nbsp;API чи віджетами, які підтягують шари «за назвою&nbsp;+ типом».</li>
+  </ul>
+</p>
+
+<p><b>Як виправити:</b><br>
+  <ol>
+    <li>У QGIS перевірте властивості шару → <b>Інформація про джерело</b>, пункт <i>Тип геометрії</i>.</li>
+    <li>Якщо тип невідповідний&nbsp;— конвертуйте шар через «<i>Vector ➜ Geometry ➜ Multi‑parts to Single‑parts</i>» або «<i>Convert geometry type</i>»;</li>
+    <li>За потреби виконайте пост‑перевірку, щоб переконатися, що всі об’єкти успішно конвертовані й шар відкривається без попереджень.</li>
+  </ol>
+</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  <ol>
+    <li>Якщо у структурі <i>не</i> задано обов’язковий тип геометрії (значення <code>None</code>) — перевірка пропускається.</li>
+    <li>Інакше визначається фактичний тип шару через <code>GetGeomType()</code>.</li>
+    <li>Порівнюється фактичний тип зі списком допустимих (<code>required_geometry_type</code>):
+      <ul>
+        <li>якщо збігається — результат «пройдено»;</li>
+        <li>якщо ні — повертаються два значення: <i>поточний тип</i> та <i>очікуваний</i>; присвоюється критичність&nbsp;2&nbsp;(Висока).</li>
+      </ul>
+    </li>
+    <li>Усі наступні перевірки геометрії виконуються <u>лише</u> для об’єктів з коректним типом, щоби уникнути каскадних помилок.</li>
+  </ol>
+</p>
+
+<div class="help-footer">
+  Оновлено: 2025‑06‑01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>UA Orthodoxy Validator | Довідка</title>
+
+  <!-- Базові стилі (спільні для всієї довідки) -->
+  <style>
+    :root {
+      --bg: #f5f8fc;
+      --fg: #223140;
+      --accent: #0066cc;
+      --border: #bdd5ea;
+      --card-bg: #ffffff;
+      --shadow: 0 2px 18px rgba(110, 137, 170, .09);
+      --radius: 14px;
+      --max-width: 760px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .wrapper {
+      max-width: var(--max-width);
+      margin: 48px auto 56px;
+      padding: 0 28px;
+    }
+
+    header, footer { text-align: center; }
+    header img { height: 72px; width: auto; margin-bottom: 12px; }
+    h1 { margin: 0 0 4px; font-size: 1.8rem; }
+    h2 { font-size: 1.35rem; margin: 1.6em 0 .6em; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      box-shadow: var(--shadow);
+      margin-top: 32px;
+    }
+
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: opacity .2s ease;
+    }
+    .btn:hover { opacity: .85; }
+
+    .note {
+      background: #fff3cd;
+      border: 1.5px solid #ffeeba;
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-top: 28px;
+      font-size: .95rem;
+    }
+
+    footer {
+      margin-top: 64px;
+      font-size: .85rem;
+      color: #55657a;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrapper">
+
+    <!-- header -->
+    <header>
+      <img src="team_logo.png" alt="UA Orthodoxy Validator logo">
+      <h1>UA Orthodoxy Validator</h1>
+    </header>
+
+    <!-- description -->
+    <section class="card">
+  <h2>Що це таке?</h2>
+  <p>
+    <strong>UA Orthodoxy Validator</strong> — плагін QGIS, який автоматично перевіряє
+    просторові дані на відповідність затвердженим структурам обміну, доменам та правилам
+    семантики. Після запуску він відкриває інтерактивне
+    <em>вікно результатів «Перевірки»</em>, де кожна помилка показана
+    в дереві з можливістю одразу перейти до потрібного шару чи об’єкта
+    та швидко його виправити.
+  </p>
+
+  <h2>Як це працює?</h2>
+      <ul>
+        <li>Вибираєте файли або шари та натискаєте <em>«Запустити перевірку»</em>.</li>
+        <li>Плагін послідовно застосовує набір перевірок і виводить результати у
+            зручній деревоподібній структурі.</li>
+        <li>Через контекстне меню можна швидко відкрити шар, форму об’єкта
+            або наблизитись до нього на карті, що значно прискорює виправлення.</li>
+      </ul>
+
+      <div class="note">
+        <strong>Зверніть увагу!</strong> Перевірки геометрії, відношень та топології ще
+        знаходяться в розробці та з’являться у наступних версіях.
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section style="text-align:center; margin-top:40px;">
+      <a class="btn" href="inspections/inspections_index.html">➡️ Переглянути всі перевірки</a>
+    </section>
+
+    <!-- footer -->
+    <footer>
+      <p>
+        Розробка ведеться в рамках ініціативи
+        <a href="https://juliesdata.com/about_ipp" target="_blank">
+          «Відкриті інструменти просторового планування для України»
+        </a>.
+        Знайшли баг чи пропозицію? 
+        <a href="https://github.com/UA-SPT/ua_orthodoxy_validator/issues" target="_blank">
+          Створіть issue на GitHub
+        </a>.
+      </p>
+    </footer>
+
+  </div>
+</body>
+</html>

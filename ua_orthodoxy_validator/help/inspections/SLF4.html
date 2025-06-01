@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SLF4 Перевірка наявності всіх обов’язкових атрибутів | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SLF4 Перевірка наявності обов’язкових атрибутів</span>
+  </nav>
+</div>
+
+<h2>SLF4 Перевірка наявності всіх обов’язкових атрибутів</h2>
+
+<!-- <img class="help-gif" src="SLF4.gif" alt="demo gif">
+<div class="help-gif-caption">Приклад виявлення відсутнього обов’язкового поля</div> -->
+
+<p><b>Що означає:</b><br>У структурі вказано, що певні атрибути є обов’язковими для заповнення, однак відповідні поля у шарі взагалі відсутні. Це не дає змоги користувачу навіть заповнити потрібні дані вручну або через форму.</p>
+
+<p><b>Чому це важливо:</b><br>Відсутність обов’язкових полів унеможливлює повноцінне внесення даних. Це може призвести до помилок під час публікації, відправки у реєстр або аналітичної обробки. Така перевірка — базовий етап контролю структури.</p>
+
+<p><b>Як виправити:</b><br>Перевірте у структурі, які поля позначено як обов’язкові. Додайте їх до шару за допомогою <i>Refactor Fields</i> або інших інструментів редагування. Уточніть тип даних згідно з вимогами.</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  1. Зі структури обираються лише ті атрибути, де вказано вимогу обов’язкового заповнення.<br>
+  2. Порівнюється з поточним списком полів шару.<br>
+  3. Якщо якесь з обов’язкових полів відсутнє — створюється повідомлення з критичністю <b>2 (Висока)</b>.<br>
+  4. Якщо всі поля присутні — критичність <b>0</b> (помилок не виявлено).</p>
+
+<div class="help-footer">
+  Оновлено: 2025-06-01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+
+    :root{
+      --c-bg:#f5f8fc;
+      --c-card:#f7fbff;
+      --c-primary:#3073d7;
+      --c-primary-darker:#1b5ba5;
+      --c-text:#22334a;
+      --c-muted:#7080a0;
+      --c-border:#bdd5ea;
+    }
+    body{background:var(--c-bg);margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;color:var(--c-text);}    
+    .help-error-block{border:1.5px solid var(--c-border);border-radius:14px;padding:22px 28px;margin:38px auto 36px;max-width:700px;background:var(--c-card);box-shadow:0 2px 18px rgba(110,137,170,.09);}  
+    .logo-breadcrumb-row{display:flex;align-items:center;gap:16px;margin-bottom:24px;}
+    .logo-breadcrumb-row img{width:48px;height:48px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid #dbeafe;box-shadow:0 2px 8px rgba(40,90,190,.07);}  
+    .breadcrumbs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;background:#e8f1ff;border-radius:7px;padding:8px 18px;font-size:1.03em;color:var(--c-muted);box-shadow:0 1px 3px rgba(130,160,220,.07);}  
+    .breadcrumbs a{color:var(--c-primary);text-decoration:none;font-weight:500;transition:color .13s;}
+    .breadcrumbs a:hover{color:var(--c-primary-darker);text-decoration:underline;}    
+    .breadcrumbs .bc-sep{color:#a4b5c9;user-select:none;}
+    .breadcrumbs .current{color:#3265c7;font-weight:600;}  
+    h2{margin-top:0;margin-bottom:18px;color:var(--c-primary);font-size:1.35em;font-weight:700;}  
+    p{margin:14px 0;line-height:1.7;font-size:1.06em;}    
+    b{color:#305c99;}  
+    .help-gif{display:block;margin:18px auto 0;max-width:100%;max-height:480px;border-radius:10px;border:1px solid #dde8f5;box-shadow:0 2px 12px rgba(80,120,220,.13);}  
+    .help-gif-caption{text-align:center;font-size:.98em;color:#5067b3;margin:7px 0 18px;font-style:italic;}  
+    .help-footer{font-size:.89em;color:#9cb2d8;text-align:right;margin-top:24px;letter-spacing:.02em;}  
+    @media(max-width:768px){.help-error-block{padding:13px 4vw;font-size:.97em;}.logo-breadcrumb-row img{width:32px;height:32px;}.breadcrumbs{padding:6px 9px;font-size:.96em;}}

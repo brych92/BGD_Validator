@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SL5 Перевірка унікальності значення атрибута | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SL5 Перевірка унікальності значення атрибута</span>
+  </nav>
+</div>
+
+<h2>SL5&nbsp;— Перевірка унікальності значення атрибута</h2>
+
+<!-- <img class="help-gif" src="SL5_demo.gif" alt="demo gif">
+<div class="help-gif-caption">Приклад повідомлення про дублікати значень у полі</div> -->
+
+<p><b>Що означає:</b><br>У&nbsp;вказаному атрибуті шару (наприклад, <code>OBJECTID</code>, <code>kadnum</code>, <code>global_id</code>) знайдено <i>повторювані</i> значення. Для цього поля в&nbsp;структурі даних зарезервовано вимогу «унікальне значення для кожного об’єкта».</p>
+
+<p><b>Чому це важливо:</b><br>Неунікальні ідентифікатори руйнують логіку пов’язаних процесів:
+  <ul>
+    <li>помилки під час приєднання таблиць (JOIN) або створення представлень, що спираються на первинний ключ;</li>
+    <li>баги в&nbsp;WEB‑сервісах і&nbsp;API — запити повертають множину об’єктів замість одного, або кидають <code>duplicate key</code>;
+    </li>
+    <li>збій аналітики (ретейси, підрахунок площ/довжин), оскільки розрахунки ведуться за некоректним ключем;</li>
+    <li>неможливість публікувати шар у державні реєстри, де перевірка унікальності — обов’язкова.</li>
+  </ul>
+</p>
+
+<p><b>Як виправити:</b><br>
+  <ol>
+    <li>У QGIS відкрийте Таблицю атрибутів → <b>Фільтр → Додатковий фільтр</b> та скористайтесь виразом <code>array_length(array_agg("field"), true) &gt; 1</code> щоб виділити дублікати.</li>
+    <li>Вирішіть, який об’єкт слід залишити (злиття, видалення, оновлення значень).</li>
+    <li>Для автоматичного виправлення можна скористатися <i>Processing ➜ Delete duplicate geometries</i> або Python‑скриптом, який генерує новий унікальний ID.</li>
+    <li>Після коригування повторно запустіть перевірку SL5, щоб переконатися у відсутності дублікатів.</li>
+  </ol>
+</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  <ol>
+    <li>Зі структури отримується перелік полів із&nbsp;вимогою «<code>unique=true</code>».</li>
+    <li>Для кожного такого поля будується множина значень, під час ітерації підраховується кількість повторів.</li>
+    <li>Якщо знайдено дублікати — у результати записується список неунікальних значень і&nbsp;їхня кількість; помилці присвоюється критичність&nbsp;2&nbsp;(Висока).</li>
+    <li>Якщо дублікатів немає — перевірка повертає «OK», критичність&nbsp;0 (Проблем не виявлено).</li>
+  </ol>
+</p>
+
+<div class="help-footer">
+  Оновлено: 2025‑06‑01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>

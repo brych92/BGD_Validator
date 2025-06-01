@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SFA4 Перевірка на дотримання максимальної довжини атрибуту | UA Orthodoxy Validator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SFA4 Перевірка на дотримання максимальної довжини атрибуту</span>
+  </nav>
+</div>
+
+<h2>SFA4 Перевірка на дотримання максимальної довжини атрибуту</h2>
+
+<!-- <img class="help-gif" src="SFA4.gif" alt="demo gif">
+<div class="help-gif-caption">Поле з текстом, що перевищує встановлений ліміт у 255 символів</div> -->
+
+<p><b>Що означає:</b><br>Значення в одному з атрибутів має довжину, що перевищує дозволену згідно структури даних. Наприклад, поле призначене для короткої назви, але містить абзац опису.</p>
+
+<p><b>Чому це важливо:</b><br>Занадто довгі значення можуть спричинити помилки під час експорту в бази даних, некоректне відображення у звітах або обрізання даних. Це порушує вимоги до сумісності з іншими системами та форматами.</p>
+
+<p><b>Як виправити:</b><br>Скоротіть значення вручну або скористайтесь виразом для обрізання (<code>left("назва", 255)</code>). Уточніть вимоги до структури, щоби переконатися, що ви не втрачаєте важливу інформацію при скороченні.</p>
+
+<p><b>Алгоритм перевірки:</b><br>
+  1. Зі структури зчитуються обмеження <i>максимальної довжини</i> для кожного атрибута.<br>
+  2. Для кожного запису у відповідному полі перевіряється кількість символів.<br>
+  3. Якщо значення перевищує межу — додається помилка з критичністю 2 (висока).<br>
+  4. Якщо всі значення в межах ліміту — критичність 0.</p>
+
+<div class="help-footer">
+  Оновлено: 2025-06-01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+  </div>
+</body>
+</html>
