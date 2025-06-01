@@ -3,8 +3,8 @@ import re
 from typing import Union, cast 
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox, QAbstractItemView
-from PyQt5.QtCore import Qt, QMimeData, QSize
-from PyQt5.QtGui import QCursor, QIcon
+from PyQt5.QtCore import Qt, QMimeData, QSize, QUrl
+from PyQt5.QtGui import QCursor, QIcon, QDesktopServices
 from numpy import unicode_
 from qgis.core import (
     QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsTask, QgsApplication,
@@ -26,7 +26,8 @@ from .checker_class import EDRA_exchange_layer_checker, EDRA_validator
 
 import gc
 
-from .sidefunctions import log
+from .sidefunctions import log, save_dict_as_file
+
 
 
 def get_real_layer_name(layer: QgsVectorLayer) -> str:
@@ -93,6 +94,8 @@ def run_validator(task:QgsTask = None, input_list:list = None):
         file_extension = os.path.splitext(path)[1]
         return file_extension in reuired_format
     
+    save_dict_as_file(input_list, 'input_list_for_run_validator')
+
     layers = input_list[0]
     structure_folder = input_list[1]
     output = []
@@ -117,7 +120,7 @@ def run_validator(task:QgsTask = None, input_list:list = None):
         if dataSource is None: #відпрацювання скіпу перевірки якшо файл битий
             temp_files_dict[file_path] = {
                 'type' : 'inspection',
-                'item_name' :  f"Помилка завантаження файлу «{os.path.basename(file_path)}»",
+                'item_name' :  f"[AF1]Помилка завантаження файлу «{os.path.basename(file_path)}»",
                 'related_file_path' : file_path,
                 'item_tooltip' : f"(Запоровся на шарі {layers[id]['layer_name']}){file_path}",
                 'criticity' : 2
@@ -131,7 +134,6 @@ def run_validator(task:QgsTask = None, input_list:list = None):
                 'item_name' :  f"Файл: «{os.path.basename(file_path)}»",
                 'related_file_path' : file_path,
                 'item_tooltip' : file_path,
-                'help_url' : "www.google.com",
                 'subitems' : []
             }
         
@@ -519,15 +521,24 @@ class MainWindow(QDialog):
         layerslayout.addWidget(self.crs_combo_box)
         self.runButton = QPushButton("Запустити перевірку")
         self.runButton.clicked.connect(self.run)
+        
         self.openJsonButton = QPushButton("")
         self.openJsonButton.setIcon(QIcon(os.path.join(self.plugin_dir, 'resources', 'load_file.png')))
         self.openJsonButton.setToolTip("Відкрити результат перевірки")
         self.openJsonButton.setFixedSize(self.openJsonButton.sizeHint())
-
         self.openJsonButton.clicked.connect(self.open_json)
+        
+        self.help = QPushButton("❓")
+        # self.help.setIcon(QIcon(os.path.join(self.plugin_dir, 'resources', 'load_file.png')))
+        self.help.setToolTip("Про програму")
+        self.help.setFixedSize(24, self.help.sizeHint().height())
+        self.help.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'index.html'))))
+
+
         self.runLayout = QHBoxLayout()
         self.runLayout.addWidget(self.runButton)
         self.runLayout.addWidget(self.openJsonButton)
+        self.runLayout.addWidget(self.help)
         layerslayout.addLayout(self.runLayout)
         self.setLayout(layerslayout)
         self.bench.stop()
