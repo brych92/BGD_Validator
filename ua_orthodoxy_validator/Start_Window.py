@@ -26,7 +26,7 @@ from .checker_class import EDRA_exchange_layer_checker, EDRA_validator
 
 import gc
 
-from .sidefunctions import log, save_dict_as_file
+from .sidefunctions import log, save_dict_as_file, save_validator_log, compress_last_validation_folder
 
 
 
@@ -94,7 +94,7 @@ def run_validator(task:QgsTask = None, input_list:list = None):
         file_extension = os.path.splitext(path)[1]
         return file_extension in reuired_format
     
-    save_dict_as_file(input_list, 'input_list_for_run_validator')
+    save_dict_as_file(input_list, 'input_list_for_run_validator', file_path = os.path.join(os.path.dirname(__file__), 'last_validation'))
 
     layers = input_list[0]
     structure_folder = input_list[1]
@@ -234,7 +234,7 @@ class customlayerListWidget(QTreeWidget):
         for i in range(self.topLevelItemCount()):
             item = cast(layerItem, self.topLevelItem(i))
             if newItem.get_layer_value() == item.get_layer_value():
-                log(f"Шар {newItem.get_layer_name()} вже був доданий", level = Qgis.Warning)
+                log(f"Шар {newItem.getVisibleName()} вже був доданий", level = Qgis.Warning)
                 return
         
         super().addTopLevelItem(newItem)
@@ -589,7 +589,7 @@ class MainWindow(QDialog):
                 print(помилка)
                 raise помилка
         
-        log(f"Запуск перевірки: {self.get_BGD_type()}({self.get_BGD_version()}){self.get_crs()[:10].rstrip()}", level = Qgis.Info)
+        log(f"Запуск перевірки: {self.get_BGD_type()}({self.get_BGD_version()}){self.get_crs()[:30].rstrip()}...", level = Qgis.Info)
         layers_dict = {}
         structure_folder = self.strutures[self.get_BGD_type()][self.get_BGD_version()]['path']
         #print(json.dumps(self.strutures, indent=4, ensure_ascii=False))
@@ -613,15 +613,19 @@ class MainWindow(QDialog):
                 'exchange_format': required_file_format
                 }
             
-            log(f"\t{layer.getID()} - {layer.getRealName()}({os.path.basename(layer.getPath())})", level = Qgis.Info)
+        layers_output = '\n'.join([f"\t{i+1}. {layer_id} - {layer_info['layer_real_name']}({os.path.basename(layer_info['path'])})" 
+                        for i, (layer_id, layer_info) in enumerate(layers_dict.items())])
+        log(f"Перевіряю шари:\n{layers_output}", level=Qgis.Info)
 
         input = [layers_dict, structure_folder]
         #self.bench.start('run_validator')
         result_list = run_validator(task = None, input_list = input)
+        save_dict_as_file(result_list, 'run_validator_result', os.path.join(os.path.dirname(__file__), 'last_validation'))
         #self.bench.start('result_window')
         window = ResultWindow(result_list, parent=self)
         #self.bench.start('show_window')
         window.show()
+        #compress_last_validation_folder()
         #self.bench.stop()
         #self.bench.print_report()
 

@@ -1,5 +1,5 @@
 from osgeo import ogr
-from qgis.core import QgsTask
+from qgis.core import QgsTask, Qgis
 from PyQt5.QtCore import QUrl
 from PyQt5.QtGui import QDesktopServices
 
@@ -7,6 +7,7 @@ from PyQt5.QtGui import QDesktopServices
 import json, re, os
 
 from .benchmark import Benchmark
+from .sidefunctions import log
 
 # Можливі помилки
 # Об'єкт з id "0" має помилку: "segments 142 and 229 of line 0 intersect at 33.5424, 48.2325"
@@ -127,7 +128,7 @@ class EDRA_validator:
     
     def is_integer(self, string):
     # Перевіряємо, чи є рядок мінусовим числом
-        if string:
+        if string != None:
             if isinstance(string, int):
                 return True
             if string.startswith('-'):
@@ -609,7 +610,9 @@ class EDRA_validator:
             return duplicated_id_list
 
     def check_attr_value_in_domain(self, feature:ogr.Feature, field_name:str) -> dict: 
-        
+        if feature is None or not isinstance(feature, ogr.Feature):
+            log(f"При перевірці атрибуту на відповідність доменам було передано невірний об'єкт: {feature}", level=Qgis.Critical)
+            return {'check_result': False, "criticity": 2, "note": "Об'єкт не є ogr.Feature"}
         #якщо поле не заповнено
         if feature[field_name] is None:
             if self.fields_structure_json[self.field_name_correspondence[field_name]]['attribute_required'] == 'True':
@@ -667,6 +670,9 @@ class EDRA_validator:
         criticity = None
         note = ''
         
+
+
+
         if self.is_integer(feature[corrected_field_name]) and self.fields_structure_json[corrected_field_name]['attribute_type'] != 'text':
             if feature[corrected_field_name] in domain_codes:
                 check_result = True
@@ -794,10 +800,11 @@ class EDRA_exchange_layer_checker:
         if item_name: inspection_dict['item_name'] = item_name
         if item_tool_tip: inspection_dict['item_tooltip'] = item_tool_tip
         if criticity: inspection_dict['criticity'] = criticity
-        if isinstance(help_url, QUrl):
+        
+        if isinstance(help_url, str):
             inspection_dict['help_url'] = help_url
-        elif isinstance(help_url, str):
-            inspection_dict['help_url'] = QUrl(help_url)
+        elif help_url is not None:
+            log(f"help_url for item {item_name}({item_tool_tip}) was not created because it is not a string: {help_url}", level = Qgis.Warning)
 
         return inspection_dict
 
@@ -892,6 +899,10 @@ class EDRA_exchange_layer_checker:
         return:
             dict{field_name:dict{'value': значення атрибуту, 'link': Посилання до домену, 'criticity': int, 'note': str}} (словник з результатом перевірки)
         """
+        if feature is None or not isinstance(feature, ogr.Feature):
+            log(f"При перевірці атрибуту на відповідність доменам(рядки 893...) було передано невірний об'єкт: {feature}", level=Qgis.Critical)
+            return {'value': '', 'link': '', 'criticity': 2, 'note': "Об'єкт не є ogr.Feature"}
+        
         result_dict = {}
         
         for i in range(feature.GetFieldCount()):
@@ -988,7 +999,7 @@ class EDRA_exchange_layer_checker:
                     item_name = f"Обов'язковий атрибут «{empty_field}» не заповнений (is empty)", 
                     item_tool_tip = f"Обов'язковий атрибут «{empty_field}» не заповнений (is empty)", 
                     criticity = 2, 
-                    help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA1.html'))
+                    help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA1.html')
                 )
                 
                 container_required_fields_is_empty_or_null['subitems'].append(insception_empty_field_error)
@@ -1005,7 +1016,7 @@ class EDRA_exchange_layer_checker:
                     item_name = f"Обов'язковий атрибут «{null_field}» не заповнений (is null)", 
                     item_tool_tip = f"Обов'язковий атрибут «{null_field}» не заповнений (is null)", 
                     criticity = 2, 
-                    help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA1.html'))
+                    help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA1.html')
                 )
                 container_required_fields_is_empty_or_null['subitems'].append(insception_null_field_error)
             self.check_feature_bench.stop()                
@@ -1032,7 +1043,7 @@ class EDRA_exchange_layer_checker:
             container_attributes_values_unclassified = {
                 'type': 'container',
                 'item_name': "SFA2: Перевірка на відповідність значень полів (атрибутів) об'єкту доменам",
-                'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA2.html')),
+                'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA2.html'),
                 'subitems': []
             }
             
@@ -1078,7 +1089,7 @@ class EDRA_exchange_layer_checker:
             container_attributes_values_length = {
                 'type': 'container',
                 'item_name': "Перевірка на відповідність довжини значення полів (атрибутів) об'єкту",
-                'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA4.html')),
+                'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA4.html'),
                 'subitems': []
             }
             
@@ -1132,7 +1143,7 @@ class EDRA_exchange_layer_checker:
             container_duplicated_guid = {
                 'type': 'container',
                 'item_name': "Перевірка на унікальність ID",
-                'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SL5.html')),
+                'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SL5.html'),
                 'subitems': []
             }
             
@@ -1237,7 +1248,7 @@ class EDRA_exchange_layer_checker:
                     item_name = f"Невідповідна СК шару: «{layer_crs}», очікується: «{required_crs_str}»", 
                     item_tool_tip = f"Невідповідна СК шару", 
                     criticity = 2, 
-                    help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SL3.html'))
+                    help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL3.html')
                 )
                 
             elif result_check_crs_layer == []:
@@ -1268,7 +1279,7 @@ class EDRA_exchange_layer_checker:
                         item_name = f"Невідповідний геометричний тип класу: «{current_layer_geometry_type}», вимагається: «{required_geometry_type}»", 
                         item_tool_tip = f"Невідповідний геометричний тип класу", 
                         criticity = 2, 
-                        help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA4.html'))
+                        help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA4.html')
                     )
                     
                 elif result_check_wrong_layer_geometry_type == []:
@@ -1310,7 +1321,7 @@ class EDRA_exchange_layer_checker:
         container_missing_required_fields = {
             'type': 'container',
             'item_name': "SLF4 Перевірка на наявність обов'язкових полів (атрибутів) шару",
-            'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF4.html')),
+            'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF4.html'),
             'subitems': []
         }
         
@@ -1350,7 +1361,7 @@ class EDRA_exchange_layer_checker:
         container_missing_fields = {
             'type': 'container',
             'item_name': "SLF3 Перевірка на наявність всіх полів (атрибутів) шару",
-            'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF3.html')),
+            'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF3.html'),
             'subitems': []
         }
         
@@ -1389,7 +1400,7 @@ class EDRA_exchange_layer_checker:
         container_wrong_fields_types_errors = {
             'type': 'container',
             'item_name': "SLF2 Перевірка типів даних полів (атрибутів) шару",
-            'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF2.html')),
+            'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF2.html'),
             'subitems': []
         }
         
@@ -1425,7 +1436,7 @@ class EDRA_exchange_layer_checker:
         container_wrong_fields_names_errors = {
             'type': 'container',
             'item_name': "SLF1 Перевірка назви полів (атрибутів) шару",
-            'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF1.html')),
+            'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF1.html'),
             'subitems': []
         }
         
@@ -1452,7 +1463,7 @@ class EDRA_exchange_layer_checker:
                         item_name = f"Назва поля (атрибута) «{field_name}» не відповідає структурі", 
                         item_tool_tip = f"Назва поля (атрибута) не відповідає структурі", 
                         criticity = criticity,
-                        help_url= QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF1.html'))
+                        help_url= os.path.join(self.plugin_dir, 'help', 'inspections', 'SLF1.html')
                     )
                     container_wrong_field_name_errors['subitems'].append(insception_dict_field_error_name_general)
                 
@@ -1580,7 +1591,7 @@ class EDRA_exchange_layer_checker:
                         item_name = f"В шарі {self.layer_props['layer_name']} відсутні об\'єкти", 
                         item_tool_tip = f"В шарі {self.layer_props['layer_real_name']} відсутні об\'єкти", 
                         criticity = 1, 
-                        help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SL1.html'))
+                        help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL1.html')
                     )
             else:
                 insception_layer_is_empty = self.create_inspection_dict(
@@ -1588,7 +1599,7 @@ class EDRA_exchange_layer_checker:
                         item_name = f"В шарі {self.layer_props['layer_name']} наявні об\'єкти", 
                         item_tool_tip = f"В шарі {self.layer_props['layer_real_name']} наявні об\'єкти", 
                         criticity = 0, 
-                        help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SL1.html'))
+                        help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL1.html')
                     )
         
             self.check_result_dict['subitems'].append(insception_layer_is_empty)
@@ -1612,7 +1623,7 @@ class EDRA_exchange_layer_checker:
                         item_name = f"Назва класу «{self.layer_props['layer_real_name']}» не відповідає структурі", 
                         item_tool_tip = f"Назва класу не відповідає структурі", 
                         criticity = 2, 
-                        help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SL2.html'))
+                        help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL2.html')
                     )
                     self.check_result_dict['subitems'].append(insception_dict_layer_error_name_else)
                 
@@ -1623,7 +1634,7 @@ class EDRA_exchange_layer_checker:
                         item_name = f"Назва класу «{self.layer_props['layer_real_name']}» відповідає структурі", 
                         item_tool_tip = f"Назва класу відповідає структурі", 
                         criticity = 0, 
-                        help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SL2.html'))
+                        help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL2.html')
                     )
                     self.check_result_dict['subitems'].append(insception_dict_layer_no_error_name)
 
@@ -1632,7 +1643,7 @@ class EDRA_exchange_layer_checker:
                     container_layer_error_name = {
                         'type': 'container', 
                         'item_name': "Перевірка на наявність помилок в назві шару", 
-                        'help_url': QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SL2.html')),
+                        'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SL2.html'),
                         'subitems': []
                     }
                     
@@ -1691,7 +1702,7 @@ class EDRA_exchange_layer_checker:
                 item_name = f"Шар {self.layer_props['layer_name']} не валідний. GDAL не може зчитати шар", 
                 item_tool_tip = f"Шар {self.layer_props['layer_real_name']}  не валідний.", 
                 criticity = 2, 
-                help_url = QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'inspections', 'SF1.html'))
+                help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SF1.html')
             )
 
             self.check_result_dict['subitems'].append(insception_layer_valid_dict)

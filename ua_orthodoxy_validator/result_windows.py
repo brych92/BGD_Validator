@@ -1,4 +1,3 @@
-
 import sys
 from logging import critical, warn
 import json
@@ -21,6 +20,8 @@ from qgis.core import (Qgis,
 from qgis.utils import iface
 
 from .benchmark import Benchmark
+
+from .sidefunctions import log, save_validator_log, compress_last_validation_folder
 
 from datetime import date
 
@@ -734,12 +735,16 @@ class ResultWindow(QDialog):
         button_layout = QHBoxLayout()
         save_as_bt = QPushButton("Зберегти помилки", self)
         save_as_bt.clicked.connect(self.save_to_json)
-        mark_as_fixed_button = QPushButton("Заглушка", self)
-        close_button = QPushButton("Заглушка", self)
+        
+        mark_as_fixed_button = QPushButton("Зберегти звіт", self)
+        mark_as_fixed_button.setEnabled(False)
+        
+        self.save_log_button = QPushButton("Зберегти Log", self)
+        self.save_log_button.clicked.connect(compress_last_validation_folder)
 
         button_layout.addWidget(save_as_bt)
         button_layout.addWidget(mark_as_fixed_button)
-        button_layout.addWidget(close_button)
+        button_layout.addWidget(self.save_log_button)
 
         main_layout.addLayout(button_layout)
         
@@ -878,6 +883,7 @@ class ResultWindow(QDialog):
         proxy_index = self.tree_widget.selectedIndexes()
         
         if proxy_index is None:
+            log("При відритті контекстного меню виникла помилка: нічого не вибрано", level = Qgis.Info)
             return
         
         proxy_model = self.tree_widget.model()
@@ -891,50 +897,59 @@ class ResultWindow(QDialog):
         selected_item = cast(InspectionItem, main_model.itemFromIndex(main_index))
             
         if selected_item is None:
+            log("При відритті контекстного меню виникла помилка: об'єкт не знайдено", level = Qgis.Warning)
             return
         
         project = QgsProject.instance()
 
-        related_path = selected_item.realtedPath()
 
-        related_layer = selected_item.relatedLayer()
-        if related_layer is not None: 
-            related_layer = project.mapLayer(related_layer.id())
 
-        related_feature = selected_item.relatedFeature()
-        if related_feature is not None: 
-            related_feature_id = selected_item.relatedFeatureID()
-        if related_feature is not None and related_layer is not None:
-            related_feature = next((f for f in related_layer.getFeatures() if f.id() == related_feature_id))
-        
-        related_help_url = selected_item.related_help_url()    
-        print(related_help_url)
 
         menu = QMenu(self)
         
         menu.addAction("Задонатити на ЗСУ")
         menu.addSeparator()
 
+        #help URL
+        related_help_url = selected_item.related_help_url()    
         if related_help_url is not None:
-            menu.addAction("Переглянути сторінку допомоги")
-            menu.addSeparator()
-
+            if related_help_url.startswith("http://") or related_help_url.startswith("https://"):
+                related_help_url = QUrl(related_help_url)
+            else:
+                related_help_url = QUrl.fromLocalFile(related_help_url)
+            if related_help_url.isValid():    
+                menu.addAction("Переглянути сторінку допомоги")
+                menu.addSeparator()
+            else:
+                log(f"В об'єкті {selected_item.text()}({selected_item.toolTip()}) невалідне посилання на документацію: {selected_item.related_help_url()}", level = Qgis.Warning)
+        
+        #шлях до файлу
+        related_path = selected_item.realtedPath()
         if related_path is not None:
             menu.addAction("Відкрити файл")
             menu.addAction("Відкрити папку")
             #menu.addAction("Додати шар в проєкт")
             menu.addSeparator()
 
+        #Об'єкт шару
+        related_layer = selected_item.relatedLayer()
         if related_layer is not None:
+            related_layer = project.mapLayer(related_layer.id())
             menu.addAction("Виділити шар")
             menu.addAction("Перейти в налаштування шару")
             menu.addAction("Переглянуи таблицю атрибутів шару")
             menu.addSeparator()
-        
-        if related_path and related_layer:
-            menu.addSeparator()
 
+        #Об'єкт        
+        related_feature = selected_item.relatedFeature()
+        if related_feature is not None: 
+            related_feature_id = selected_item.relatedFeatureID()
         if related_feature is not None and related_layer is not None:
+            related_feature = next((f for f in related_layer.getFeatures() if f.id() == related_feature_id))#перевірка на наявність об'єкту в шарі
+            if related_feature is None:
+                log(f"В об'єкті {selected_item.text()}({selected_item.toolTip()}) невалідне посилання на об'єкт: {related_feature_id}", level = Qgis.Warning)
+        if related_feature is not None and related_layer is not None:
+            menu.addSeparator()
             menu.addAction("Відкрити форму об'єкту")            
             menu.addAction("Наблизити до об'єкту")
             menu.addAction("Виділити об'єкт")
