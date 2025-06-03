@@ -1,11 +1,14 @@
 from qgis.core import QgsMessageLog, Qgis
-
+from qgis.utils import iface
+from PyQt5.QtGui import QIcon
+import os
 
 logging = True
-validator_name = "👑Головний Валідатор👑"
+validator_name = "UA Ortodoxy validator"
+validator_icon = QIcon(os.path.join(os.path.dirname(__file__), 'resources', 'validated.png'))
 
 def get_desktop_path():
-    import os, platform , ctypes
+    import platform , ctypes
     system = platform.system()
     
     if system == "Windows":
@@ -17,7 +20,7 @@ def get_desktop_path():
             ctypes.windll.shell32.SHGetFolderPathW(None, csidl_desktop, None, 0, path)
             return path.value
         except Exception as e:
-            print(f"Error retrieving desktop path on Windows: {e}")
+            log(f"Error retrieving desktop path on Windows: {e}")
             return os.path.join(os.environ['USERPROFILE'], 'Desktop')
     
     elif system == "Linux":
@@ -26,8 +29,6 @@ def get_desktop_path():
     else:
         raise NotImplementedError(f"Unsupported OS: {system}")
 
-
-
 def log(text: str, level: int = Qgis.Info) -> None:
     if logging:
         QgsMessageLog.logMessage(
@@ -35,32 +36,37 @@ def log(text: str, level: int = Qgis.Info) -> None:
             tag = validator_name, 
             level = level)
 
-def save_dict_as_file(dictionary: dict, file_name: str, file_path: str = None) -> None:
+def save_dict_as_file(dictionary: dict, file_name: str, file_dir: str = None) -> None:
     """
     Зберегти словник у файл.
     
     :param dictionary: словник, який потрібно зберегти
     :param file_name: ім'я файлу, у який потрібно зберегти словник
-    :param file_path: шлях до папки, у яку потрібно зберегти файл.
-                      Якщо не вказано, то буде використовуватися шлях до стільниці.
+    :param file_path: шлях до папки, у яку потрібно зберегти файл. Якщо не вказано, то буде використовуватися шлях до стільниці.
     """
-    import json, os
-    if not os.path.exists(os.path.dirname(file_path)):        
-        os.makedirs(os.path.dirname(file_path))
-    if file_path is None:
-        file_path = os.path.join(get_desktop_path(), f"{file_name}.json")
+    import json
+
+    if file_dir is None:
+        file_dir = os.path.join(get_desktop_path())
     else:
-        file_path = os.path.join(file_path, f"{file_name}.json")
+        if not os.path.exists(file_dir):  
+            if os.path.exists(os.path.dirname(file_dir)):
+                os.mkdir(file_dir)
+            else:
+                log(f"Помилка під час збереження файлу '{file_name}'. Папка '{file_dir}' не знайдена.", level=Qgis.Critical)
+                iface.messageBar().pushWarning("Помилка", f"Папка '{file_dir}' не знайдена...")                
+                return
+        file_full_path = os.path.join(file_dir, f"{file_name}.json")
     
-    with open(file_path, 'w') as file:
+    with open(file_full_path, 'w') as file:
         json.dump(dictionary, file, indent=None, ensure_ascii=False)
+
+    log(f"Словник збережено в '{file_full_path}'", level=Qgis.Success)
 
 def save_validator_log():
     from qgis.PyQt.QtWidgets import (
     QDockWidget, QTabWidget, QPlainTextEdit,
-    QApplication, QAction    
-)
-    from qgis.utils import iface
+    QApplication, QAction)
     from qgis.PyQt.QtCore import Qt
 
     def get_log_tab_content(tab_title=validator_name):
@@ -97,36 +103,35 @@ def save_validator_log():
                 if editor:
                     return editor.toPlainText()
 
-                # 3⃣ якщо все ще нічого — інформуємо
-                iface.messageBar().pushWarning(
-                    "Log helper",
-                    f"QPlainTextEdit у вкладці «{title}» не знайдено."
-                )
-                return None
-
-        # вкладку не знайдено — показуємо список доступних
-        # available = ", ".join(tabs.tabText(i) for i in range(tabs.count()))
-        # iface.messageBar().pushInfo(
-        #     "Log helper",
-        #     f"Вкладку «{tab_title}» не знайдено. Наявні: {available}"
-        # )
+                # 3⃣ якщо все ще нічого — перериваємо, щось пішло не так
+                break
+        
+        log("При спробі збереження логу в файл не змогли отримати доступ до віджету редактора.", level=Qgis.Critical)
+        iface.messageBar().pushWarning("Валідатор", "При спробі збереження логу в файл не змогли отримати доступ до віджету редактора.")
         return None
-
-
-    content = get_log_tab_content()    # читатиме «👑Головний Валідатор👑»
-    if content:
-        import os
-        file_path = os.path.join(os.path.dirname(__file__), 'last_validation', f"log.txt")        
-        if not os.path.exists(os.path.dirname(file_path)):        
-            os.makedirs(os.path.dirname(file_path))
-        
-        
-        with open(file_path, 'w') as file:
-            file.write(content)
+    
+    content = get_log_tab_content()
+    if not content:
+        return
+    file_dir = os.path.join(os.path.dirname(__file__), 'last_validation')
+    
+    if not os.path.exists(file_dir):  
+        if os.path.exists(os.path.dirname(file_dir)):
+            os.mkdir(file_dir)
+        else:
+            log(f"Помилка під час збереження файлу Логування. Папка '{file_dir}' не знайдена.", level=Qgis.Critical)
+            iface.messageBar().pushWarning("Помилка", f"Папка '{file_dir}' не знайдена...")
+            return
+    
+    file_path = os.path.join(file_dir, "log.txt")
+    
+    with open(file_path, 'w') as file:
+        file.write(content)
+    log(f"Логування збережено в файл: {file_path}", level=Qgis.Success)
 
 def compress_last_validation_folder():
     save_validator_log()
-    import os, shutil
+    import shutil
     from qgis.PyQt.QtWidgets import QFileDialog
     source_folder = os.path.join(os.path.dirname(__file__), 'last_validation')
     target_folder, _ = QFileDialog.getSaveFileName(None, "Зберегти архів останньої перевірки", get_desktop_path(), "Zip files (*.zip)")
@@ -134,3 +139,5 @@ def compress_last_validation_folder():
         if target_folder.endswith('.zip'):
             target_folder = target_folder[:-4]  # Remove the .zip extension if present
         shutil.make_archive(target_folder, 'zip', source_folder)
+        log(f"Архів збережено: {target_folder}.zip", level=Qgis.Success)
+        iface.messageBar().pushSuccess(validator_name, f"Архів збережено: {target_folder}.zip")
