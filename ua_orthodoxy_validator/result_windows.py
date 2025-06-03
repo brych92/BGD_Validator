@@ -22,6 +22,7 @@ from qgis.utils import iface
 from .benchmark import Benchmark
 
 from .sidefunctions import log, save_validator_log, compress_last_validation_folder
+from .sidefunctions import validator_name, validator_icon
 
 from datetime import date
 
@@ -134,7 +135,7 @@ class InspectionItem(QStandardItem):
         - критичність помилки (CRITICITY).
     
     '''
-    DEFALUT_LEN = 50
+    DEFAULT_LEN = 50
 
     TYPE = Qt.UserRole
     HELP_URL = Qt.UserRole + 1
@@ -186,7 +187,7 @@ class InspectionItem(QStandardItem):
         '''
         self.colorIndex = 0
 
-        item_name = IDict.get('item_name')
+        item_name: str = IDict.get('item_name')
         
         if type(item_name) is list and len(item_name) > 0:
             item_name = IDict.get('inspection_type_name', item_name[0]) + ':'
@@ -194,14 +195,17 @@ class InspectionItem(QStandardItem):
         if item_name is None:
             raise AttributeError("Немає значення 'item_name' у даних елемента.")
         
-        if len(item_name) > self.DEFALUT_LEN:
-            idx = item_name.rfind(' ', 0, self.DEFALUT_LEN)
+        if len(item_name) > self.DEFAULT_LEN:
+            idx = item_name.rfind(' ', 0, self.DEFAULT_LEN)
             if idx != -1:
                 item_name = item_name[0:idx] + '\n' + item_name[idx+1:]
             else:
-                idx = item_name.lfind(' ', 0, self.DEFALUT_LEN)
+                idx = item_name.find(' ', self.DEFALUT_LEN)
                 if idx != -1:
                     item_name = item_name[0:idx] + '\n' + item_name[idx+1:]
+                else:
+                    item_name = item_name[0:self.DEFAULT_LEN] + '-\n' + item_name[self.DEFAULT_LEN+1:]
+                
 
         super().__init__(item_name)  # Викликаємо конструктор батьківського класу
         self.set_color(IDict.get('criticity', 0))
@@ -221,7 +225,7 @@ class InspectionItem(QStandardItem):
 
         self.setData(IDict.get('related_layer_id'), self.RELATED_LAYER_ID)
 
-        self.setData(IDict.get('real_layer_name'), self.REAL_LAYER_NAME)
+        self.setData(IDict.get('layer_real_name'), self.REAL_LAYER_NAME)
 
         self.setData(IDict.get('visible_layer_name'), self.VISIBLE_LAYER_NAME)
 
@@ -268,16 +272,24 @@ class InspectionItem(QStandardItem):
         """Встановлює дані елемента для зазначеної ролі."""
         super().setData(value, role)
 
-    
+    def visibleLayerName(self):
+        """Отримує відображувану назву шару."""
+        if self.getData(self.VISIBLE_LAYER_NAME) is None:
+            if self.parent() is not None:
+                return self.parent().visibleLayerName()
+            else:
+                return None
 
     def realLayerName(self):
         """Отримує реальну назву шару."""
         if self.getData(self.REAL_LAYER_NAME) is None:
             if self.parent() is not None:
-                return self.parent().realtedPath()
+                return self.parent().realLayerName()
             else:
                 return None
 
+        return self.getData(self.REAL_LAYER_NAME)
+    
     def realtedPath(self):
         """Отримує повний шлях до файлу."""
         if self.getData(self.RELATED_FILE_PATH) is None:
@@ -401,15 +413,23 @@ class InspectionItem(QStandardItem):
 
         return feature
     
-    def related_help_url(self):
+    def relatedHelpUrl(self):
         if self.getData(self.HELP_URL) is None:
             if self.parent() is not None:
-                return self.parent().related_help_url()
+                return self.parent().relatedHelpUrl()
             else:
                 return None
             
         return self.getData(self.HELP_URL)
 
+    def isLayer(self):
+        if self.getData(self.TYPE) == 'layer':
+            return True
+        elif self.parent() is not None:
+            return self.parent().isLayer()
+        else:
+            return False
+        
     def __repr__(self):
         """Отримує текстову репрезентацію елемента."""
         return f"InspectionItem('{self.getData(0)}', type={self.getData(self.TYPE)}, criticity={self.getData(self.CRITICITY)})"
@@ -508,7 +528,7 @@ class CustomItemModel(QStandardItemModel):
 
         benchi_f.join(self.parse_bench)
         
-        print(benchi_f.get_report())
+        #print(benchi_f.get_report())
 
     def get_inspections(self):
         def iterate_model(parent: InspectionItem):
@@ -690,12 +710,10 @@ class ResultWindow(QDialog):
 
         self.benchi.start('interface1')
         # Налаштування основного вікна
-        self.setWindowTitle("Результати перевірки")
+        self.setWindowTitle(f"{validator_name} - Результати перевірки")
+        self.setWindowIcon(validator_icon)
         
         self.setWindowFlags(self.windowFlags() | Qt.WindowMinMaxButtonsHint)
-        
-        icon_path = "/resources/Team_logo_c_512.png"
-        self.setWindowIcon(QIcon(icon_path))
         
         # Головний вертикальний лейаут
         sidebar_layout = QHBoxLayout(self)
@@ -765,7 +783,7 @@ class ResultWindow(QDialog):
         filters_widget.inspection_name_filtered_signal.connect(self.proxyModel.filterByInspectionType)
         self.benchi.stop()
 
-        print(self.benchi.get_report())
+        #print(self.benchi.get_report())
         # Підключення контекстного меню до багатошарового списку
         self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree_widget.customContextMenuRequested.connect(self.show_context_menu)
@@ -774,12 +792,12 @@ class ResultWindow(QDialog):
         return self.model.get_filtration_dict()
 
     def closeEvent(self, event):
-        print('triggered close event')
+        log('Колбек на закриття вікна результату', level=Qgis.Info)
         self.deleteLater()
         event.accept()
 
     def ondelete(self):
-        print('triggered delete event')
+        log('Колбек на видалення вікна результату', level=Qgis.Info)
         self.deleteLater()
 
     def show_context_menu(self, position):        
@@ -825,11 +843,38 @@ class ResultWindow(QDialog):
             QDesktopServices.openUrl(url)
 
         def add_layer_to_project(inspection_item: InspectionItem):            
-            print(inspection_item.relatedLayer())
-            print(inspection_item.realtedPath())
-            print(inspection_item.realLayerName())
-            pass
-            #QgsProject.instance().addMapLayer(layer)
+            log(f"Завантаження шару з '{inspection_item}'({inspection_item.realtedPath()}) в проект ", level=Qgis.Info)
+            if inspection_item.realtedPath() is None:
+                return False
+            
+            if not os.path.exists(inspection_item.realtedPath()):
+                log(f"Помилка при завантаженні шару в проект файл '{inspection_item.realtedPath()}' не знайдено...", level=Qgis.Warning)
+                return False
+            
+            layer = None
+            extention = os.path.splitext(os.path.basename(inspection_item.realtedPath()))[-1]
+            if not isinstance(extention, str):
+                log(f"При спробі завантаження файлу '{inspection_item.realtedPath()}' виникла помилка зчитування розширення файлу...", level=Qgis.Warning)
+                return False
+            
+            if extention.lower() in ['.geojson', '.json','.shp']:
+                layer = QgsVectorLayer(inspection_item.realtedPath(), inspection_item.realLayerName(), "ogr")
+            elif extention.lower() in ['.gpkg', '.gdb'] and inspection_item.realLayerName() is not None:
+                layer = QgsVectorLayer(f"{inspection_item.realtedPath()}|layername={inspection_item.realLayerName()}", inspection_item.realLayerName(), "ogr")
+                
+            if layer:
+                layer = QgsProject.instance().addMapLayer(layer)
+                if isinstance(layer, QgsVectorLayer):
+                    log(f"Шар {inspection_item.realLayerName()} успішно завантажено в проект", level=Qgis.Success)
+                    selected_item.setData(layer.id(), InspectionItem.RELATED_LAYER_ID)
+                    
+                    return True
+                
+            log(f"Не вдалося створити шар, щооб завантажити {inspection_item.realLayerName()}({inspection_item.realtedPath()}) в проект", level=Qgis.Warning)
+            return False
+                
+
+        
         #відкрити файл
         def open_file(file_path):
             if not os.path.exists(file_path):
@@ -911,7 +956,7 @@ class ResultWindow(QDialog):
         menu.addSeparator()
 
         #help URL
-        related_help_url = selected_item.related_help_url()    
+        related_help_url = selected_item.relatedHelpUrl()    
         if related_help_url is not None:
             if related_help_url.startswith("http://") or related_help_url.startswith("https://"):
                 related_help_url = QUrl(related_help_url)
@@ -921,20 +966,19 @@ class ResultWindow(QDialog):
                 menu.addAction("Переглянути сторінку допомоги")
                 menu.addSeparator()
             else:
-                log(f"В об'єкті {selected_item.text()}({selected_item.toolTip()}) невалідне посилання на документацію: {selected_item.related_help_url()}", level = Qgis.Warning)
+                log(f"В об'єкті {selected_item.text()}({selected_item.toolTip()}) невалідне посилання на документацію: {selected_item.relatedHelpUrl()}", level = Qgis.Warning)
         
         #шлях до файлу
         related_path = selected_item.realtedPath()
         if related_path is not None:
             menu.addAction("Відкрити файл")
             menu.addAction("Відкрити папку")
-            #menu.addAction("Додати шар в проєкт")
+            if selected_item.isLayer() and selected_item.relatedLayer() is None: menu.addAction("Додати шар в проєкт")
             menu.addSeparator()
 
         #Об'єкт шару
         related_layer = selected_item.relatedLayer()
         if related_layer is not None:
-            related_layer = project.mapLayer(related_layer.id())
             menu.addAction("Виділити шар")
             menu.addAction("Перейти в налаштування шару")
             menu.addAction("Переглянуи таблицю атрибутів шару")
