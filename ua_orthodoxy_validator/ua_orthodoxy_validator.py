@@ -35,6 +35,7 @@ from .resources import *
 from .Start_Window import MainWindow
 import os.path
 
+from .sidefunctions import validator_name, log
 
 class UA_orthodoxy_validator:
     """QGIS Plugin Implementation."""
@@ -206,10 +207,10 @@ class UA_orthodoxy_validator:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = os.path.join(self.plugin_dir, 'icon.png')
+        icon_path = os.path.join(self.plugin_dir, 'resources','validated.png')
         self.add_action(
             icon_path,
-            text=self.tr('UA orthodoxy validator'),
+            text=self.tr(validator_name),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -257,7 +258,7 @@ class UA_orthodoxy_validator:
         if len(self.ua_spt_menu.children()) == 1:
             self.ua_spt_menu.deleteLater()
         else:
-            print(False)
+            log(f'В меню наявні інші елементи, кількість елементів: {len(self.ua_spt_menu.children())}')
         if self.ua_spt_toolbar.children() == []:
             self.ua_spt_toolbar.deleteLater()
         
@@ -267,8 +268,6 @@ class UA_orthodoxy_validator:
         
 
     def run(self):
-        """Run method that performs all the real work"""
-
         # Create the dialog with elements (after translation) and keep reference
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
