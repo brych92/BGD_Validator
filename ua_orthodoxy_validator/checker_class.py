@@ -215,10 +215,11 @@ class EDRA_validator:
                 if "used_spaces" in errors:
                     required_text = required_text.replace(' ', '')
                 return required_text
-
-        if type(current_text) != str:
+        
+        string_text = str(current_text)
+        if type(string_text) != str:
             curret_text = ""
-            raise TypeError(f'text "{current_text}" must be a string')
+            raise TypeError(f'text "{string_text}" must be a string')
         if type(required_text) != str: 
             raise TypeError(f'regex "{required_text}" must be a string')
         if alias and type(alias) != str:
@@ -226,39 +227,39 @@ class EDRA_validator:
         
         
         #повне співпадіння
-        if self.value_check(required_text, current_text):
+        if self.value_check(required_text, string_text):
             errors = []
 
         #вивід при неспівпадіння регістру
-        elif self.value_check(required_text, current_text, case_insensitive=True):
+        elif self.value_check(required_text, string_text, case_insensitive=True):
             errors = ['capital_letters']
 
         #кириличні літери
-        elif self.value_check(required_text, self.convert_cyrillic_to_latin_text(current_text)):
+        elif self.value_check(required_text, self.convert_cyrillic_to_latin_text(string_text)):
             errors = ['used_cyrillic']
         
         #пробіли
-        elif self.value_check(required_text, current_text.replace(' ', '')):
+        elif self.value_check(required_text, string_text.replace(' ', '')):
             errors = ['used_spaces']
         
         #alias
-        elif alias and self.value_check(alias, current_text):
+        elif alias and self.value_check(alias, string_text):
             errors = ['used_alias']
                 
         #кириличні літери + вивід при неспівпадіння регістру
-        elif self.value_check(required_text, self.convert_cyrillic_to_latin_text(current_text), case_insensitive=True):
+        elif self.value_check(required_text, self.convert_cyrillic_to_latin_text(string_text), case_insensitive=True):
             errors = ['used_cyrillic', 'capital_letters']
         
         #пробіли + вивід при неспівпадіння регістру
-        elif self.value_check(required_text, current_text.replace(' ', '').lower(), case_insensitive=True):
+        elif self.value_check(required_text, string_text.replace(' ', '').lower(), case_insensitive=True):
             errors = ['used_spaces', 'capital_letters']
         
         #alias + вивід при неспівпадіння регістру
-        elif alias and self.value_check(alias, current_text, case_insensitive=True):
+        elif alias and self.value_check(alias, string_text, case_insensitive=True):
             errors = ['used_alias', 'capital_letters']
 
         #кириличні літери + пробіли + вивід при неспівпадіння регістру
-        elif self.value_check(required_text, self.convert_cyrillic_to_latin_text(current_text).replace(' ', ''), case_insensitive=True):
+        elif self.value_check(required_text, self.convert_cyrillic_to_latin_text(string_text).replace(' ', ''), case_insensitive=True):
             errors = ['used_cyrillic', 'used_spaces', 'capital_letters']
         
         #якшо співпадіння не знайдено
@@ -277,7 +278,7 @@ class EDRA_validator:
         return {
             'is_match':True,
             "errors":errors,
-            'displayed_name':displayed_name(required_text, current_text)
+            'displayed_name':displayed_name(required_text, string_text)
             }
     
     def check_name_in_list(self, current_text: str, required_text_dict: dict[str, str]) -> dict:
@@ -509,11 +510,8 @@ class EDRA_validator:
                 required_field_type_number_list = []
                 for x in required_field_type_name:
                     required_field_type_number_list += self.qt_and_ogr_data_types[x.lower()]['ogr_codes']
-                print(f"required_field_type_number_list: {required_field_type_number_list}")
                 
-                print(f"current_field_type_name: {current_field_type_name}")#required_field_type_number_list)
                 required_field_type_names_list = [ogr.GetFieldTypeName(ogr_index).lower() for ogr_index in required_field_type_number_list]
-                print(f"required_field_type_names_list: {required_field_type_names_list}")
                 check_field_name_result = valid_field_name in self.fields_structure_json#structure_field_names
                 
                 # костиль під текстові поля geojson
@@ -1678,7 +1676,7 @@ class EDRA_exchange_layer_checker:
                     self.check_result_dict['subitems'].append(container_layer_error_name)
 
                     self.parse_bench.start('reinit_class')
-                    print(f'Перезавантаження класу з назвою {errors_check_result["valid_name"]}')
+                    log(f'Перезавантаження класу з назвою {errors_check_result["valid_name"]}')
                     self.layer_EDRA_valid_class = EDRA_validator(
                         layer = self.layer_EDRA_valid_class.layer,
                         layer_exchange_name = errors_check_result['valid_name'],
@@ -1717,7 +1715,7 @@ class EDRA_exchange_layer_checker:
             self.parse_bench.join(self.write_result_dict_bench)
         
 
-        print(f"Завершення перевірки шару {self.layer_props['layer_name']}..... Done")
+        log(f"Завершення перевірки шару {self.layer_props['layer_name']}..... Done")
         #print(self.parse_bench.get_report())
 
         return self.check_result_dict
