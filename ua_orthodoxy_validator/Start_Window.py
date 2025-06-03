@@ -27,6 +27,7 @@ from .checker_class import EDRA_exchange_layer_checker, EDRA_validator
 import gc
 
 from .sidefunctions import log, save_dict_as_file, save_validator_log, compress_last_validation_folder
+from .sidefunctions import validator_name, validator_icon
 
 
 
@@ -94,7 +95,7 @@ def run_validator(task:QgsTask = None, input_list:list = None):
         file_extension = os.path.splitext(path)[1]
         return file_extension in reuired_format
     
-    save_dict_as_file(input_list, 'input_list_for_run_validator', file_path = os.path.join(os.path.dirname(__file__), 'last_validation'))
+    save_dict_as_file(input_list, 'input_list_for_run_validator', file_dir = os.path.join(os.path.dirname(__file__), 'last_validation'))
 
     layers = input_list[0]
     structure_folder = input_list[1]
@@ -109,13 +110,14 @@ def run_validator(task:QgsTask = None, input_list:list = None):
     global_guid_dict = {}
     damaged_files_list = []
 
-    print('start run_validator.................')
+    #print('start run_validator.................')
     for id in layers:
         file_path = layers[id]['path']
+        
         if file_path in damaged_files_list: #відпрацювання скіпу перевірки якшо файл вже перевірявся і він битий
             continue
-
-        dataSource = ogr.Open(layers[id]['path'], 0)
+        log(f"Пробую відкрити файл {file_path}...")
+        dataSource = ogr.Open(file_path, 0)
         
         if dataSource is None: #відпрацювання скіпу перевірки якшо файл битий
             temp_files_dict[file_path] = {
@@ -445,7 +447,9 @@ class MainWindow(QDialog):
 
         self.validator_task = ''
         
-        self.setWindowTitle("Налаштуйте параметри перевірки")
+        self.setWindowTitle(validator_name.strip())
+        self.setWindowIcon(validator_icon)
+        #self.setWindowTitle("Налаштуйте параметри перевірки")
         self.folder_path=os.path.expanduser('~')
         self.filter = ''
 
@@ -589,7 +593,7 @@ class MainWindow(QDialog):
                 print(помилка)
                 raise помилка
         
-        log(f"Запуск перевірки: {self.get_BGD_type()}({self.get_BGD_version()}){self.get_crs()[:30].rstrip()}...", level = Qgis.Info)
+        log(f"Запуск перевірки: {self.get_BGD_type()}({self.get_BGD_version()}){self.get_crs()[:100]}...", level = Qgis.Info)
         layers_dict = {}
         structure_folder = self.strutures[self.get_BGD_type()][self.get_BGD_version()]['path']
         #print(json.dumps(self.strutures, indent=4, ensure_ascii=False))
@@ -687,17 +691,17 @@ class MainWindow(QDialog):
                 layersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
             
             elif file_type == 'gdb/gdb':
-                ds = ogr.Open(os.path.dirname(path))
+                gbd_path = os.path.dirname(path)
+                ds = ogr.Open(gbd_path)
                 if ds is None:
                     QMessageBox.critical(None, "Помилка", f"Файл {path} пошкоджено")
-                
                 tempLayersList = []
                 for i in range(ds.GetLayerCount()):
                     layer = ds.GetLayerByIndex(i)
                     layerName = layer.GetName()
                     obj_qty = layer.GetFeatureCount()
                     id = random_id(layerName)
-                    tempLayersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=path, features_qty = obj_qty))
+                    tempLayersList.append(layerItem(id=id, visible_name=layerName, real_name=layerName, path=gbd_path, features_qty = obj_qty))
                 
                 lsDialog = layerSelectionDialog(tempLayersList, parent=self)
                 errors_list = []
