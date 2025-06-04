@@ -2,9 +2,12 @@ from re import split
 import re
 from typing import Union, cast 
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
-    QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox, QAbstractItemView
+    QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox, QAbstractItemView, QLabel
+
+from PyQt5.QtWidgets import QSizePolicy
+
 from PyQt5.QtCore import Qt, QMimeData, QSize, QUrl
-from PyQt5.QtGui import QCursor, QIcon, QDesktopServices
+from PyQt5.QtGui import QCursor, QIcon, QDesktopServices, QPixmap
 from numpy import unicode_
 from qgis.core import (
     QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsTask, QgsApplication,
@@ -370,6 +373,127 @@ class layerSelectionDialog(QDialog):
         
         return result
 
+
+class LayerButtonsPanel(QWidget):
+    def __init__(self, parent =None):
+        def clear_empty_layers():
+            log("Видаляю пустиі шари...", level=Qgis.Info)
+            for i in reversed(range(parent.layer_list_widget.topLevelItemCount())):
+                item = cast(layerItem, parent.layer_list_widget.topLevelItem(i))
+                if item and item.getFeaturesQty() == 0:
+                    parent.layer_list_widget.takeTopLevelItem(i)
+            log("Пусті шари - видалено!", level=Qgis.Info)
+        
+        super().__init__(parent)
+        self.setContentsMargins(0, 0, 0, 0)
+        resources_path = os.path.join(os.path.dirname(__file__), 'resources')
+        layout = QVBoxLayout(self)
+        layout.setSpacing(5)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Кнопка "Додати виділені шари"
+        self.add_selected_btn = QPushButton()
+        self.add_selected_btn.setToolTip("Додати виділені шари з дерева шарів QGIS")
+        self.add_selected_btn.setIcon(QIcon(os.path.join(resources_path, 'from_selected.png')))
+        self.add_selected_btn.clicked.connect(parent.add_selected_layers)
+        layout.addWidget(self.add_selected_btn)
+        
+
+        # Кнопка "Додати шари з файлу"
+        self.add_from_file_btn = QPushButton()
+        self.add_from_file_btn.setToolTip("Додати шари з вибраного файлу")
+        self.add_from_file_btn.setIcon(QIcon(os.path.join(resources_path, 'from_file.png')))
+        self.add_from_file_btn.clicked.connect(lambda: parent.openFiles(True))
+        layout.addWidget(self.add_from_file_btn)
+
+        # Кнопка "Видалити всі пусті шари"
+        self.remove_empty_btn = QPushButton()
+        self.remove_empty_btn.setToolTip("Видалити всі пусті шари зі списку")
+        self.remove_empty_btn.setIcon(QIcon(os.path.join(resources_path, 'clear_empty.png')))
+        self.remove_empty_btn.clicked.connect(clear_empty_layers)
+        layout.addWidget(self.remove_empty_btn)
+
+        #кнопка видалити всі шари
+        self.remove_all_btn = QPushButton()
+        self.remove_all_btn.setToolTip("Видалити всі шари зі списку")
+        self.remove_all_btn.setIcon(QIcon(os.path.join(resources_path, 'clear_all.png')))
+        self.remove_all_btn.clicked.connect(parent.layer_list_widget.clear)
+        layout.addWidget(self.remove_all_btn)
+        
+        layout.addStretch()
+
+        # Кнопка "Відкрити результати перевірки"
+        self.open_results_btn = QPushButton()
+        self.open_results_btn.setToolTip("Відкрити результати перевірки")
+        self.open_results_btn.setIcon(QIcon(os.path.join(resources_path, 'load_validation.png')))
+        self.open_results_btn.clicked.connect(parent.open_json)
+        layout.addWidget(self.open_results_btn)
+
+        # Розділювач
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(separator)
+
+        # Кнопка "Відкрити допомогу"
+        self.help_btn = QPushButton()
+        self.help_btn.setToolTip("Відкрити допомогу")
+        self.help_btn.setIcon(QIcon(os.path.join(resources_path, 'help.png')))
+        self.help_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.join(os.path.dirname(__file__), 'help', 'index.html'))))
+        layout.addWidget(self.help_btn)
+
+        button_size = 32  # або 36, 40, як хочеш
+        for btn in [self.add_selected_btn, self.add_from_file_btn, self.remove_empty_btn,
+                    self.remove_all_btn, self.open_results_btn, self.help_btn]:
+            btn.setIconSize(QSize(button_size, button_size))
+            btn.setFixedSize(button_size + 10, button_size + 10)
+
+class LaunchValidationButton(QPushButton):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Шлях до картинки-космонавта
+        resources_path = os.path.join(os.path.dirname(__file__), 'resources')
+        astronaut_path = os.path.join(resources_path, 'run_validator.png')  # заміни на свою назву
+
+        # Встановлення тексту та стилю
+        self.setText("  Запустити перевірку  ")  # з відступами
+        self.setToolTip("Запустити перевірку відповідності ваших шарів")
+        self.setIcon(QIcon(QPixmap(astronaut_path)))
+        self.setIconSize(QSize(84, 42))  # підігнано під висоту кнопки
+
+        # Мінімальний і максимальний розмір
+        self.setMinimumHeight(42)
+        self.setMaximumHeight(42)
+        self.setMinimumWidth(350)
+        self.setMaximumWidth(640)
+
+        # Автоматичне масштабування по ширині
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        # CSS стиль
+        self.setStyleSheet("""
+            QPushButton {
+                background-color: #199ca6;
+                color: white;
+                font-size: 14px;
+                border-radius: 3px;
+                padding-left: 12px;
+                text-align: left;
+                font-weight: bold;
+            
+            }
+            QPushButton:hover {
+                background-color: #1fbac0;
+            }
+            QPushButton:pressed {
+                background-color: #188f99;
+            }
+        """)        
+
+
+
+
 class MainWindow(QDialog):
     def parse_structures(self, directory:str) -> dict:
         """Парсить структури з директорії, повертаючи словник з наступною структурою:
@@ -449,58 +573,27 @@ class MainWindow(QDialog):
         
         self.setWindowTitle(validator_name.strip())
         self.setWindowIcon(validator_icon)
-        #self.setWindowTitle("Налаштуйте параметри перевірки")
         self.folder_path=os.path.expanduser('~')
         self.filter = ''
-
-        # Create a QVBoxLayout
-        layerslayout = QVBoxLayout(self)
-        self.ll = layerslayout
-        
-        self.from_layer_tree_frame = QFrame()
-
         max_height = QApplication.desktop().screenGeometry().height()
         max_width = 640#QApplication.desktop().screenGeometry().width()
         self.setMaximumSize(QSize(max_width-40, max_height-40))
 
-        layersTopButtonsLayout = QHBoxLayout(self)
-        layertreeWidgetbuttonslayout1 = QVBoxLayout(self)
-        layertreeWidgetbuttonslayout2 = QVBoxLayout(self)
-        layersTopButtonsLayout.addLayout(layertreeWidgetbuttonslayout1)
-        layersTopButtonsLayout.addLayout(layertreeWidgetbuttonslayout2)
+        # Create a QHBoxLayout
+        self.side_to_side_layout = QHBoxLayout(self)
+        # Create a QVBoxLayout
+        layerslayout = QVBoxLayout(self)
+        self.ll = layerslayout
         
-        
-        update_layers_button = QPushButton("🔄 Очистити список")
-        update_layers_button.setToolTip("Очистити список та заповнити виділеними шарами")
-        update_layers_button.clicked.connect(self.update_layers)
-        update_layers_button.setEnabled(True)
-        update_layers_button.setMenu(QMenu())
-        update_layers_button.menu().addAction("Тільки з обє'єктами", self.update_layers_with_objects)
-        update_layers_button.menu().addAction("Всі виділені шари", self.update_layers_with_objects)
-        layertreeWidgetbuttonslayout1.addWidget(update_layers_button)
-
-        add_layers_button = QPushButton("➕ Додати виділені")
-        add_layers_button.setToolTip("Додати в кінець списку виділені шари")
-        add_layers_button.clicked.connect(self.add_selected_layers)
-        layertreeWidgetbuttonslayout1.addWidget(add_layers_button)
-
-        openFromFileButton = QPushButton("📂🔄 Відкрити з файлу")
-        openFromFileButton.setToolTip("Очистити список та заповнити шарами з файлу")
-        openFromFileButton.clicked.connect(self.openFiles)
-        layertreeWidgetbuttonslayout2.addWidget(openFromFileButton)
-
-        addFromFileButton = QPushButton("📂➕ Додати з файлу")
-        addFromFileButton.setToolTip("Додати в кінець списку шари з файлу")
-        addFromFileButton.clicked.connect(lambda: self.openFiles(True))
-        layertreeWidgetbuttonslayout2.addWidget(addFromFileButton)
-
-        layerslayout.addLayout(layersTopButtonsLayout)
+        layerslayout.addWidget(QLabel("Шари до валідації:"))
 
         self.layer_list_widget = customlayerListWidget()
-        self.layer_list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.layer_list_widget.setMinimumHeight(400)
         self.layer_list_widget.customContextMenuRequested.connect(self.show_context_menu)
         # Add the tree view to the layout
         layerslayout.addWidget(self.layer_list_widget)
+        
+        
         self.plugin_dir = os.path.dirname(__file__)
         self.path_to_structures = os.path.join(self.plugin_dir, 'stuctures')
         self.strutures = self.parse_structures(self.path_to_structures)
@@ -524,27 +617,16 @@ class MainWindow(QDialog):
         layerslayout.addWidget(self.BGD_version_combo_box)
         layerslayout.addWidget(self.crs_combo_box)
         self.runButton = QPushButton("Запустити перевірку")
+        self.runButton = LaunchValidationButton()
         self.runButton.clicked.connect(self.run)
         
-        self.openJsonButton = QPushButton("")
-        self.openJsonButton.setIcon(QIcon(os.path.join(self.plugin_dir, 'resources', 'load_file.png')))
-        self.openJsonButton.setToolTip("Відкрити результат перевірки")
-        self.openJsonButton.setFixedSize(self.openJsonButton.sizeHint())
-        self.openJsonButton.clicked.connect(self.open_json)
-        
-        self.help = QPushButton("❓")
-        # self.help.setIcon(QIcon(os.path.join(self.plugin_dir, 'resources', 'load_file.png')))
-        self.help.setToolTip("Про програму")
-        self.help.setFixedSize(24, self.help.sizeHint().height())
-        self.help.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.join(self.plugin_dir, 'help', 'index.html'))))
-
-
         self.runLayout = QHBoxLayout()
         self.runLayout.addWidget(self.runButton)
-        self.runLayout.addWidget(self.openJsonButton)
-        self.runLayout.addWidget(self.help)
         layerslayout.addLayout(self.runLayout)
-        self.setLayout(layerslayout)
+        self.sidebar = LayerButtonsPanel(self)
+        self.side_to_side_layout.addWidget(self.sidebar)
+        self.side_to_side_layout.addLayout(layerslayout)
+        self.setLayout(self.side_to_side_layout)
         self.bench.stop()
     
     def get_BGD_type(self):

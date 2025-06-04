@@ -611,6 +611,7 @@ class EDRA_validator:
         if feature is None or not isinstance(feature, ogr.Feature):
             log(f"При перевірці атрибуту на відповідність доменам було передано невірний об'єкт: {feature}", level=Qgis.Critical)
             return {'check_result': False, "criticity": 2, "note": "Об'єкт не є ogr.Feature"}
+        
         #якщо поле не заповнено
         if feature[field_name] is None:
             if self.fields_structure_json[self.field_name_correspondence[field_name]]['attribute_required'] == 'True':
@@ -628,7 +629,7 @@ class EDRA_validator:
         if domain_ref is not None and domain_ref.startswith('⁂'):
             regex_result = self.compare_text(required_text = domain_ref, current_text = feature[field_name])
             if not regex_result["is_match"]:
-                result_dict = {'check_result': False, "criticity": 2, "note": 'Значення не відповідає вимогам формату структури'}
+                result_dict = {'check_result': False, "criticity": 2, "note": f"Значення атрибуту не відповідає вимогам формату згідно з структурою: є '{feature[field_name]}', а повинно бути(regex рядок) '{domain_ref}'"}
                 return result_dict
             else:
                 result_dict = {'check_result': True}
@@ -1040,8 +1041,7 @@ class EDRA_exchange_layer_checker:
             
             container_attributes_values_unclassified = {
                 'type': 'container',
-                'item_name': "SFA2: Перевірка на відповідність значень полів (атрибутів) об'єкту доменам",
-                'help_url': os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA2.html'),
+                'item_name': "SFA2-3: Перевірка на відповідність значень полів (атрибутів) об'єкту доменам або формату",
                 'subitems': []
             }
             
@@ -1049,20 +1049,30 @@ class EDRA_exchange_layer_checker:
             
             if len(attribute_values_unclassified_dict.keys()) > 0:                
                 for field_name, data in attribute_values_unclassified_dict.items():
-                    insception_unclassified_value_error = self.create_inspection_dict(
-                        inspection_type_name = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
-                        item_name = f"Атрибут: '{field_name}' має значення '{data['value']}', що не відповідає домену (див. опис поля). {data['note']}", 
-                        item_tool_tip = f"Значення атрибуту '{field_name}' не відповідає домену. {data['note']}", 
-                        criticity = data['criticity']
-                    )
+                    if isinstance(data['note'], str) and data['note'].startswith('Значення атрибуту не відповідає вимогам формату згідно з структурою:'):
+                        insception_unclassified_value_error = self.create_inspection_dict(
+                            inspection_type_name = "SFA3 Перевірка на відповідність значень полів (атрибутів) об'єкту формату заданого структурою", #Підтягувати перевірку з файлу структури з помилками
+                            item_name = data['note'], 
+                            item_tool_tip = data['note'],
+                            help_url =  os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA3.html'),
+                            criticity = data['criticity']
+                        )
+                    else:    
+                        insception_unclassified_value_error = self.create_inspection_dict(
+                            inspection_type_name = "SFA2 Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
+                            item_name = f"Атрибут: '{field_name}' має значення '{data['value']}', що не відповідає домену (див. опис поля). {data['note']}", 
+                            item_tool_tip = f"Значення атрибуту '{field_name}' не відповідає домену. {data['note']}", 
+                            help_url =  os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA2.html'),
+                            criticity = data['criticity']
+                        )
                     container_attributes_values_unclassified['subitems'].append(insception_unclassified_value_error)
                     
             elif len(attribute_values_unclassified_dict.keys()) == 0 :
                 insception_classified_value = None
                 insception_classified_value = self.create_inspection_dict(                    
-                    inspection_type_name = "Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
-                    item_name = f"Всі значення полів відповідають доменам", 
-                    item_tool_tip = f"Всі значення полів відповідають доменам", 
+                    inspection_type_name = "SFA2 Перевірка на відповідність значень полів (атрибутів) об'єкту доменам", #Підтягувати перевірку з файлу структури з помилками
+                    item_name = f"Всі значення полів відповідають доменам/формату", 
+                    item_tool_tip = f"Всі значення полів відповідають доменам/формату", 
                     criticity = 0
                 )
                 container_attributes_values_unclassified['subitems'].append(insception_classified_value)
@@ -1098,7 +1108,8 @@ class EDRA_exchange_layer_checker:
                     insception_attributes_length_value_exceed = self.create_inspection_dict(
                         inspection_type_name = 'Перевірка на відповідність довжини значення атрибуту', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"Атрибут: '{field_name}' має довжину {attributes_length_exceed_dict[field_name][0]}, а треба не більше {attributes_length_exceed_dict[field_name][1]}", 
-                        item_tool_tip = f"Атрибут: '{field_name}' має довжину більше дозволеної структурою", 
+                        item_tool_tip = f"Атрибут: '{field_name}' має довжину більше дозволеної структурою",
+                        help_url=os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA4.html'),
                         criticity = 2
                     )
                     container_attributes_values_length['subitems'].append(insception_attributes_length_value_exceed)
@@ -1277,7 +1288,7 @@ class EDRA_exchange_layer_checker:
                         item_name = f"Невідповідний геометричний тип класу: «{current_layer_geometry_type}», вимагається: «{required_geometry_type}»", 
                         item_tool_tip = f"Невідповідний геометричний тип класу", 
                         criticity = 2, 
-                        help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SFA4.html')
+                        help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL4.html')
                     )
                     
                 elif result_check_wrong_layer_geometry_type == []:
