@@ -4,10 +4,10 @@ from typing import Union, cast
 from PyQt5.QtWidgets import QTreeWidget, QTreeWidgetItem, QApplication, QVBoxLayout, QHBoxLayout, \
     QWidget, QDialog, QTreeView, QPushButton, QFileDialog, QMenu, QFrame, QComboBox, QMessageBox, QAbstractItemView, QLabel
 
-from PyQt5.QtWidgets import QSizePolicy
+from PyQt5.QtWidgets import QSizePolicy, QAction
 
 from PyQt5.QtCore import Qt, QMimeData, QSize, QUrl
-from PyQt5.QtGui import QCursor, QIcon, QDesktopServices, QPixmap
+from PyQt5.QtGui import QCursor, QIcon, QDesktopServices, QPixmap, QKeySequence
 from numpy import unicode_
 from qgis.core import (
     QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsTask, QgsApplication,
@@ -233,6 +233,24 @@ class customlayerListWidget(QTreeWidget):
 
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
     
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+    
+
+
+    def deleteSelectedItems(self):
+        for item in self.selectedItems():
+            self.takeTopLevelItem(self.indexOfTopLevelItem(item))
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            self.deleteSelectedItems()
+        else:
+            super().keyPressEvent(event)
+
     def addTopLevelItem(self, newItem:QTreeWidgetItem):
         newItem = cast(layerItem, newItem)
 
@@ -589,7 +607,13 @@ class MainWindow(QDialog):
 
         self.layer_list_widget = customlayerListWidget()
         self.layer_list_widget.setMinimumHeight(400)
-        self.layer_list_widget.customContextMenuRequested.connect(self.show_context_menu)
+        #self.layer_list_widget.customContextMenuRequested.connect(self.show_context_menu)
+        self.layer_list_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.layer_list_widget.setContextMenuPolicy(Qt.ActionsContextMenu)
+        delete_action = QAction("Видалити виділений елемент", self)
+        delete_action.setShortcut(QKeySequence.Delete)
+        delete_action.triggered.connect(self.layer_list_widget.deleteSelectedItems)
+        self.layer_list_widget.addAction(delete_action)
         # Add the tree view to the layout
         layerslayout.addWidget(self.layer_list_widget)
         
@@ -821,7 +845,13 @@ class MainWindow(QDialog):
         layerID = layer.id()
         layerVisibleName = layer.name()
         layerRealName = get_real_layer_name(layer)
-        layerPath = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())['path']
+        dataURI = QgsProviderRegistry.instance().decodeUri(layer.dataProvider().name(), layer.dataProvider().dataSourceUri())
+        if 'path' not in dataURI:
+            log(f"Не можу додати шар '{layerVisibleName}' - Тимчасовий", level=Qgis.Warning)
+            iface.messageBar().pushWarning(validator_name,f"Не можу додати шар '{layerVisibleName}' - Тимчасовий")
+            return None
+        
+        layerPath = dataURI['path']
         features_qty = layer.featureCount()
         layer_item = layerItem(
             id = layerID, 
@@ -829,6 +859,7 @@ class MainWindow(QDialog):
             real_name = layerRealName, 
             path = layerPath, 
             features_qty = features_qty)
+        
         return layer_item
 
     def update_layers(self):
@@ -845,10 +876,19 @@ class MainWindow(QDialog):
 
     def add_selected_layers(self):
         for layer in iface.layerTreeView().selectedLayersRecursive():
-            if layer.type() == QgsMapLayerType.VectorLayer:
-                self.layer_list_widget.addTopLevelItem(self.make_layer_item_from_layer(layer))
-        
+            if layer.type() != QgsMapLayerType.VectorLayer:
+                log(f"Не можу додати шар '{layer.name()}' - не векторний", level=Qgis.Warning)
+                iface.messageBar().pushWarning(validator_name,f"Не можу додати шар '{layer.name()}' - не векторний")
+                continue
+            item = self.make_layer_item_from_layer(layer)
+            if item is not None:
+                self.layer_list_widget.addTopLevelItem(item)
+
+    
+
+
     def show_context_menu(self, position):
+        log('Колбек на відкриття контекстного меню', level=Qgis.Info)
         if self.layer_list_widget.selectedItems() == []:
             return
         
