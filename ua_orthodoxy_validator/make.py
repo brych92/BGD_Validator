@@ -56,7 +56,7 @@ if __name__ == '__main__':
         print(f"Desktop path does not exist")
     version = get_version_from_metadata()
     folder_name = os.path.basename(cwd)
-    zip_file_path = os.path.join(desktop_path, f'{folder_name}{version}.zip')
+    zip_file_path = os.path.join(desktop_path, f'{folder_name}_Alpha{version}.zip')
     zipf = zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED)
     zipdir(cwd, zipf, folder_name)
     

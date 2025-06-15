@@ -4,7 +4,7 @@ from PyQt5.QtGui import QIcon
 import os
 
 logging = True
-validator_name = "UA Ortodoxy validator"
+validator_name = "UA Ortodoxy validator(Alpha)"
 validator_icon = QIcon(os.path.join(os.path.dirname(__file__), 'resources', 'validated.png'))
 
 def get_desktop_path():
