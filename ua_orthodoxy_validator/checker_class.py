@@ -540,13 +540,13 @@ class EDRA_validator:
             # print(field_name in self.fields_structure_json.keys())
             # print(feature[field_name])
             corrected_field_name = self.field_name_correspondence[field_name]
-            if corrected_field_name in self.fields_structure_json.keys() and feature[corrected_field_name] != None:
+            if corrected_field_name in self.fields_structure_json.keys() and feature[field_name] != None:
                 if self.fields_structure_json[corrected_field_name]['attribute_type'] == 'text':
                     attribute_len = self.fields_structure_json[corrected_field_name]['attribute_len'].replace(' ', '')
                     if attribute_len == '' or attribute_len == 0:
                         continue
-                    elif len(feature[corrected_field_name]) > int(attribute_len):
-                        attrs_length_is_exceed_dict[field_name] = [len(feature[corrected_field_name]) ,attribute_len]
+                    elif len(feature[field_name]) > int(attribute_len):
+                        attrs_length_is_exceed_dict[field_name] = [len(feature[field_name]) ,attribute_len]
 
         return attrs_length_is_exceed_dict
 
@@ -566,11 +566,11 @@ class EDRA_validator:
             corrected_field_name = self.field_name_correspondence[field_name]
             if corrected_field_name in self.fields_structure_json.keys():
                 if self.fields_structure_json[corrected_field_name]['attribute_required'] == 'True':
-                    if type == 'empty' and feature[corrected_field_name] == '':
+                    if type == 'empty' and feature[field_name] == '':
                         req_attrs_is_empty_result_dict[field_name] = True
-                    elif type == 'null' and feature[corrected_field_name] is None:
+                    elif type == 'null' and feature[field_name] is None:
                         req_attrs_is_empty_result_dict[field_name] = True
-                    elif type == 'both' and (feature[corrected_field_name] == '' or feature[corrected_field_name] is None):
+                    elif type == 'both' and (feature[field_name] == '' or feature[field_name] is None):
                         req_attrs_is_empty_result_dict[field_name] = True
                     else:
                         req_attrs_is_empty_result_dict[field_name] = False
@@ -586,7 +586,7 @@ class EDRA_validator:
             corrected_field_name = self.field_name_correspondence[field.name()]
             if corrected_field_name in self.fields_structure_json.keys():
                 if self.fields_structure_json[corrected_field_name]['attribute_unique'] == 'True':
-                    if feature[corrected_field_name]:
+                    if feature[field.name()]:
                         check_feature_unique_attrs_is_unique.append({field.name(): True})
                     else:
                         check_feature_unique_attrs_is_unique.append({field.name(): False})
@@ -629,7 +629,7 @@ class EDRA_validator:
         if domain_ref is not None and domain_ref.startswith('⁂'):
             regex_result = self.compare_text(required_text = domain_ref, current_text = feature[field_name])
             if not regex_result["is_match"]:
-                result_dict = {'check_result': False, "criticity": 2, "note": f"Значення атрибуту не відповідає вимогам формату згідно з структурою: є '{feature[field_name]}', а повинно бути(regex рядок) '{domain_ref}'"}
+                result_dict = {'check_result': False, "criticity": 2, "note": f"Значення атрибуту '{field_name}' не відповідає вимогам формату згідно з структурою: є '{feature[field_name]}', а повинно бути(regex рядок) '{domain_ref}'"}
                 return result_dict
             else:
                 result_dict = {'check_result': True}
@@ -642,11 +642,12 @@ class EDRA_validator:
                         'used_cyrillic': 'наявна кирилиця',
                         'used_spaces': 'наявні пробіли',
                         'capital_letters': 'наявне неспівпадіння регістру',
-                        'used_alias': 'використано псевдонім'
+                        'used_alias': 'використано псевдонім',
+                        'used_regex': 'використано регекс'
                     }
                     result_dict['criticity'] = 1
                     errors = ', '.join([f'{errors_template[x]}' for x in regex_result[["errors"]]])
-                    result_dict['note'] = f'Значення не відповідає вимогам формату структури, знайдено наступні помилки: {errors}'
+                    result_dict['note'] = f'Значення атрибуту "{field_name}" не відповідає вимогам формату структури, знайдено наступні помилки: {errors}'
                 
                 return result_dict
 
@@ -672,13 +673,13 @@ class EDRA_validator:
 
 
 
-        if self.is_integer(feature[corrected_field_name]) and self.fields_structure_json[corrected_field_name]['attribute_type'] != 'text':
-            if feature[corrected_field_name] in domain_codes:
+        if self.is_integer(feature[field_name]) and self.fields_structure_json[corrected_field_name]['attribute_type'] != 'text':
+            if feature[field_name] in domain_codes:
                 check_result = True
                 criticity = 0
                 note = ''
                 
-            elif int(feature[corrected_field_name])  in domain_codes:
+            elif int(feature[field_name])  in domain_codes:
                 check_result = False
                 criticity = 1
                 note = 'Фактичне значення відповідає домену, але ймовірно тип атрибуту не відповідає структурі'
@@ -689,13 +690,15 @@ class EDRA_validator:
                 note = 'Значення не відповідає домену'
                 # return {'check_result': check_result, "criticity": 1}
         
-        elif not self.is_integer(feature[corrected_field_name]) and self.fields_structure_json[corrected_field_name]['attribute_type'] != 'text':
-            if feature[corrected_field_name] in domain_codes:
+        elif not self.is_integer(feature[field_name]) and self.fields_structure_json[corrected_field_name]['attribute_type'] != 'text':
+            if feature[field_name] in domain_codes:
                 check_result = True
                 criticity = 0
                 note = ''
                 
-            elif ' ' in feature[corrected_field_name] and int(feature[corrected_field_name].replace(' ', '')) in domain_codes:
+            elif ' ' in feature[field_name] and \
+                        feature[field_name].replace(' ', '').isnumeric() and \
+                        int(feature[field_name].replace(' ', '')) in domain_codes:
                 check_result = False
                 criticity = 1
                 note = 'Фактичне значення відповідає домену, але в значенні міститься пробіл та тип атрибуту не відповідає структурі'
@@ -899,7 +902,7 @@ class EDRA_exchange_layer_checker:
             dict{field_name:dict{'value': значення атрибуту, 'link': Посилання до домену, 'criticity': int, 'note': str}} (словник з результатом перевірки)
         """
         if feature is None or not isinstance(feature, ogr.Feature):
-            log(f"При перевірці атрибуту на відповідність доменам(рядки 893...) було передано невірний об'єкт: {feature}", level=Qgis.Critical)
+            log(f"При перевірці атрибуту на відповідність доменам було передано невірний об'єкт: {feature}", level=Qgis.Critical)
             return {'value': '', 'link': '', 'criticity': 2, 'note': "Об'єкт не є ogr.Feature"}
         
         result_dict = {}
@@ -1243,6 +1246,7 @@ class EDRA_exchange_layer_checker:
         if self.layer_EDRA_valid_class.required_geometry_type != None:
             
             self.write_result_dict_bench.start('check_crs_is_equal_required')
+            log("Перевіряю СК шару...", level=Qgis.Info)
             result_check_crs_layer = self.check_crs_is_equal_required()
             # print(result_check_crs_layer)
             inspection_dict_layer_wrong_crs = None
@@ -1253,7 +1257,7 @@ class EDRA_exchange_layer_checker:
                 layer_crs = result_check_crs_layer[0]
                 required_crs_str = result_check_crs_layer[1]
                 inspection_dict_layer_wrong_crs = self.create_inspection_dict(
-                    inspection_type_name = 'Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
+                    inspection_type_name = 'SL3 Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
                     item_name = f"Невідповідна СК шару: «{layer_crs}», очікується: «{required_crs_str}»", 
                     item_tool_tip = f"Невідповідна СК шару", 
                     criticity = 2, 
@@ -1262,18 +1266,20 @@ class EDRA_exchange_layer_checker:
                 
             elif result_check_crs_layer == []:
                 inspection_dict_layer_wrong_crs = self.create_inspection_dict(                    
-                    inspection_type_name = 'Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
+                    inspection_type_name = 'SL3 Перевірка системи координат шару', #Підтягувати перевірку з файлу структури з помилками
                     item_name = f"Система координат шару правильна", 
                     item_tool_tip = f"Невідповідна СК шару", 
-                    criticity = 0
+                    criticity = 0, 
+                    help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL3.html')
                 )
 
             self.check_result_dict['subitems'].append(inspection_dict_layer_wrong_crs)
             del inspection_dict_layer_wrong_crs
             del result_check_crs_layer
-            
+            log("СК шару - перевірено!", level=Qgis.Info)
             # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_layer_CRS'] = result_check_crs_layer
             
+            log("Перевіряю тип геометрії...", level=Qgis.Info)
             if self.layer_EDRA_valid_class.required_geometry_type is not None: #відмінив перевірку якщо тип геометрії не вказано
                 self.write_result_dict_bench.start('check_wrong_object_geometry_type')
                 result_check_wrong_layer_geometry_type = self.check_wrong_object_geometry_type(self.layer_EDRA_valid_class.layer)
@@ -1305,15 +1311,13 @@ class EDRA_exchange_layer_checker:
                 del result_check_wrong_layer_geometry_type
             
                 self.write_result_dict_bench.stop()
-            # self.check_result_legacy[self.layer_props['related_layer_id']]['wrong_geometry_type'] = result_check_wrong_layer_geometry_type
             
-        # if 'layer_name_errors' not in self.check_result_legacy[self.layer_props['related_layer_id']].keys():
-        #     self.check_result_legacy[self.layer_props['related_layer_id']]['layer_name_errors'] = {}
+            log("Тип геометрії - перевірено!", level=Qgis.Info)
         
-        self.write_result_dict_bench.start('check_fields_type_and_names')
-        
+        self.write_result_dict_bench.start('check_fields_type_and_names')        
+        log("Перевіряю поля шару...", level=Qgis.Info)
         self.fields_check_results_list = self.layer_EDRA_valid_class.check_fields_type_and_names(self.layer_EDRA_valid_class.layerDefinition)
-        
+        log("Поля шару - перевірено!", level=Qgis.Info)
         self.write_result_dict_bench.stop()
         
         container_layer_field_errors = {
@@ -1324,7 +1328,7 @@ class EDRA_exchange_layer_checker:
         }
         
         self.write_result_dict_bench.start('check_missing_required_fields')
-        
+        log("Перевіряю наявність обов'язкових полів (атрибутів) шару...", level=Qgis.Info)
         missing_required_fields_list = self.check_missing_required_fields()
         
         container_missing_required_fields = {
@@ -1360,11 +1364,11 @@ class EDRA_exchange_layer_checker:
         
         del missing_required_fields_list
         del container_missing_required_fields
-        
+        log("Перевірка наявність обов'язкових полів (атрибутів) шару - перевірено!", level=Qgis.Info)
         self.write_result_dict_bench.stop()
         
         self.write_result_dict_bench.start('check_missing_fields')
-        
+        log("Перевіряю наявність всіх полів (атрибутів) шару...", level=Qgis.Info)
         missing_fields_list = self.check_missing_fields()
         
         container_missing_fields = {
@@ -1399,11 +1403,11 @@ class EDRA_exchange_layer_checker:
         container_layer_field_errors['subitems'].append(container_missing_fields)
         del missing_fields_list
         del container_missing_fields
-        
+        log("Перевірка наявність всіх полів (атрибутів) шару - перевірено!", level=Qgis.Info)
         self.write_result_dict_bench.stop()
         
         self.write_result_dict_bench.start('check_missing_fields')
-        
+        log("Перевіряю типи даних полів (атрибутів) шару...", level=Qgis.Info)
         wrong_fields_types_list = self.check_wrong_fields_types()
         
         container_wrong_fields_types_errors = {
@@ -1414,7 +1418,6 @@ class EDRA_exchange_layer_checker:
         }
         
         if len(wrong_fields_types_list.keys()) > 0:
-            #ДОПИСАТИ ЕЛЕМЕНТ ПЕРЕВІРКИ І ПЕРЕРОБИТИ ЛОГІКУ ВИВОДУ В КОНТЕЙНЕРИ ІНШИХ ПОМИЛОК АТРИБУТІВ, щоб там кожен
             for error_field in wrong_fields_types_list:
                 insception_wrong_field_type_error = None
                 insception_wrong_field_type_error = self.create_inspection_dict(
@@ -1439,7 +1442,7 @@ class EDRA_exchange_layer_checker:
         
         del wrong_fields_types_list
         del container_wrong_fields_types_errors
-        
+        log("Перевірка типів даних полів (атрибутів) шару - перевірено!", level=Qgis.Info)
         self.write_result_dict_bench.stop()
         
         container_wrong_fields_names_errors = {
@@ -1582,6 +1585,7 @@ class EDRA_exchange_layer_checker:
             # self.check_result_legacy[self.layer_props['related_layer_id']]['features'] = features_check_results[0]      
     
     def run(self):
+        log(f"Початок перевірки шару {self.layer_props['layer_real_name']}...", level=Qgis.Info)
         self.check_result_dict = {
             'item_name': f"Шар {self.layer_props['layer_name']}",
             'item_tooltip': f"Шар {self.layer_props['layer_real_name']}",
@@ -1593,10 +1597,11 @@ class EDRA_exchange_layer_checker:
         }
         
         if self.layer_EDRA_valid_class.layer is not None:
-            self.parse_bench.start('check_layer_is_empty')
+            #self.parse_bench.start('check_layer_is_empty')
             if self.layer_EDRA_valid_class.get_is_layer_empty():    
+                log(f"Шар {self.layer_props['layer_real_name']} пустий", level=Qgis.Info)
                 insception_layer_is_empty = self.create_inspection_dict(
-                        inspection_type_name = 'Перевірка на наявність об’єктів в шарі', #Підтягувати перевірку з файлу структури з помилками
+                        inspection_type_name = 'SL1 Перевірка на наявність об’єктів в шарі', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"В шарі {self.layer_props['layer_name']} відсутні об\'єкти", 
                         item_tool_tip = f"В шарі {self.layer_props['layer_real_name']} відсутні об\'єкти", 
                         criticity = 1, 
@@ -1604,17 +1609,17 @@ class EDRA_exchange_layer_checker:
                     )
             else:
                 insception_layer_is_empty = self.create_inspection_dict(
-                        inspection_type_name = 'Перевірка на наявність об’єктів в шарі', #Підтягувати перевірку з файлу структури з помилками
+                        inspection_type_name = 'SL1 Перевірка на наявність об’єктів в шарі', #Підтягувати перевірку з файлу структури з помилками
                         item_name = f"В шарі {self.layer_props['layer_name']} наявні об\'єкти", 
                         item_tool_tip = f"В шарі {self.layer_props['layer_real_name']} наявні об\'єкти", 
                         criticity = 0, 
                         help_url = os.path.join(self.plugin_dir, 'help', 'inspections', 'SL1.html')
                     )
-        
+
             self.check_result_dict['subitems'].append(insception_layer_is_empty)
             
-            self.parse_bench.stop()
-            
+            #self.parse_bench.stop()
+            log(f"Перевірка назви шару {self.layer_props['layer_real_name']}...", level=Qgis.Info)
             if self.layer_EDRA_valid_class.nameError:
                 #self.parse_bench.start('check_layer_nameError')
                 #print(json.dumps({key: value['alias'] for key, value in self.layer_EDRA_valid_class.structure_json.items()}, indent=4, ensure_ascii=False))
@@ -1685,7 +1690,8 @@ class EDRA_exchange_layer_checker:
                         container_layer_error_name['subitems'].append(insception_dict_layer_error_name_used_cyrillic)
                     
                     self.check_result_dict['subitems'].append(container_layer_error_name)
-
+                    
+                    #перезавантаження класу
                     self.parse_bench.start('reinit_class')
                     log(f'Перезавантаження класу з назвою {errors_check_result["valid_name"]}')
                     self.layer_EDRA_valid_class = EDRA_validator(
