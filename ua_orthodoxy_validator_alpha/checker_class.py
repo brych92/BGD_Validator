@@ -1493,7 +1493,7 @@ class EDRA_exchange_layer_checker:
                     if "used_alias" in errors:
                         insception_dict_field_error_name_used_alias = self.create_inspection_dict(                    
                             inspection_type_name = 'Перевірка назви поля (атрибута)', #Підтягувати перевірку з файлу структури з помилками
-                            item_name = f"Замість назви поля (атрибута) використано псевдонім «{field_name}», вимагається «{field_name_error['valid_name']}»", 
+                            item_name = f"Замість назви поля (атрибута) використано псевдонім «{field_name}», вимагається «{errors_check_result[field_name]['result_dict']['valid_name']}»", 
                             item_tool_tip = f"Замість назви поля (атрибута) використано псевдонім»", 
                             criticity = 2
                         )

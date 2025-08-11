@@ -1,0 +1,1025 @@
+import sys
+from logging import critical, warn
+import json
+from math import e
+from pyexpat import model
+from typing import Union, cast
+from warnings import filters
+from numpy import isin, union1d
+from qgis.PyQt.QtWidgets import (
+    QLabel, QVBoxLayout, QTabWidget, QTreeWidget, QHBoxLayout,
+    QPushButton, QApplication, QMenu, QTreeWidgetItem, QDialog, 
+    QTextEdit, QWidget, QTreeView, QCheckBox, QSplitter, QFileDialog, QMessageBox
+)
+from qgis.PyQt.QtCore import Qt, QSortFilterProxyModel, QModelIndex, pyqtSignal, pyqtSlot, QUrl, QTimer
+from qgis.PyQt.QtGui import QFont, QColor, QPixmap, QIcon, QStandardItemModel, QStandardItem, QDesktopServices
+
+from qgis.core import (Qgis,
+    QgsProject, QgsProviderRegistry, QgsVectorLayer, 
+    QgsFeature, QgsPointXY, QgsFeature)
+from qgis.utils import iface
+
+from .benchmark import Benchmark
+
+from .sidefunctions import log, save_validator_log, compress_last_validation_folder
+from .sidefunctions import validator_name, validator_icon
+
+from datetime import date
+
+import os, urllib.parse
+
+from .result_window_widgets import SwitchWidget, FilterWidget, statusWidget, CheckboxesGroup
+
+# def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
+#     """
+#     Отримує шар за його ID.
+#     * При відсутності шару з заданим ID - виводить повідомлення про помилку.
+#     * Якщо шар не векторний - виводить повідомлення про помилку.
+#     Args:
+#         layer_id (str): ID шару.
+#     Return:
+#         QgsVectorLayer: Шар.
+#     """
+#     layer = QgsProject.instance().mapLayer(layer_id)
+    
+#     if layer is None:
+#         iface.messageBar().pushWarning("Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.") #iface.messageBox().critical(None, "Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.")
+#         return None
+    
+#     if not isinstance(layer, QgsVectorLayer):
+#         iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()} з ID {layer_id} не є векторним, можливо цільовий шар відсутній в проекті.")
+#         #raise TypeError("Помилка отримання шару. Шар має бути обєктом 'QgsVectorLayer'.")
+#         return None
+    
+#     return layer
+
+# def get_feature_by_id(layer: QgsVectorLayer, feature_id: int) -> QgsFeature:
+#     """
+#     Отримує елемент з шару за його ID.
+#     * При відсутності елемента з заданим ID - виводить повідомлення про помилку.
+#     * Якщо шар не векторний - виводить повідомлення про помилку.
+#     * Якщо елемент не знайдено - виводить повідомлення про помилку.
+
+#     Аргументи:
+#         layer (QgsVectorLayer): Шар, який містить елемент.
+#         feature_id (int): ID елемента.
+
+#     Повертає:
+#         QgsFeature: Елемент з шару.
+
+#     Звикання:
+#         ValueError: Якщо елемент з шару не знайдено.
+#     """
+#     if layer is None:
+#         iface.messageBar().pushWarning("Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.")
+#         return None
+    
+#     if not isinstance(layer, QgsVectorLayer):
+#         #raise TypeError("Помилка отримання елемента. Шар має бути обєктом 'QgsVectorLayer'.")
+#         iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()} з ID {layer_id} не є векторним, можливо цільовий шар відсутній в проекті.")
+#         return None
+    
+#     feature = layer.getFeature(feature_id)
+#     if feature is None or feature.id() != feature_id:
+#         iface.messageBox().critical(None, "Помилка", f"Неправильно задано значення ID: {feature_id}, шару {layer.name()}")
+#         #raise AttributeError(f"Неправильно задано значення ID: {feature_id}, шару {layer.name()}")
+#         return None
+    
+#     return feature
+
+def get_feature_display_name(layer: QgsVectorLayer, feature: QgsFeature) -> str:
+    """
+    Отримує відображальну назву елемента з заданого шару.
+
+    Аргументи:
+        layer (QgsVectorLayer): Шар, який містить елемент.
+        feature (QgsFeature): Елемент, з якого отримати відображальну назву.
+
+    Повертає:
+        будь-який: Відображальна назва елемента.
+
+    Звикання:
+        ValueError: Якщо назва поля відображення не встановлена або недійсна.
+    """
+    if not isinstance(layer, QgsVectorLayer):
+        raise TypeError("Помилка отримання назви відображення. Шар має бути обєктом 'QgsVectorLayer'.")
+    
+    display_field_name = layer.displayField()
+
+    if not display_field_name or display_field_name == '':
+        result = "без імені"
+    else:
+        result = feature[display_field_name]
+
+    return result
+
+def get_index(list_v: list, index: int) -> Union[str, None]:
+    if 0 <= index < len(list_v):
+        element = list_v[index]
+        return element
+    else:
+        return None    
+
+class InspectionItem(QStandardItem):
+    '''Клас-контейнер для елементів дерева помилок.
+    
+    Має такі властивості:
+        - тип елемента (TYPE) - може бути 'file'/'layer'/'feature'/'inspection',
+        - посилання на сторінку з описом помилки (HELP_URL),
+        - повний шлях до файлу (RELATED_FILE_PATH),
+        - ідентифікатор шару (RELATED_LAYER_ID),
+        - реальна назва шару (REAL_LAYER_NAME),
+        - відображувана назва шару (VISIBLE_LAYER_NAME),
+        - ідентифікатор об'єкта (RELATED_FEATURE_ID),
+        - назва типу перевірки (INSPECTION_TYPE_NAME),
+        - критичність помилки (CRITICITY).
+    
+    '''
+    DEFAULT_LEN = 50
+
+    TYPE = Qt.UserRole
+    HELP_URL = Qt.UserRole + 1
+    RELATED_FILE_PATH = Qt.UserRole + 2
+    RELATED_LAYER_ID = Qt.UserRole + 3
+    REAL_LAYER_NAME = Qt.UserRole + 4
+    VISIBLE_LAYER_NAME = Qt.UserRole + 5
+    RELATED_FEATURE_ID = Qt.UserRole + 6
+    INSPECTION_TYPE_NAME = Qt.UserRole + 7
+    CRITICITY = Qt.UserRole + 8
+
+    def set_color(self, criticity):
+        colors = ["green", "orange", "red"]
+        pixmap = QPixmap(16, 16)
+        pixmap.fill(QColor(colors[criticity]))
+
+        icon = QIcon()
+        icon.addPixmap(pixmap)
+
+        self.setIcon(icon)
+        self.colorIndex = criticity
+
+    def parent(self): return cast(InspectionItem, super().parent())
+    
+    def set_parent_color(self, criticity = None):
+        if criticity is None:
+            criticity = self.getData(self.CRITICITY)
+        parent = self.parent()
+        if parent is not None:
+            if parent.colorIndex <= criticity:
+                parent.set_color(criticity)
+                parent.set_parent_color(criticity)
+
+    def __init__(self, IDict: dict):
+        '''Конструктор класу InspectionItem.        
+        Аргументи:
+            IDict (dict): Словник з даними елемента(згідно файлу Опис структури.txt).
+                type 'container'/'file'/'layer'/'feature'/'inspection'
+                item_name -назва рядку у вікні- * #назва яка буде відображатися
+                item_tooltip -підказка- #те що буде виводитися в першому рядку підказки, опціонально
+                inspection_type_name назва перевірки
+                criticity 0/1/2/-1 * # тип int критичність помилки, від 0 - не помилка до 2 -критична помилка, -1 - невдала перевірка - буде відображатися окремим значком    'item_name': -назва рядку у вікні- * (якшо оцю штуку зробити списком для помилкок, то воно виведе назву типу помилки: і окремі піделементи)
+                help_url посилання на документацію
+                related_file_path #задається тільки для типу file, якшо створити в якомусь з дочірніх елементів - цей елемент та всі його дочірні елементи будуть мати оцей новий шлях
+                related_layer_id #задається тільки для типу layer
+                real_layer_name #назва шару, якшо створити в якомусь з дочірніх елементів - цей елемент та всі його дочірні елементи будуть мати оцей новий шлях
+                visible_layer_name #назва шару, якшо створити в якомусь з дочірніх елементів - цей елемент та всі його дочірні елементи будуть мати оцей новий шлях, може бути пустим
+                related_feature_id #задається тільки для типу feature
+        '''
+        self.colorIndex = 0
+
+        item_name: str = IDict.get('item_name')
+        
+        if type(item_name) is list and len(item_name) > 0:
+            item_name = IDict.get('inspection_type_name', item_name[0]) + ':'
+
+        if item_name is None:
+            raise AttributeError("Немає значення 'item_name' у даних елемента.")
+        
+        if len(item_name) > self.DEFAULT_LEN:
+            idx = item_name.rfind(' ', 0, self.DEFAULT_LEN)
+            if idx != -1:
+                item_name = item_name[0:idx] + '\n' + item_name[idx+1:]
+            else:
+                idx = item_name.find(' ', self.DEFALUT_LEN)
+                if idx != -1:
+                    item_name = item_name[0:idx] + '\n' + item_name[idx+1:]
+                else:
+                    item_name = item_name[0:self.DEFAULT_LEN] + '-\n' + item_name[self.DEFAULT_LEN+1:]
+                
+
+        super().__init__(item_name)  # Викликаємо конструктор батьківського класу
+        self.set_color(IDict.get('criticity', 0))
+        
+        item_type = IDict.get('type')
+        if item_type is None:
+            raise AttributeError("Немає значення 'type' у даних елемента.")
+        
+        self.setData(item_name, Qt.DisplayRole)
+        self.setData(item_type, self.TYPE)  # Зберігаємо тип елемента
+
+        self.setData(IDict.get('item_tooltip'), Qt.ToolTipRole)
+
+        self.setData(IDict.get('help_url'), self.HELP_URL)
+
+        self.setData(IDict.get('related_file_path'), self.RELATED_FILE_PATH)
+
+        self.setData(IDict.get('related_layer_id'), self.RELATED_LAYER_ID)
+
+        self.setData(IDict.get('layer_real_name'), self.REAL_LAYER_NAME)
+
+        self.setData(IDict.get('visible_layer_name'), self.VISIBLE_LAYER_NAME)
+
+        self.setData(IDict.get('related_feature_id'), self.RELATED_FEATURE_ID)
+
+        self.setData(IDict.get('inspetcion_type_name'), self.INSPECTION_TYPE_NAME)
+
+        self.setData(IDict.get('criticity', 0), self.CRITICITY)
+
+        self.setEditable(False)# Забороняємо редагування елементів
+
+        #self.set_parent_color(IDict.get('criticity', 0))
+
+    def setErrorGeometry(self, crs, error_points=None, error_polygons=None):
+        """Встановлює геометрію помилки."""
+        self.error_geometry['crs'] = crs
+        self.error_geometry['error_points'] = error_points or []
+        self.error_geometry['error_polygons'] = error_polygons or []
+
+    def addCorrespondingObject(self, related_layer_id, related_feature_id, object_GUID, related_feature_visible_name):
+        """Додає відповідний об'єкт до списку."""
+        corresponding_object = {
+            'related_layer_id': related_layer_id,
+            'related_feature_id': related_feature_id,
+            'object_GUID': object_GUID,
+            'related_feature_visible_name': related_feature_visible_name,
+        }
+        self.corresponding_objects.append(corresponding_object)
+
+    def addCorrection(self, correction_type, current_value, correct_value):
+        """Додає виправлення до списку."""
+        correction = {
+            'correction_type': correction_type,
+            'current_value': current_value,
+            'correct_value': correct_value,
+        }
+        self.corrections.append(correction)
+
+    def getData(self, role=Qt.UserRole):
+        """Отримує дані елемента для зазначеної ролі."""
+        return super().data(role)
+
+    def setData(self, value, role=Qt.UserRole):
+        """Встановлює дані елемента для зазначеної ролі."""
+        super().setData(value, role)
+
+    def visibleLayerName(self):
+        """Отримує відображувану назву шару."""
+        if self.getData(self.VISIBLE_LAYER_NAME) is None:
+            if self.parent() is not None:
+                return self.parent().visibleLayerName()
+            else:
+                return None
+
+    def realLayerName(self):
+        """Отримує реальну назву шару."""
+        if self.getData(self.REAL_LAYER_NAME) is None:
+            if self.parent() is not None:
+                return self.parent().realLayerName()
+            else:
+                return None
+
+        return self.getData(self.REAL_LAYER_NAME)
+    
+    def realtedPath(self):
+        """Отримує повний шлях до файлу."""
+        if self.getData(self.RELATED_FILE_PATH) is None:
+            if self.parent() is not None:
+                return self.parent().realtedPath()
+            else:
+                return None
+            
+        return self.getData(self.RELATED_FILE_PATH)
+
+    def relatedLayer(self):
+        """Отримує відповідний шар."""
+        def get_layer_by_id(layer_id: str) -> QgsVectorLayer:
+            """
+            Отримує шар за його ID.
+            * При відсутності шару з заданим ID - виводить повідомлення про помилку.
+            * Якщо шар не векторний - виводить повідомлення про помилку.
+            Args:
+                layer_id (str): ID шару.
+            Return:
+                QgsVectorLayer: Шар.
+            """
+            layer = QgsProject.instance().mapLayer(layer_id)
+            
+            if layer is None:
+                name = self.getData(self.VISIBLE_LAYER_NAME) or self.getData(self.REAL_LAYER_NAME) or layer_id
+                
+                iface.messageBar().pushWarning("Помилка", f"Шар {name}, який який був підключений до елементу не знайдено в проєкті.") #iface.messageBox().critical(None, "Помилка", f"Шар з ID {layer_id} не знайдено в проєкті.")
+                return None
+            
+            if not isinstance(layer, QgsVectorLayer):
+                iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()}, який який був підключений до елементу не є векторним, можливо цільовий шар відсутній в проекті.")
+                #raise TypeError("Помилка отримання шару. Шар має бути обєктом 'QgsVectorLayer'.")
+                return None
+            
+            return layer
+
+        layer_id = self.getData(self.RELATED_LAYER_ID)
+        if layer_id is None:
+            if self.parent() is not None:
+                return self.parent().relatedLayer()
+            else:
+                return None
+            
+        if type(layer_id) is not str or layer_id.startswith('⁂'):
+            return None
+        
+        layer = get_layer_by_id(layer_id)
+        if layer is None:
+            self.setData(None, self.RELATED_LAYER_ID)
+            return None
+
+        return layer
+
+    def relatedFeatureID(self):
+        """Отримує ідентифікатор відповідного об'єкта."""
+        if self.getData(self.RELATED_FEATURE_ID) is None:
+            if self.parent() is not None:
+                return self.parent().relatedFeatureID()
+            else:
+                return None
+            
+        return self.getData(self.RELATED_FEATURE_ID)
+
+    def relatedFeature(self) -> Union[QgsFeature, None]:
+        """Отримує відповідний об'єкт."""
+        def get_feature_by_id(layer: QgsVectorLayer, feature_id: int) -> QgsFeature:
+            """
+            Отримує елемент з шару за його ID.
+            * При відсутності елемента з заданим ID - виводить повідомлення про помилку.
+            * Якщо шар не векторний - виводить повідомлення про помилку.
+            * Якщо елемент не знайдено - виводить повідомлення про помилку.
+
+            Аргументи:
+                layer (QgsVectorLayer): Шар, який містить елемент.
+                feature_id (int): ID елемента.
+
+            Повертає:
+                QgsFeature: Елемент з шару.
+
+            Звикання:
+                ValueError: Якщо елемент з шару не знайдено.
+            """
+            if layer is None:
+                name = self.getData(self.VISIBLE_LAYER_NAME) or self.getData(self.REAL_LAYER_NAME) or self.getData(self.RELATED_LAYER_ID)
+                iface.messageBar().pushWarning("Помилка", f"Шар {name}, який який був підключений до елементу не знайдено в проєкті.")
+                return None
+            
+            if not isinstance(layer, QgsVectorLayer):
+                #raise TypeError("Помилка отримання елемента. Шар має бути обєктом 'QgsVectorLayer'.")
+                iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()}, який який був підключений до елементу не є векторним, можливо цільовий шар відсутній в проекті.")
+                return None
+            
+            feature = layer.getFeature(feature_id)
+            
+            if feature is None or feature.id() != feature_id:
+                iface.messageBar().pushWarning("Помилка", f"Об'єкт з ID '{feature_id}', відсутній в шарі '{layer.name()}'.")
+                #raise AttributeError(f"Неправильно задано значення ID: {feature_id}, шару {layer.name()}")
+                return None
+            
+            return feature
+        
+        feature_id = self.getData(self.RELATED_FEATURE_ID)
+        if feature_id is None:
+            if self.parent() is not None:
+                return self.parent().relatedFeatureID()
+            else:
+                return None
+            
+        if feature_id is None or type(feature_id) is not int or feature_id < 0:            
+            return None
+        
+        layer = self.relatedLayer()
+        if layer is None:
+            return None
+        
+        feature = get_feature_by_id(layer, feature_id)
+        if feature is None:
+            self.setData(None, self.RELATED_FEATURE_ID)
+            return None
+
+        return feature
+    
+    def relatedHelpUrl(self):
+        if self.getData(self.HELP_URL) is None:
+            if self.parent() is not None:
+                return self.parent().relatedHelpUrl()
+            else:
+                return None
+            
+        return self.getData(self.HELP_URL)
+
+    def isLayer(self):
+        if self.getData(self.TYPE) == 'layer':
+            return True
+        elif self.parent() is not None:
+            return self.parent().isLayer()
+        else:
+            return False
+        
+    def __repr__(self):
+        """Отримує текстову репрезентацію елемента."""
+        return f"InspectionItem('{self.getData(0)}', type={self.getData(self.TYPE)}, criticity={self.getData(self.CRITICITY)})"
+
+class CustomItemModel(QStandardItemModel):
+    def __init__(self, structure: list = None, parent=None):
+        self.inspection_QTY = 0
+        self.critical_QTY = 0
+        self.warning_QTY = 0
+
+        self.parse_bench = Benchmark("Item benchmark")
+
+        super().__init__(parent)
+        if structure is not None: 
+            self.fill_model(structure)
+
+    def parse_dict(self, IDict, parent_item: InspectionItem = None, PIDict = None):
+        def copy_key_if_absent(IDict, PIDict, keys:list):
+            for key in keys:
+                if key not in IDict and key in PIDict:
+                    IDict[key] = PIDict[key]
+
+        #if PIDict is not None:
+            # self.parse_bench.start('copy_key_if_absent')
+            # copy_key_if_absent(IDict, PIDict,
+            #     ['item_tooltip',
+            #     'help_url', 
+            #     'related_file_path', 
+            #     'related_layer_id', 
+            #     'real_layer_name', 
+            #     'visible_layer_name', 
+            #     'related_feature_id', 
+            #     'inspetcion_type_name'] )
+            # self.parse_bench.stop()
+        
+        self.parse_bench.start('Create inspection item')
+        item = InspectionItem(IDict)
+        self.parse_bench.stop()
+
+        self.parse_bench.start('parsing 1')
+        children = IDict.get('subitems',[])
+        name = IDict.get('item_name')
+        self.parse_bench.stop()
+
+        if len(children) > 0:
+            
+            if type(name) is list and len(name) > 0:
+                raise Exception(f"Елемент {name} має дочірні елементи, і не має мати спискової назви.")
+            
+            for child in children:
+                self.parse_dict(child, item, IDict)
+        
+        elif type(name) is list and len(name) > 0:
+            #print(json.dumps(IDict, indent=4, ensure_ascii=False))
+            self.parse_bench.start('filling false children')
+            for n in name:
+                IDict_n = IDict.copy()
+                IDict_n['item_name'] = n
+                child = InspectionItem(IDict_n)
+                self.parse_bench.join(child.parse_bench)
+                del(child.parse_bench)
+                
+                item.appendRow(child)
+            self.parse_bench.stop()
+        
+        self.parse_bench.start('append father')       
+        if parent_item is not None:
+            parent_item.appendRow(item)
+            self.parse_bench.stop()
+            #print(self.parse_bench.get_report())
+        else:
+            self.parse_bench.stop()
+            #print(self.parse_bench.get_report())
+            return(item)
+
+    def get_root_element(self):
+        """Отримує кореневий елемент моделі."""
+        return self.invisibleRootItem()
+
+    def fill_model(self, structure: list):
+        benchi_f = Benchmark("Fill model")
+        
+        benchi_f.start('fill_model')
+        for element in structure:
+            root_children = self.parse_dict(element)
+            self.invisibleRootItem().appendRow(root_children)
+        benchi_f.stop()
+
+        benchi_f.start('update_colors')
+        self.update_colors()
+        benchi_f.stop()
+
+        benchi_f.start('get_inspections')
+        self.get_inspections()
+        benchi_f.stop()
+
+        benchi_f.join(self.parse_bench)
+        
+        #print(benchi_f.get_report())
+
+    def get_inspections(self):
+        def iterate_model(parent: InspectionItem):
+            items = []
+            if parent.hasChildren():
+                for row in range(parent.rowCount()):
+                    child = parent.child(row)
+                    items += iterate_model(child)
+            if type(parent) is InspectionItem and parent.getData(InspectionItem.TYPE) == 'inspection':
+                items.append(parent)
+            return items
+        
+        inspections = iterate_model(self.invisibleRootItem())
+        self.inspection_QTY = len(inspections)
+        
+        self.critical_QTY = len([item for item in inspections if item.getData(InspectionItem.CRITICITY) == 2])
+        self.warning_QTY = len([item for item in inspections if item.getData(InspectionItem.CRITICITY) == 1])
+        return iterate_model(self.invisibleRootItem())
+
+    def get_all_elements(self)->list[InspectionItem]:
+        def iterate_model(parent: InspectionItem):
+            items = []
+            if parent.hasChildren():
+                for row in range(parent.rowCount()):
+                    child = parent.child(row)
+                    items += iterate_model(child)
+            if type(parent) is InspectionItem:
+                items.append(parent)
+            return items
+        
+        return iterate_model(self.invisibleRootItem())
+
+    def update_colors(self):
+        def iterate_model(parent: InspectionItem):
+            items = []
+            if parent.hasChildren():
+                for row in range(parent.rowCount()):
+                    child = parent.child(row)
+                    items += iterate_model(child)
+            else:
+                items.append(parent)
+            return items
+        
+        items  = iterate_model(self.invisibleRootItem())
+        if len(items) == 0:
+            return
+
+        for item in items:
+            if type(item) is InspectionItem:
+                item.set_parent_color()
+
+    def get_filtration_dict(self):
+        #f_bench = Benchmark("Filtration dict benchmark")
+        #f_bench.start('for all item')
+        filtration_dict = {'files': {}, 'layers': {}, 'errors': {}}
+        for item in self.get_all_elements():
+            item_file = item.getData(InspectionItem.RELATED_FILE_PATH)
+            if item_file is not None and  item_file != '':
+                filtration_dict['files'][item_file] = os.path.basename(item_file)
+
+            item_layer = item.getData(InspectionItem.RELATED_LAYER_ID)
+            item_layer_name = item.getData(InspectionItem.VISIBLE_LAYER_NAME)
+            if item_layer is not None and item_layer != '':
+                filtration_dict['layers'][item_layer] = item_layer_name
+            
+            item_error = item.getData(InspectionItem.INSPECTION_TYPE_NAME)
+            if item_error is not None and item_error != '':
+                filtration_dict['errors'][item_error] = item_error
+        #f_bench.stop()
+        #print(f_bench.get_report())
+        return filtration_dict
+    
+class FilterProxyModel(QSortFilterProxyModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        self.filter_dict = {
+            'criticity': [],
+            'type': [],
+            'related_file': [],
+            'related_layer': [],
+            'related_feature': [],
+            'inspection_type_name': []
+        }
+
+        self.setRecursiveFilteringEnabled(True)
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex):
+        source_model = self.sourceModel()
+        index = source_model.index(source_row, 0, source_parent)
+        
+        item_data = {
+            'criticity': source_model.data(index, InspectionItem.CRITICITY),
+            'type': source_model.data(index, InspectionItem.TYPE),
+            'related_file': source_model.data(index, InspectionItem.RELATED_FILE_PATH),
+            'related_layer': source_model.data(index, InspectionItem.RELATED_LAYER_ID),
+            'related_feature': source_model.data(index, InspectionItem.RELATED_FEATURE_ID),
+            'inspection_type_name': source_model.data(index, InspectionItem.INSPECTION_TYPE_NAME)
+        }
+        
+        for key, value in self.filter_dict.items():
+            if item_data[key] is None:
+                continue
+            if len(value) > 0 and item_data[key] not in value:
+                return False
+        
+        return True
+
+    
+    
+    @pyqtSlot(list)
+    def filterByCriticity(self, criticity_filter: list):
+        self.filter_dict['criticity'] = criticity_filter
+        self.invalidateFilter()
+    
+    @pyqtSlot(list)
+    def filterByType(self, type_filter: list):
+        self.filter_dict['type'] = type_filter    
+        self.invalidateFilter()   
+
+    @pyqtSlot(list)
+    def filterByFile(self, related_file_filter: list):
+        self.filter_dict['related_file'] = related_file_filter    
+        self.invalidateFilter()
+
+    @pyqtSlot(list)
+    def filterByLayer(self, related_layer_filter: list):
+        self.filter_dict['related_layer'] = related_layer_filter    
+        self.invalidateFilter()
+
+    @pyqtSlot(list)
+    def filterByInspectionType(self, inspection_type_name_filter: list):
+        self.filter_dict['inspection_type_name'] = inspection_type_name_filter    
+        self.invalidateFilter()
+
+class CustomTreeView(QTreeView):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setHeaderHidden(True)
+
+class ResultWindow(QDialog):
+    def save_to_json(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setWindowTitle("Зберегти як")
+        file_dialog.setAcceptMode(QFileDialog.AcceptSave)
+        file_dialog.setNameFilters(["JSON files (*.json)"])
+        
+        if file_dialog.exec_():
+            selected_file = file_dialog.selectedFiles()[0]
+            try:
+                with open(selected_file, 'w', encoding='utf-8') as outfile:
+                    json.dump(self.errors_table, outfile, ensure_ascii=False, indent=4)
+            except IOError as e:
+                QMessageBox.critical(self, "Помилка", f"Не вдалося зберегти файл: {e}")
+            
+    
+    
+    def __init__(self, errors_table:dict, parent=None):
+        super().__init__(parent)
+
+        self.benchi = Benchmark("Бенчмарк вікна")
+        #print(json.dumps(errors_table, indent=4, ensure_ascii=False))
+        #ініціалізація глобальних змінних
+        #словник з результатом перевірки
+        self.errors_table = errors_table
+        
+        #ініціалізація моделі
+        self.benchi.start('fill_custom_model')
+        self.model = CustomItemModel(self.errors_table, parent=self)
+        
+        
+        self.benchi.start('create_proxy_model')
+        self.proxyModel = FilterProxyModel(self)
+        
+        
+        self.benchi.start('set_proxy_model')
+        self.proxyModel.setSourceModel(self.model)
+
+
+        self.benchi.start('interface1')
+        # Налаштування основного вікна
+        self.setWindowTitle(f"{validator_name} - Результати перевірки")
+        self.setWindowIcon(validator_icon)
+        
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMinMaxButtonsHint)
+        
+        # Головний вертикальний лейаут
+        sidebar_layout = QHBoxLayout(self)
+        main_layout = QVBoxLayout()
+        sidebar_layout.addLayout(main_layout)
+        
+
+        # Поле вибору критичності
+        self.criticity_radio = SwitchWidget(self)
+        self.criticity_radio.changed_signal.connect(self.proxyModel.filterByCriticity)
+        main_layout.addWidget(self.criticity_radio)
+        
+        self.benchi.stop()
+
+        self.benchi.start('create_tree_widget')
+        #дерево помилок
+        self.tree_widget = CustomTreeView(self)
+        self.benchi.stop()
+
+        self.benchi.start('set_model_to widget')
+        self.tree_widget.setModel(self.proxyModel)
+        self.benchi.stop()
+        self.benchi.start('interface2')
+        main_layout.addWidget(self.tree_widget)
+        
+        self.benchi.stop()
+
+        # Поле результату перевірки
+        self.benchi.start('create_status_widget')
+        self.result_text_field = statusWidget(self.model, self)
+        main_layout.addWidget(self.result_text_field)
+        self.benchi.stop()
+
+        self.benchi.start('interface3')
+
+        # Кнопки управління
+        button_layout = QHBoxLayout()
+        save_as_bt = QPushButton("Зберегти помилки", self)
+        save_as_bt.clicked.connect(self.save_to_json)
+        
+        mark_as_fixed_button = QPushButton("Зберегти звіт", self)
+        mark_as_fixed_button.setEnabled(False)
+        
+        self.save_log_button = QPushButton("Зберегти Log", self)
+        self.save_log_button.clicked.connect(compress_last_validation_folder)
+
+        button_layout.addWidget(save_as_bt)
+        button_layout.addWidget(mark_as_fixed_button)
+        button_layout.addWidget(self.save_log_button)
+
+        main_layout.addLayout(button_layout)
+        
+        filters_layout = QHBoxLayout()
+        sidebar_layout.addLayout(filters_layout)
+        self.benchi.stop()
+
+        # Фільтрація
+        self.benchi.start('create_filter_dict')
+        filtration_dict  = self.make_filter_dict()
+        self.benchi.stop()
+        self.benchi.start('Create filter widget')
+        filters_widget = FilterWidget(parent = self, filtration_dict = filtration_dict)
+        #self.benchi.join(filters_widget.widget_bench)
+        filters_layout.addWidget(filters_widget)
+        filters_widget.file_filtered_signal.connect(self.proxyModel.filterByFile)
+        filters_widget.layer_filtered_signal.connect(self.proxyModel.filterByLayer)
+        filters_widget.inspection_name_filtered_signal.connect(self.proxyModel.filterByInspectionType)
+        self.benchi.stop()
+
+        #print(self.benchi.get_report())
+        # Підключення контекстного меню до багатошарового списку
+        self.tree_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tree_widget.customContextMenuRequested.connect(self.show_context_menu)
+
+    def make_filter_dict(self):
+        return self.model.get_filtration_dict()
+
+    def closeEvent(self, event):
+        log('Колбек на закриття вікна результату', level=Qgis.Info)
+        self.deleteLater()
+        event.accept()
+
+    def ondelete(self):
+        log('Колбек на видалення вікна результату', level=Qgis.Info)
+        self.deleteLater()
+
+    def show_context_menu(self, position):        
+        # знайти батьківські атрибути
+        def check_attr(item: InspectionItem, attr: str):
+            '''Перевіряє, чи є у елемента батьківського атрибуту attr, і якщо є, то повертає його'''
+            if type(item) != InspectionItem:
+                return None
+            
+            if attr == 'path':
+                if item.realtedPath() is not None:
+                    return item.realtedPath()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            
+            elif attr == 'layer':
+                if item.relatedLayer() is not None:
+                    return item.relatedLayer()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            
+            elif attr == 'feature_id':
+                if item.relatedFeatureID() is not None:
+                    return item.relatedFeatureID()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            
+            elif attr == 'feature':
+                if item.relatedFeature() is not None:
+                    return item.relatedFeature()
+                elif item.parent() is None:
+                    return None
+                return check_attr(item.parent(), attr)
+            else:
+                return None
+
+        #Задонатити на ЗСУ
+        def donate():
+            url = QUrl("https://send.monobank.ua/jar/6v8t4TNdaX")
+            QDesktopServices.openUrl(url)
+
+        def add_layer_to_project(inspection_item: InspectionItem):            
+            log(f"Завантаження шару з '{inspection_item}'({inspection_item.realtedPath()}) в проект ", level=Qgis.Info)
+            if inspection_item.realtedPath() is None:
+                return False
+            
+            if not os.path.exists(inspection_item.realtedPath()):
+                log(f"Помилка при завантаженні шару в проект файл '{inspection_item.realtedPath()}' не знайдено...", level=Qgis.Warning)
+                return False
+            
+            layer = None
+            extention = os.path.splitext(os.path.basename(inspection_item.realtedPath()))[-1]
+            if not isinstance(extention, str):
+                log(f"При спробі завантаження файлу '{inspection_item.realtedPath()}' виникла помилка зчитування розширення файлу...", level=Qgis.Warning)
+                return False
+            
+            if extention.lower() in ['.geojson', '.json','.shp']:
+                layer = QgsVectorLayer(inspection_item.realtedPath(), inspection_item.realLayerName(), "ogr")
+            elif extention.lower() in ['.gpkg', '.gdb'] and inspection_item.realLayerName() is not None:
+                layer = QgsVectorLayer(f"{inspection_item.realtedPath()}|layername={inspection_item.realLayerName()}", inspection_item.realLayerName(), "ogr")
+                
+            if layer:
+                layer = QgsProject.instance().addMapLayer(layer)
+                if isinstance(layer, QgsVectorLayer):
+                    log(f"Шар {inspection_item.realLayerName()} успішно завантажено в проект", level=Qgis.Success)
+                    selected_item.setData(layer.id(), InspectionItem.RELATED_LAYER_ID)
+                    
+                    return True
+                
+            log(f"Не вдалося створити шар, щооб завантажити {inspection_item.realLayerName()}({inspection_item.realtedPath()}) в проект", level=Qgis.Warning)
+            return False
+                
+
+        
+        #відкрити файл
+        def open_file(file_path):
+            if not os.path.exists(file_path):
+                iface.messageBar().pushWarning("Помилка", f"Файл '{file_path}' не знайдено...")
+                return
+            
+            os.startfile(file_path)
+        
+        #відкрити папку
+        def open_folder(file_path):
+            folder_path = os.path.dirname(file_path)            
+            
+            if not os.path.exists(folder_path):
+                iface.messageBar().pushWarning("Помилка", f"Папку '{folder_path}' не знайдена...")
+                return
+
+            os.startfile(folder_path)
+
+        #виділити та наблизити до об'єкта
+        def highlight_and_zoom(layer, feature):
+            canvas = iface.mapCanvas()
+            layer.selectByIds([feature.id()])
+            canvas.zoomToFeatureIds(layer, [feature.id()])
+            #canvas.zoomToSelected()
+        
+        #наблизити до не виділеного об'єкту за ід об'єкту та шаром
+        def zoom_to_feature(layer, feature):
+            canvas = iface.mapCanvas()
+            canvas.zoomToFeatureIds(related_layer, [feature.id()])
+            project.layerTreeRoot().findLayer(related_layer.id()).setItemVisibilityCheckedParentRecursive(True)
+        
+        #відкрити форму об''єкта
+        def open_feature_form(layer, feature):
+            """
+            Відкриває форму об'єкта
+            """
+            related_layer = QgsProject.instance().mapLayer(layer.id())
+            if related_layer is None:
+                iface.messageBar().pushWarning("Помилка", f"Шар {layer.name()} не знайдено в проєкті")
+                return
+            
+            related_feature = next((f for f in related_layer.getFeatures() if f.id() == feature.id()))
+            if related_feature is None:
+                iface.messageBar().pushWarning("Помилка", f"Об'єкт {feature.id()} не знайдено в шарі {layer.name()}")
+                return
+            
+            featureForm = iface.getFeatureForm(related_layer, related_feature)
+            featureForm.show()
+
+        canvas = iface.mapCanvas()
+        proxy_index = self.tree_widget.selectedIndexes()
+        
+        if proxy_index is None:
+            log("При відритті контекстного меню виникла помилка: нічого не вибрано", level = Qgis.Info)
+            return
+        
+        proxy_model = self.tree_widget.model()
+        proxy_model = cast(FilterProxyModel, proxy_model)
+        
+        main_model = proxy_model.sourceModel()
+        main_model = cast(CustomItemModel, main_model)
+
+        main_index = proxy_model.mapToSource(proxy_index[0])
+        
+        selected_item = cast(InspectionItem, main_model.itemFromIndex(main_index))
+            
+        if selected_item is None:
+            log("При відритті контекстного меню виникла помилка: об'єкт не знайдено", level = Qgis.Warning)
+            return
+        
+        project = QgsProject.instance()
+
+
+
+
+        menu = QMenu(self)
+        
+        menu.addAction("Задонатити на ЗСУ")
+        menu.addSeparator()
+
+        #help URL
+        related_help_url = selected_item.relatedHelpUrl()    
+        if related_help_url is not None:
+            if related_help_url.startswith("http://") or related_help_url.startswith("https://"):
+                related_help_url = QUrl(related_help_url)
+            else:
+                related_help_url = QUrl.fromLocalFile(related_help_url)
+            if related_help_url.isValid():    
+                menu.addAction("Переглянути сторінку допомоги")
+                menu.addSeparator()
+            else:
+                log(f"В об'єкті {selected_item.text()}({selected_item.toolTip()}) невалідне посилання на документацію: {selected_item.relatedHelpUrl()}", level = Qgis.Warning)
+        
+        #шлях до файлу
+        related_path = selected_item.realtedPath()
+        if related_path is not None:
+            menu.addAction("Відкрити файл")
+            menu.addAction("Відкрити папку")
+            if selected_item.isLayer() and selected_item.relatedLayer() is None: menu.addAction("Додати шар в проєкт")
+            menu.addSeparator()
+
+        #Об'єкт шару
+        related_layer = selected_item.relatedLayer()
+        if related_layer is not None:
+            menu.addAction("Виділити шар")
+            menu.addAction("Перейти в налаштування шару")
+            menu.addAction("Переглянуи таблицю атрибутів шару")
+            menu.addSeparator()
+
+        #Об'єкт        
+        related_feature = selected_item.relatedFeature()
+        if related_feature is not None: 
+            related_feature_id = selected_item.relatedFeatureID()
+        if related_feature is not None and related_layer is not None:
+            related_feature = next((f for f in related_layer.getFeatures() if f.id() == related_feature_id))#перевірка на наявність об'єкту в шарі
+            if related_feature is None:
+                log(f"В об'єкті {selected_item.text()}({selected_item.toolTip()}) невалідне посилання на об'єкт: {related_feature_id}", level = Qgis.Warning)
+        if related_feature is not None and related_layer is not None:
+            menu.addSeparator()
+            menu.addAction("Відкрити форму об'єкту")            
+            menu.addAction("Наблизити до об'єкту")
+            menu.addAction("Виділити об'єкт")
+            menu.addAction("Виділити та наблизити до об'єкту")
+
+        if menu.isEmpty():
+            return
+        
+        selected_action = menu.exec_(self.mapToGlobal(position))
+
+        actions = {
+            "Задонатити на ЗСУ": donate,
+            "Переглянути сторінку допомоги": lambda: QDesktopServices.openUrl(related_help_url),
+            "Відкрити файл": lambda: open_file(related_path),
+            "Відкрити папку": lambda: open_folder(related_path),
+            "Виділити шар": lambda: iface.setActiveLayer(related_layer),
+            "Додати шар в проєкт": lambda: add_layer_to_project(selected_item),
+            "Перейти в налаштування шару": lambda: iface.showLayerProperties(related_layer),
+            "Переглянуи таблицю атрибутів шару": lambda: iface.showAttributeTable(related_layer),
+            "Відкрити форму об'єкту": lambda: open_feature_form(related_layer, related_feature),
+            "Наблизити до об'єкту": lambda: zoom_to_feature(related_layer, related_feature),
+            "Виділити об'єкт": lambda: related_layer.selectByIds([related_feature_id]),
+            "Виділити та наблизити до об'єкту": lambda: highlight_and_zoom(related_layer, related_feature)
+        }
+
+        if selected_action:
+            actions[selected_action.text()]()
+            return
+

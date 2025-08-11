@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>SF1 Перевірка можливості відкриття файлу | UA Orthodoxy Validator</title>
+  <link rel="shortcut icon" href="../../resources/validated.png" type="image/png">
+  <link rel="icon" href="../../resources/validated.png" type="image/png">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style_for_inspections.css">
+</head>
+<body>
+  <div class="help-error-block">
+
+<div class="logo-breadcrumb-row">
+  <img src="../Team_logo.png" alt="UA Orthodoxy Validator Logo">
+  <nav class="breadcrumbs" aria-label="Хлібні крихти">
+    <a href="../index.html">Головна</a>
+    <span class="bc-sep">/</span>
+    <a href="inspections_index.html">Список перевірок</a>
+    <span class="bc-sep">/</span>
+    <span class="current">SF1 Перевірка можливості відкриття файлу</span>
+  </nav>
+</div>
+
+<h2>SF1 — Перевірка можливості відкриття файлу</h2>
+<!-- 
+<img class="help-gif" src="SF1.gif" alt="demo gif">
+<div class="help-gif-caption">Приклад повідомлення, що з’являється, коли плагін не зміг відкрити пошкоджений файл.</div> -->
+
+<p><b>Що означає:</b><br>Валідатор намагається відкрити кожний переданий файл за допомогою бібліотеки GDAL/OGR. Якщо бібліотека повертає <code>None</code>, це означає, що файл неможливо прочитати — імовірно він пошкоджений, має неправильний формат або недоступний за вказаним шляхом.</p>
+
+<p><b>Чому це важливо:</b><br>Якщо файл не відкривається, подальша перевірка структури, геометрії або атрибутів стає неможливою. Такий файл блокує робочий процес і може приховувати критичні помилки у даних.</p>
+
+<p><b>Як виправити:</b><br>
+  • Переконайтесь, що шлях до файлу є правильним і не містить нестандартних символів або надто довгих назв директорій.<br>
+  • Спробуйте відкрити файл в QGIS або іншій ГІС програмі — якщо він не відкривається, експортуйте шар у новий файл того самого формату.<br>
+  • Перевірте, чи відповідає розширення файлу його реальному формату  (наприклад, <code>.gpkg</code>, <code>.shp</code>, <code>.geojson</code>).<br>
+  • Скопіюйте файл на локальний диск, щоб виключити проблеми з мережевими чи хмарними сховищами.<br>
+  • За потреби скористайтесь інструментом <code>ogrinfo</code> для діагностики або повторно експортуйте дані з бекапу.</p>
+
+<p><b>Алгоритм перевірки:</b><br>1. Отримати абсолютний шлях до файлу.<br>2. Викликати <code>ogr.Open(path, 0)</code> у режимі «тільки читання».<br>3. Якщо функція повертає об’єкт <code>DataSource</code> — файл коректний, перевірка успішна.<br>4. Якщо повертається <code>None</code> — зафіксувати критичну помилку SF1 і позначити файл як пошкоджений.</p>
+
+<div class="help-footer">
+  Оновлено: 2025‑06‑01 | UA Orthodoxy Validator<br>
+  Знайшли баг чи пропозицію? <a href="https://github.com/brych92/BGD_Validator/issues" target="_blank">Створіть issue на GitHub</a>.
+</div>
+
+
+  </div>
+</body>
+</html>
