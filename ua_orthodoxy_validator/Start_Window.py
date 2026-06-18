@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import QSizePolicy, QAction
 
 from PyQt5.QtCore import Qt, QMimeData, QSize, QUrl
 from PyQt5.QtGui import QCursor, QIcon, QDesktopServices, QPixmap, QKeySequence
-from numpy import unicode_
 from qgis.core import (
     QgsProject, QgsLayerTreeLayer, QgsLayerTreeModel, QgsTask, QgsApplication,
     QgsLayerTree, QgsProviderRegistry, QgsVectorLayer, QgsMapLayerType, QgsMessageLog, Qgis)
