@@ -36,6 +36,7 @@ from .Start_Window import MainWindow
 import os.path
 
 from .sidefunctions import validator_name, log
+from .ua_SPT import uaSPT
 
 class UA_orthodoxy_validator:
     """QGIS Plugin Implementation."""
@@ -111,11 +112,11 @@ class UA_orthodoxy_validator:
         # Declare instance attributes
         self.actions = []
         self.window = None
-        self.ua_spt_menu = self.get_ua_spt_menu()
-        self.ua_spt_toolbar = self.get_ua_spt_toolbar()
+        # self.ua_spt_menu = self.get_ua_spt_menu()
+        # self.ua_spt_toolbar = self.get_ua_spt_toolbar()
 
-        self.menu = None
-        self.menu_name = self.tr('UA orthodoxy validator')
+        # self.menu = None
+        # self.menu_name = self.tr('UA orthodoxy validator')
         
 
         # Check if plugin was started the first time in current QGIS session
@@ -208,28 +209,31 @@ class UA_orthodoxy_validator:
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
         icon_path = os.path.join(self.plugin_dir, 'resources','validated.png')
-        self.add_action(
-            icon_path,
-            text=self.tr(validator_name),
-            callback=self.run,
-            parent=self.iface.mainWindow())
+        self.ValidatorAction = QAction(QIcon(icon_path), self.tr(validator_name), self.iface.mainWindow())
+        self.ValidatorAction.triggered.connect(self.run)
+        # self.add_action(
+        #     icon_path,
+        #     text=self.tr(validator_name),
+        #     callback=self.run,
+        #     parent=self.iface.mainWindow())
 
+        self.SPT = uaSPT(self.iface, self.ValidatorAction)
         # will be set False in run()
         self.first_start = True
 
 
     def unload(self):
         """Removes the plugin menu item and icon from QGIS GUI."""
-        for action in self.actions:
-            
-            self.ua_spt_toolbar.removeAction(action)
+        self.SPT.unload()
+    # for action in self.actions:            
+        # self.ua_spt_toolbar.removeAction(action)
             
             # self.iface.removePluginMenu(
             #     self.tr('UA orthodoxy validator'),
             #     action)
             # self.iface.removeToolBarIcon(action)
-        self.menu.clear()
-        menuaction = self.menu.menuAction()
+    # self.menu.clear()
+    # menuaction = self.menu.menuAction()
         # for item in self.ua_spt_menu.children():
         #     try:
         #         print(f"Object name: {item.objectName()}")
@@ -240,7 +244,7 @@ class UA_orthodoxy_validator:
         #         print(f"Text: {item.text()}")
         #     except Exception as err:
         #         print(err)
-        self.ua_spt_menu.removeAction(menuaction)
+    # self.ua_spt_menu.removeAction(menuaction)
         #self.menu.deleteLater()
         # print(f'{self.menu} deleted from menu')
         
@@ -255,12 +259,12 @@ class UA_orthodoxy_validator:
         #     except Exception as err:
         #         print(err)
 
-        if len(self.ua_spt_menu.children()) == 1:
-            self.ua_spt_menu.deleteLater()
-        else:
-            log(f'В меню наявні інші елементи, кількість елементів: {len(self.ua_spt_menu.children())}')
-        if self.ua_spt_toolbar.children() == []:
-            self.ua_spt_toolbar.deleteLater()
+    # if len(self.ua_spt_menu.children()) == 1:
+    #     self.ua_spt_menu.deleteLater()
+    # else:
+    #     log(f'В меню наявні інші елементи, кількість елементів: {len(self.ua_spt_menu.children())}')
+    # if self.ua_spt_toolbar.children() == []:
+    #     self.ua_spt_toolbar.deleteLater()
         
         if self.window is not None:
             self.window.close()
