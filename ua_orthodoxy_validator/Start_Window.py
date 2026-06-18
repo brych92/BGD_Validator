@@ -398,7 +398,7 @@ class LayerButtonsPanel(QWidget):
             log("Видаляю пустиі шари...", level=Qgis.Info)
             for i in reversed(range(parent.layer_list_widget.topLevelItemCount())):
                 item = cast(layerItem, parent.layer_list_widget.topLevelItem(i))
-                if item and item.getFeaturesQty() == 0:
+                if item and item.getFeaturesQty() < 1:
                     parent.layer_list_widget.takeTopLevelItem(i)
             log("Пусті шари - видалено!", level=Qgis.Info)
         
